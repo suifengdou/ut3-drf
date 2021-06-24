@@ -62,6 +62,7 @@ class AccountSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -110,6 +111,7 @@ class StatementsSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -194,6 +196,7 @@ class PrestoreSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -254,6 +257,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -275,6 +279,7 @@ class VerificationPrestoreSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -296,6 +301,7 @@ class VerificationExpensesSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -317,6 +323,7 @@ class ExpendListSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 

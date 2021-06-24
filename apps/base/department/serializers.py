@@ -1,3 +1,4 @@
+import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import Department
@@ -22,5 +23,6 @@ class DepartmentSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance

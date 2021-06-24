@@ -88,16 +88,43 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        try:
+            account = request.user.acount
+        except:
+            raise serializers.ValidationError("不存在预存账户！")
+        all_prestores = account.prestore_set.filter(order_status=3)
+        if all_prestores:
+            balance = all_prestores.aggregate(Sum("remaining"))["remaining__sum"]
+        else:
+            raise serializers.ValidationError("账户无余额！")
+        if not account.order_status:
+            raise serializers.ValidationError("账户被冻结！")
+        try:
+            company = check_list[0].shop.company
+        except Exception as e:
+            raise serializers.ValidationError("店铺未关联公司！")
+        if not company:
+            raise serializers.ValidationError("店铺未关联公司！")
+        ori_await_amount = OriTailOrder.objects.filter(order_status=2).aggregate(Sum("amount"))["amount__sum"]
+        if not ori_await_amount:
+            ori_await_amount = 0
+        await_amount = TailOrder.objects.filter(order_status=1).aggregate(Sum("amount"))["amount__sum"]
+        if not await_amount:
+            await_amount = 0
+        submit_amount = check_list.aggregate(Sum("amount"))["amount__sum"]
+        if not submit_amount:
+            submit_amount = 0
+        try:
+            settlement_amount = (float(ori_await_amount) + float(submit_amount)) * float(company.discount_rate)
+        except:
+            raise serializers.ValidationError("关联公司未设置折扣！")
+        settlement_amount = settlement_amount + await_amount
+        if settlement_amount > balance:
+            raise serializers.ValidationError("账户余额不足！")
 
         if n:
             for obj in check_list:
-                user = UserProfile.objects.filter(username=obj.creator)[0]
-                _q_account = Account.objects.filter(user=user)
-                if not _q_account:
-                    data["error"].append("%s 单据创建人不存在预存账户" % obj.order_id)
-                    obj.mistake_tag = 17
-                    obj.save()
-                    continue
+
                 check_fields = ['order_id', 'sent_consignee', 'sent_smartphone', 'sent_district', 'sent_address']
                 for key in check_fields:
                     value = getattr(obj, key, None)

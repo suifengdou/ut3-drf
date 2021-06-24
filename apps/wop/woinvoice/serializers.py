@@ -6,6 +6,7 @@
 # @Software: PyCharm
 
 import re
+import datetime
 from functools import reduce
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
@@ -152,9 +153,9 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(OriInvoiceSerializer, self).to_representation(instance)
+        ret["order_status"] = self.get_order_status(instance)
         try:
             ret["order_category"] = self.get_order_category(instance)
-            ret["order_status"] = self.get_order_status(instance)
             ret["process_tag"] = self.get_process_tag(instance)
             ret["mistake_tag"] = self.get_mistake_tag(instance)
             ret["shop"] = self.get_shop(instance)
@@ -166,7 +167,6 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         except:
             error = { "id": -1, "name": "显示错误"}
             ret["order_category"] = error
-            ret["order_status"] = error
             ret["process_tag"] = error
             ret["mistake_tag"] = error
             ret["shop"] = error
@@ -198,6 +198,7 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         return ori_invoice
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         # groups_list = validated_data.pop("groups", [])
         # user_permissions = validated_data.pop("user_permissions", [])
         goods_details = validated_data.pop("goods_details", [])
@@ -289,13 +290,10 @@ class OriInvoiceGoodsSerializer(serializers.ModelSerializer):
         return ori_invoice
 
     def update(self, instance, validated_data):
-        # groups_list = validated_data.pop("groups", [])
-        # user_permissions = validated_data.pop("user_permissions", [])
+        validated_data["update_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
         update_tim = validated_data.pop("update_tim", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        # instance.groups.set(groups_list)
-        # instance.user_permissions.set(user_permissions)
         return instance
 
 
@@ -426,6 +424,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(InvoiceSerializer, self).to_representation(instance)
+        ret["order_status"] = self.get_order_status(instance)
         try:
             ret["work_order"] = {
                 "id": instance.work_order.id,
@@ -433,7 +432,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             }
             ret["order_category"] = self.get_order_category(instance)
             ret["process_tag"] = self.get_process_tag(instance)
-            ret["order_status"] = self.get_order_status(instance)
+
             ret["mistake_tag"] = self.get_mistake_tag(instance)
             ret["shop"] = self.get_shop(instance)
             ret["company"] = self.get_company(instance)
@@ -446,7 +445,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
             ret["work_order"] = error
             ret["order_category"] = error
             ret["process_tag"] = error
-            ret["order_status"] = error
             ret["mistake_tag"] = error
             ret["shop"] = error
             ret["company"] = error
@@ -536,7 +534,7 @@ class DeliverOrderSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
-        update_tim = validated_data.pop("update_tim", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance

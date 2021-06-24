@@ -38,7 +38,7 @@ class Goods(models.Model):
     height = models.IntegerField(null=True, blank=True, verbose_name='宽', help_text='宽')
     depth = models.IntegerField(null=True, blank=True, verbose_name='高', help_text='高')
     weight = models.IntegerField(null=True, blank=True, verbose_name='重量', help_text='重量')
-    catalog_num = models.CharField(null=True, blank=True, max_length=230, verbose_name='爆炸图号')
+    catalog_num = models.CharField(null=True, blank=True, max_length=230, verbose_name='爆炸图号', help_text='爆炸图号')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')

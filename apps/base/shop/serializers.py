@@ -1,3 +1,4 @@
+import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import Shop, Platform
@@ -13,28 +14,53 @@ class ShopSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def get_platform(self, instance):
-        ret = {
-            "id": instance.platform.id,
-            "name": instance.platform.name
-        }
+        try:
+            ret = {
+                "id": instance.platform.id,
+                "name": instance.platform.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
         return ret
 
     def get_company(self, instance):
-        ret = {
-            "id": instance.company.id,
-            "name": instance.company.name
+        try:
+            ret = {
+                "id": instance.company.id,
+                "name": instance.company.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_order_status(self, instance):
+        order_status = {
+            0: "已取消",
+            1: "正常",
         }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
         return ret
 
     def to_representation(self, instance):
         ret = super(ShopSerializer, self).to_representation(instance)
-        try:
-            ret["platform"] = self.get_platform(instance)
-            ret["company"] = self.get_company(instance)
-        except:
-            error = { "id": -1, "name": "显示错误"}
-            ret["platform"] = error
-            ret["company"] = error
+        ret["company"] = self.get_company(instance)
+        ret["platform"] = self.get_platform(instance)
+        ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):
@@ -42,6 +68,7 @@ class ShopSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -65,5 +92,6 @@ class PlatformSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
