@@ -30,8 +30,11 @@ from apps.base.shop.router import shop_router
 from apps.utils.geography.router import geography_router
 from apps.base.warehouse.router import warehouse_router
 from apps.wop.woinvoice.router import woinvoice_router
+from apps.wop.dealers.router import wodealer_router
+from apps.wop.express.router import woexpress_router
 from apps.sales.advancepayment.router import advance_router
 from apps.sales.tailgoods.router import tailgoods_router
+
 
 route.registry.extend(group_router.registry)
 route.registry.extend(users_router.registry)
@@ -42,6 +45,8 @@ route.registry.extend(shop_router.registry)
 route.registry.extend(geography_router.registry)
 route.registry.extend(warehouse_router.registry)
 route.registry.extend(woinvoice_router.registry)
+route.registry.extend(wodealer_router.registry)
+route.registry.extend(woexpress_router.registry)
 route.registry.extend(advance_router.registry)
 route.registry.extend(tailgoods_router.registry)
 

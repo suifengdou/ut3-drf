@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'apps.utils.geography.apps.GeographyConfig',
     'apps.base.warehouse.apps.WarehouseConfig',
     'apps.wop.woinvoice.apps.WoinvoiceConfig',
+    'apps.wop.dealers.apps.DealersConfig',
+    'apps.wop.express.apps.ExpressConfig',
     'apps.sales.advancepayment.apps.AdvancepaymentConfig',
     'apps.sales.tailgoods.apps.TailgoodsConfig'
 ]

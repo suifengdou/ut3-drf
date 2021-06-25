@@ -89,7 +89,7 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         try:
-            account = request.user.acount
+            account = request.user.account
         except:
             raise serializers.ValidationError("不存在预存账户！")
         all_prestores = account.prestore_set.filter(order_status=3)
@@ -964,7 +964,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                         prestore.order_status = 4
                         actual_amount = prestore.remaining
                     expendlist = ExpendList()
-                    expendlist.Statements = statement
+                    expendlist.statements = statement
                     expendlist.account = expense_order.account
                     expendlist.prestore = prestore
                     expendlist.amount = actual_amount
@@ -1093,7 +1093,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                         prestore.order_status = 4
                         actual_amount = prestore.remaining
                     expendlist = ExpendList()
-                    expendlist.Statements = statement
+                    expendlist.statements = statement
                     expendlist.account = expense_order.account
                     expendlist.prestore = prestore
                     expendlist.amount = actual_amount
