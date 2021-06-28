@@ -3,6 +3,7 @@ from django.db import models
 import django.utils.timezone as timezone
 
 from apps.base.company.models import Company
+from apps.base.goods.models import Goods
 
 
 class ExpressWorkOrder(models.Model):
@@ -53,10 +54,12 @@ class ExpressWorkOrder(models.Model):
     HANDLERS = (
         (0, '皮卡丘'),
         (1, '伊布'),
+        (2, '可达鸭'),
         (3, '波比克'),
     )
 
-    express_id = models.CharField(unique=True, max_length=100, verbose_name='源单号')
+    category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='工单事项类型')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='快递公司')
     information = models.TextField(max_length=600, verbose_name='初始问题信息')
     submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间')
     servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服')
@@ -71,11 +74,9 @@ class ExpressWorkOrder(models.Model):
     return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号')
     is_return = models.IntegerField(choices=LOGICAL_DEXISION, default=1, verbose_name='是否返回')
     memo = models.TextField(null=True, blank=True, verbose_name='备注')
-
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态')
-    category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='工单事项类型')
+
     wo_category = models.SmallIntegerField(choices=WO_CATEGORY, default=0, verbose_name='工单类型')
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='快递公司')
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
     mid_handler = models.SmallIntegerField(choices=HANDLERS, default=0, verbose_name='跟单小伙伴')
 
@@ -85,9 +86,9 @@ class ExpressWorkOrder(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'EXT-快递工单-查询'
+        verbose_name = 'WOP-快递工单'
         verbose_name_plural = verbose_name
-        db_table = 'ext_workorderex'
+        db_table = 'wop_express'
 
     def __str__(self):
         return self.express_id
@@ -99,3 +100,26 @@ class ExpressWorkOrder(models.Model):
                 return 'verify_field error, must have mandatory field: "{}""'.format(i)
         else:
             return None
+
+
+
+class ExpressDetail(models.Model):
+    ExpressWorkOrder = models.ForeignKey(ExpressWorkOrder, on_delete=models.CASCADE, verbose_name='快递工单', help_text='快递工单')
+    express_id = models.CharField(unique=True, max_length=100, verbose_name='源单号')
+    goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称', help_text='货品名称')
+    goods_id = models.CharField(max_length=50, verbose_name='货品编码', db_index=True, help_text='货品编码')
+    memorandum = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注', help_text='备注')
+
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+
+
+    class Meta:
+        verbose_name = 'WOP-快递工单-单号明细'
+        verbose_name_plural = verbose_name
+        db_table = 'wop_express_detail'
+
+    def __str__(self):
+        return self.invoice.order_id

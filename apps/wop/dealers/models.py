@@ -89,9 +89,9 @@ class DealerWorkOrder(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'EXT-经销商工单-查询'
+        verbose_name = 'WOP-经销商工单'
         verbose_name_plural = verbose_name
-        db_table = 'ext_workorderdealer'
+        db_table = 'wop_dealer'
 
     def __str__(self):
         return self.order_id

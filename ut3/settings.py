@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'apps.wop.woinvoice.apps.WoinvoiceConfig',
     'apps.wop.dealers.apps.DealersConfig',
     'apps.wop.express.apps.ExpressConfig',
+    'apps.wop.storage.apps.StorageConfig',
     'apps.sales.advancepayment.apps.AdvancepaymentConfig',
     'apps.sales.tailgoods.apps.TailgoodsConfig'
 ]
