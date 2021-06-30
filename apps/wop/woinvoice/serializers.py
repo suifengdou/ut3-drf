@@ -182,7 +182,7 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         goods_details = validated_data.pop("goods_details", [])
         amount = self.check_goods_details(goods_details)
         validated_data["amount"] = amount
-        if self.context["request"].user.company and self.context["request"].user.company:
+        if self.context["request"].user.company and self.context["request"].user.department:
             validated_data["sign_company"] = self.context["request"].user.company
             validated_data["sign_department"] = self.context["request"].user.department
         else:

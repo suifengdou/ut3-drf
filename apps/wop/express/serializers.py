@@ -2,6 +2,7 @@ import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import ExpressWorkOrder
+from apps.base.goods.models import Goods
 
 
 class ExpressWorkOrderSerializer(serializers.ModelSerializer):
@@ -157,11 +158,20 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
+        if not validated_data["track_id"]:
+            raise serializers.ValidationError("未填快递单号！")
+        if not validated_data["company"]:
+            if self.context["request"].user.company:
+                validated_data["company"] = self.context["request"].user.company
+            else:
+                raise serializers.ValidationError("登陆账号没有设置公司，不可以创建！")
+        work_order = self.Meta.model.objects.create(**validated_data)
+        return work_order
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
+        create_time = validated_data.pop("create_time", "")
+        update_tim = validated_data.pop("update_tim", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+
         return instance
-
-
