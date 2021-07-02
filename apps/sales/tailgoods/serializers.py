@@ -1,5 +1,7 @@
 import datetime
+import json
 from functools import reduce
+
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import ValidationError
@@ -435,24 +437,252 @@ class TOGoodsSerializer(serializers.ModelSerializer):
 class RefundOrderSerializer(serializers.ModelSerializer):
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    goods_details = serializers.JSONField(required=False)
 
     class Meta:
         model = RefundOrder
         fields = "__all__"
 
+    def get_order_status(self, instance):
+        order_status = {
+            0: "已取消",
+            1: "待递交",
+            2: "待处理",
+            3: "已审核",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = { "id": -1, "name": "错误" }
+        return ret
+
+    def get_process_tag(self, instance):
+        process = {
+            0: '未处理',
+            1: '待核实',
+            2: '已确认',
+            3: '待清账',
+            4: '已处理',
+            5: '部分到货',
+            6: '已到货',
+            7: '部分发货',
+            8: '换货',
+            9: '驳回',
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: '正常',
+            1: '退换数量超出原单数量',
+            2: '退换金额超出原单金额',
+            3: '无退货原因',
+            4: '无返回快递单号',
+            5: '换货单必须要先进行标记',
+            6: '非换货单不可以标记',
+            7: '非已到货状态不可以审核',
+            8: '退换数量和收货数量不一致',
+            9: '退换金额和收货金额不一致',
+            10: '退换结算单重复',
+            11: '生成结算单出错',
+            12: '生成结算单货品出错',
+            13: '关联的订单未发货',
+            14: '不是退货单不可以审核',
+            15: '物流单号重复',
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_shop(self, instance):
+        try:
+            ret = {
+                "id": instance.shop.id,
+                "name": instance.shop.name
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_order_category(self, instance):
+        order_category = {
+            3: "退-退货退款",
+            4: "退-换货退回",
+            5: "退-仅退款",
+
+        }
+        try:
+            ret = {
+                "id": instance.order_category,
+                "name": order_category.get(instance.order_category, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_mode_warehouse(self, instance):
+        mode_warehouse = {
+            0: "回流",
+            1: "二手",
+
+        }
+        try:
+            ret = {
+                "id": instance.mode_warehouse,
+                "name": mode_warehouse.get(instance.mode_warehouse, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_sent_city(self, instance):
+        try:
+            ret = {
+                "id": instance.sent_city.id,
+                "name": instance.sent_city.city,
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_goods_details(self, instance):
+        goods_details = instance.rogoods_set.all()
+        ret = []
+        for goods_detail in goods_details:
+            data = {
+                "id": goods_detail.id,
+                "goods_id": goods_detail.goods_id,
+                "name": {
+                    "id": goods_detail.goods_name.id,
+                    "name": goods_detail.goods_name.name
+                },
+                "quantity": goods_detail.quantity,
+                "settlement_price": goods_detail.settlement_price,
+                "memorandum": goods_detail.memorandum
+            }
+            ret.append(data)
+        return ret
 
     def to_representation(self, instance):
         ret = super(RefundOrderSerializer, self).to_representation(instance)
+        ret["shop"] = self.get_shop(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order_category"] = self.get_order_category(instance)
+        ret["mode_warehouse"] = self.get_mode_warehouse(instance)
+        ret["sent_city"] = self.get_sent_city(instance)
+        ret["goods_details"] = self.get_goods_details(instance)
         return ret
 
+    def to_internal_value(self, data):
+        print(data)
+        return super(RefundOrderSerializer, self).to_internal_value(data)
+
     def create(self, validated_data):
+        validated_data.pop("goods_details", None)
+        fields_list_str = ['sent_consignee', 'sent_smartphone', 'sent_district', 'sent_address', 'mode_warehouse',
+                           "shop", 'sent_city', 'sign_company', 'sign_department']
+        fields_list_obj = []
+        tail_order = validated_data["tail_order"]
+        for key in fields_list_str:
+            validated_data[key] = getattr(tail_order, key, None)
+        try:
+            for attr in fields_list_obj:
+                value = getattr(tail_order, attr, None)
+                validated_data[attr] = value.id
+        except:
+            validated_data[key] = ''
+        validated_data["shop"] = tail_order.shop
+        validated_data["order_id"] = "RO" + tail_order.order_id
+        goods_details = tail_order.togoods_set.all()
+        _ret_goods_details = []
+        for goods_detail in goods_details:
+            goods = {
+                "id": "n",
+                "goods_id": goods_detail.goods_id,
+                "goods_name": goods_detail.goods_name,
+                "goods_nickname": goods_detail.goods_nickname,
+                "quantity": goods_detail.quantity,
+                "settlement_price": goods_detail.settlement_price,
+                "settlement_amount": goods_detail.settlement_amount,
+                "memorandum": goods_detail.memorandum
+            }
+            _ret_goods_details.append(goods)
+        goods_details = _ret_goods_details
         validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
+        amount, quantity = self.check_goods_details(goods_details)
+        validated_data["amount"] = amount
+        validated_data["ori_amount"] = amount
+        validated_data["quantity"] = quantity
+        if not self.context["request"].user.company or not self.context["request"].user.company:
+            raise serializers.ValidationError("登陆账号没有设置公司或者部门，不可以创建！")
+        refund_order = self.Meta.model.objects.create(**validated_data)
+        for goods_detail in goods_details:
+            goods_detail["refund_order"] = refund_order
+            goods_detail.pop("xh", None)
+            self.create_goods_detail(goods_detail)
+
+        return refund_order
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
+        goods_details = validated_data.pop("goods_details", [])
+        amount, quantity = self.check_goods_details(goods_details)
+        validated_data["amount"] = amount
+        validated_data["quantity"] = quantity
+        create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        for goods_detail in goods_details:
+            goods_detail["refund_order"] = instance
+            _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
+            goods_detail["goods_name"] = _q_goods
+            goods_detail["goods_id"] = _q_goods.goods_id
+            goods_detail.pop("xh")
+            self.create_goods_detail(goods_detail)
         return instance
+
+    def check_goods_details(self, goods_details):
+        if not goods_details:
+            return 0
+        for goods in goods_details:
+            if not all([goods.get("goods_name", None), goods.get("settlement_price", None), goods.get("quantity", None)]):
+                raise serializers.ValidationError("明细中货品名称、数量和价格为必填项！")
+        goods_list = list(map(lambda x: x["goods_name"], goods_details))
+        goods_check = set(goods_list)
+        if len(goods_list) != len(goods_check):
+            raise serializers.ValidationError("明细中货品重复！")
+        else:
+            amount_list = list(map(lambda x: int(x["settlement_price"]) * int(x["quantity"]), goods_details))
+            quantity_list = list(map(lambda x: int(x["quantity"]), goods_details))
+            amount = reduce(lambda x, y: x + y, amount_list)
+            quantity = reduce(lambda x, y: x + y, quantity_list)
+            return amount, quantity
+
+    def create_goods_detail(self, data):
+        data["creator"] = self.context["request"].user.username
+        if data["id"] == 'n':
+            data.pop("id", None)
+            goods_detail = ROGoods.objects.create(**data)
+        else:
+            data.pop("name", None)
+            goods_detail = ROGoods.objects.filter(id=data["id"]).update(**data)
+        return goods_detail
 
 
 class ROGoodsSerializer(serializers.ModelSerializer):

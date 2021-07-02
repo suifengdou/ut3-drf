@@ -412,6 +412,7 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
                 tail_order.sent_province = obj.sent_city.province
                 tail_order.creator = self.request.user.username
                 tail_order.ori_amount = obj.amount
+                tail_order.quantity = obj.quantity
                 tail_order.ori_tail_order = obj
                 tail_order.submit_time = datetime.datetime.now()
                 try:
@@ -982,7 +983,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                         break
                 if error_tag:
                     continue
-                obj.order_status = 3
+                obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.process_tag = 4
 
@@ -1111,7 +1112,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                         break
                 if error_tag:
                     continue
-                obj.order_status = 3
+                obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.process_tag = 4
 
@@ -1374,7 +1375,187 @@ class TOGoodsViewset(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class RefundOrderViewset(viewsets.ModelViewSet):
+class RefundOrderSubmitViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定公司
+    list:
+        返回公司列表
+    update:
+        更新公司信息
+    destroy:
+        删除公司信息
+    create:
+        创建公司信息
+    partial_update:
+        更新部分公司字段
+    """
+    serializer_class = RefundOrderSerializer
+    filter_class = RefundOrderFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_oriinvoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return RefundOrder.objects.none()
+        user = self.request.user
+        if user.category:
+            queryset = RefundOrder.objects.all().order_by("id")
+        else:
+            queryset = RefundOrder.objects.filter(creator=user.username).order_by("id")
+        return queryset
+
+    @action(methods=['get'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        user = self.request.user
+        if not user.is_superuser:
+            if user.category:
+                request.data["sign_department"] = user.department
+            else:
+                request.data["creator"] = user.username
+        params = request.query_params
+        f = RefundOrderFilter(params)
+        serializer = RefundOrderSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        if all_select_tag:
+            handle_list = RefundOrderFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = RefundOrder.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for refund_order in check_list:
+                if refund_order.tail_order.order_status != 2:
+                    data["error"].append("%s 关联的尾货单还未发货" % refund_order.order_id)
+                    refund_order.mistake_tag = 13
+                    refund_order.save()
+                    n -= 1
+                    continue
+                if not refund_order.track_no:
+                    data["error"].append("%s 没退回快递信息" % refund_order.order_id)
+                    refund_order.mistake_tag = 4
+                    refund_order.save()
+                    n -= 1
+                    continue
+                _q_track_no_repeat = RefundOrder.objects.filter(track_no=refund_order.track_no)
+                if len(_q_track_no_repeat) > 1:
+                    data["error"].append("%s 此单退回单号重复" % refund_order.order_id)
+                    refund_order.mistake_tag = 15
+                    refund_order.save()
+                    n -= 1
+                    continue
+                if not refund_order.info_refund:
+                    data["error"].append("%s 此单还没有退换原因" % refund_order.order_id)
+                    refund_order.mistake_tag = 3
+                    refund_order.save()
+                    n -= 1
+                    continue
+                if refund_order.amount > refund_order.tail_order.amount:
+                    data["error"].append("%s 退换金额超出原单金额" % refund_order.order_id)
+                    refund_order.mistake_tag = 2
+                    refund_order.save()
+                    n -= 1
+                    continue
+                if refund_order.quantity > refund_order.tail_order.quantity:
+                    data["error"].append("%s 退换数量超出原单数量" % refund_order.order_id)
+                    refund_order.mistake_tag = 1
+                    refund_order.save()
+                    n -= 1
+                    continue
+                if refund_order.order_category != 3:
+                    data["error"].append("%s 现阶段只支持退货单，更正为退货单" % refund_order.order_id)
+                    refund_order.mistake_tag = 14
+                    refund_order.save()
+                    n -= 1
+                    continue
+                refund_order.submit_time = datetime.datetime.now()
+                refund_order.order_status = 2
+                refund_order.mistake_tag = 0
+                refund_order.process_tag = 0
+                refund_order.save()
+                refund_order.rogoods_set.all().update(order_status=2)
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+
+class RefundOrderCheckViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定公司
+    list:
+        返回公司列表
+    update:
+        更新公司信息
+    destroy:
+        删除公司信息
+    create:
+        创建公司信息
+    partial_update:
+        更新部分公司字段
+    """
+    serializer_class = RefundOrderSerializer
+    filter_class = RefundOrderFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_oriinvoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return RefundOrder.objects.none()
+        queryset = RefundOrder.objects.filter(order_status=2).order_by("id")
+        return queryset
+
+    @action(methods=['get'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        user = self.request.user
+        if not user.is_superuser:
+            if user.category:
+                request.data["sign_department"] = user.department
+            else:
+                request.data["creator"] = user.username
+        params = request.query_params
+        f = RefundOrderFilter(params)
+        serializer = RefundOrderSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+
+class RefundOrderManageViewset(viewsets.ModelViewSet):
     """
     retrieve:
         返回指定公司

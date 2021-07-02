@@ -328,23 +328,19 @@ class RefundOrder(models.Model):
         (13, '关联的订单未发货'),
         (14, '不是退货单不可以审核'),
         (15, '物流单号重复'),
-
     )
     MODE_W = (
         (0, '回流'),
         (1, '二手'),
     )
-    LOGICAL_DEXISION = (
-        (0, '否'),
-        (1, '是'),
-    )
+
     CATEGORY = (
         (3, '退-退货退款'),
         (4, '退-换货退回'),
         (5, '退-仅退款'),
     )
 
-    tail_order = models.ForeignKey(TailOrder, on_delete=models.CASCADE, related_name='refund_tail_order', verbose_name='来源单号')
+    tail_order = models.OneToOneField(TailOrder, on_delete=models.CASCADE, related_name='refund_tail_order', verbose_name='来源单号')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, verbose_name='店铺')
     order_id = models.CharField(unique=True, max_length=100, null=True, blank=True, verbose_name='退换单号', db_index=True)
     order_category = models.SmallIntegerField(choices=CATEGORY, default=3, verbose_name='退款类型')
@@ -382,7 +378,7 @@ class RefundOrder(models.Model):
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='订单状态')
-    fast_tag = models.SmallIntegerField(choices=LOGICAL_DEXISION, default=1, verbose_name='快捷状态')
+    fast_tag = models.BooleanField(default=True, verbose_name='快捷状态')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -445,7 +441,7 @@ class ROGoods(models.Model):
     goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称')
     goods_nickname = models.CharField(max_length=100, verbose_name='货品简称')
     quantity = models.IntegerField(verbose_name='退换货数量')
-    receipted_quantity = models.IntegerField(verbose_name='到货数量')
+    receipted_quantity = models.IntegerField(default=0, verbose_name='到货数量')
     settlement_price = models.FloatField(verbose_name='结算单价')
     settlement_amount = models.FloatField(verbose_name='货品结算总价')
     memorandum = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')

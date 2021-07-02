@@ -1,7 +1,8 @@
 from rest_framework.routers import DefaultRouter
-from .views import OriTailOrderViewset, OTOGoodsViewset, TailOrderViewset, TOGoodsViewset, RefundOrderViewset, \
-    AccountInfoViewset, TailPartsOrderViewset, OriTailOrderSubmitViewset, \
-    OriTailOrderCheckViewset, TailOrderCommonViewset, TailOrderSpecialViewset, TailToExpenseViewset, TOGoodsCommonViewset
+from .views import OriTailOrderViewset, OTOGoodsViewset, TailOrderViewset, TOGoodsViewset, RefundOrderSubmitViewset, \
+    RefundOrderCheckViewset, RefundOrderManageViewset, AccountInfoViewset, TailPartsOrderViewset, \
+    OriTailOrderSubmitViewset, OriTailOrderCheckViewset, TailOrderCommonViewset, TailOrderSpecialViewset, \
+    TailToExpenseViewset, TOGoodsCommonViewset
 
 
 tailgoods_router = DefaultRouter()
@@ -15,7 +16,9 @@ tailgoods_router.register(r'sales/tailgoods/togoodscommon', TOGoodsCommonViewset
 tailgoods_router.register(r'sales/tailgoods/tailorderspecial', TailOrderSpecialViewset, basename='tailorderspecial')
 tailgoods_router.register(r'sales/tailgoods/tailorder', TailOrderViewset, basename='tailorder')
 tailgoods_router.register(r'sales/tailgoods/togoods', TOGoodsViewset, basename='togoods')
-tailgoods_router.register(r'sales/tailgoods/refundorder', RefundOrderViewset, basename='refundorder')
+tailgoods_router.register(r'sales/tailgoods/refundordersubmit', RefundOrderSubmitViewset, basename='refundorder')
+tailgoods_router.register(r'sales/tailgoods/refundordercheck', RefundOrderCheckViewset, basename='refundorder')
+tailgoods_router.register(r'sales/tailgoods/refundordermanage', RefundOrderManageViewset, basename='refundorder')
 tailgoods_router.register(r'sales/tailgoods/tgaccount', AccountInfoViewset, basename='tgaccount')
 tailgoods_router.register(r'sales/tailgoods/taiparts', TailPartsOrderViewset, basename='taiparts')
 
