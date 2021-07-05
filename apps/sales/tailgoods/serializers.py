@@ -29,10 +29,13 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
             3: "单据生成",
             4: "发货完成",
         }
-        ret = {
-            "id": instance.order_status,
-            "name": order_status.get(instance.order_status, None)
-        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_process_tag(self, instance):
@@ -49,10 +52,13 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
             9: '非重损发货',
             10: '特殊发货',
         }
-        ret = {
-            "id": instance.process_tag,
-            "name": process.get(instance.process_tag, None)
-        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_mistake_tag(self, instance):
@@ -75,17 +81,23 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
             15: "重复订单",
             16: "型号错误",
         }
-        ret = {
-            "id": instance.mistake_tag,
-            "name": mistake_list.get(instance.mistake_tag, None)
-        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_shop(self, instance):
-        ret = {
-            "id": instance.shop.id,
-            "name": instance.shop.name
-        }
+        try:
+            ret = {
+                "id": instance.shop.id,
+                "name": instance.shop.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_order_category(self, instance):
@@ -93,10 +105,13 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
             1: "销售订单",
             2: "售后换货",
         }
-        ret = {
-            "id": instance.order_category,
-            "name": order_category.get(instance.order_category, None)
-        }
+        try:
+            ret = {
+                "id": instance.order_category,
+                "name": order_category.get(instance.order_category, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_mode_warehouse(self, instance):
@@ -105,17 +120,23 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
             1: "二手",
 
         }
-        ret = {
-            "id": instance.mode_warehouse,
-            "name": mode_warehouse.get(instance.mode_warehouse, None)
-        }
+        try:
+            ret = {
+                "id": instance.mode_warehouse,
+                "name": mode_warehouse.get(instance.mode_warehouse, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_sent_city(self, instance):
-        ret = {
-            "id": instance.sent_city.id,
-            "name": instance.sent_city.city,
-        }
+        try:
+            ret = {
+                "id": instance.sent_city.id,
+                "name": instance.sent_city.city,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_goods_details(self, instance):
@@ -138,26 +159,14 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(OriTailOrderSerializer, self).to_representation(instance)
-        try:
-            ret["shop"] = self.get_shop(instance)
-            ret["order_status"] = self.get_order_status(instance)
-            ret["process_tag"] = self.get_process_tag(instance)
-            ret["mistake_tag"] = self.get_mistake_tag(instance)
-            ret["order_category"] = self.get_order_category(instance)
-            ret["mode_warehouse"] = self.get_mode_warehouse(instance)
-            ret["sent_city"] = self.get_sent_city(instance)
-            ret["goods_details"] = self.get_goods_details(instance)
-        except Exception as e:
-            print(e)
-            error = { "id": -1, "name": "显示错误"}
-            ret["shop"] = error
-            ret["order_status"] = error
-            ret["process_tag"] = error
-            ret["mistake_tag"] = error
-            ret["order_category"] = error
-            ret["mode_warehouse"] = error
-            ret["sent_city"] = error
-            ret["goods_details"] = error
+        ret["shop"] = self.get_shop(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order_category"] = self.get_order_category(instance)
+        ret["mode_warehouse"] = self.get_mode_warehouse(instance)
+        ret["sent_city"] = self.get_sent_city(instance)
+        ret["goods_details"] = self.get_goods_details(instance)
         return ret
 
     def check_goods_details(self, goods_details):
@@ -193,11 +202,18 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
         amount, quantity = self.check_goods_details(goods_details)
         validated_data["amount"] = amount
         validated_data["quantity"] = quantity
-        if self.context["request"].user.company and self.context["request"].user.company:
-            validated_data["sign_company"] = self.context["request"].user.company
+        if self.context["request"].user.department:
+
             validated_data["sign_department"] = self.context["request"].user.department
         else:
-            raise serializers.ValidationError("登陆账号没有设置公司或者部门，不可以创建！")
+            raise serializers.ValidationError("登陆账号没有设置部门，不可以创建！")
+        if validated_data["shop"].company:
+            if validated_data["shop"].company.category == 4:
+                validated_data["sign_company"] = validated_data["shop"].company
+            else:
+                raise serializers.ValidationError("店铺设置公司，不是经销代理，不可以创建！")
+        else:
+            raise serializers.ValidationError("店铺没有设置公司，不可以创建！")
         ori_tail_order = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
             goods_detail['ori_tail_order'] = ori_tail_order
