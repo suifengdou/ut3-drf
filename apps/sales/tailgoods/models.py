@@ -176,7 +176,7 @@ class TailOrder(models.Model):
         (0, '未处理'),
         (1, '待核实'),
         (2, '已确认'),
-        (3, '待清账'),
+        (3, '部分发货'),
         (4, '已处理'),
         (5, '驳回'),
     )
@@ -184,7 +184,7 @@ class TailOrder(models.Model):
         (0, '正常'),
         (1, '快递单号错误'),
         (2, '生成对账单出错'),
-        (3, '结算单保存出错'),
+        (3, '货品明细未发货'),
         (4, '结算单货品保存出错'),
         (5, '支出单生成错误'),
         (6, '支出流水成错误'),
@@ -266,16 +266,26 @@ class TailOrder(models.Model):
 
 
 class TOGoods(models.Model):
+    PROCESSTAG = (
+        (0, '未处理'),
+        (1, '待核实'),
+        (2, '已确认'),
+        (3, '待清账'),
+        (4, '已处理'),
+        (5, '驳回'),
+    )
     tail_order = models.ForeignKey(TailOrder, on_delete=models.CASCADE, verbose_name='尾货订单')
     goods_id = models.CharField(max_length=50, verbose_name='货品编码', db_index=True)
     goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称')
     goods_nickname = models.CharField(max_length=100, verbose_name='货品简称')
     quantity = models.IntegerField(verbose_name='数量')
-    price = models.FloatField(verbose_name='单价')
-    amount = models.FloatField(verbose_name='总价')
+    price = models.FloatField(verbose_name='源单价')
+    amount = models.FloatField(verbose_name='源总价')
     settlement_price = models.FloatField(null=True, blank=True, verbose_name='结算单价')
     settlement_amount = models.FloatField(null=True, blank=True, verbose_name='结算总价')
     memorandum = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')
+
+    process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')

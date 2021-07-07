@@ -181,7 +181,7 @@ class VerificationExpenses(models.Model):
 
 
 class ExpendList(models.Model):
-    statements = models.ForeignKey(Statements, on_delete=models.CASCADE, verbose_name='关联支出', help_text='关联支出')
+    statements = models.ForeignKey(Statements, on_delete=models.CASCADE, verbose_name='关联流水', help_text='关联流水')
     account = models.ForeignKey(Account, on_delete=models.CASCADE, verbose_name='关联账户')
     prestore = models.ForeignKey(Prestore, on_delete=models.CASCADE, verbose_name='关联预存', help_text='关联预存')
     amount = models.FloatField(default=0, verbose_name='实际冲减金额', help_text='实际冲减金额')

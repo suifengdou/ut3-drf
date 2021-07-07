@@ -280,10 +280,13 @@ class TailOrderSerializer(serializers.ModelSerializer):
             1: "发货处理",
             2: "发货完成",
         }
-        ret = {
-            "id": instance.order_status,
-            "name": order_status.get(instance.order_status, None)
-        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_process_tag(self, instance):
@@ -291,7 +294,7 @@ class TailOrderSerializer(serializers.ModelSerializer):
             0: '未处理',
             1: '待核实',
             2: '已确认',
-            3: '待清账',
+            3: '部分发货',
             4: '已处理',
             5: '驳回',
             6: '物流订单',
@@ -300,10 +303,13 @@ class TailOrderSerializer(serializers.ModelSerializer):
             9: '非重损发货',
             10: '特殊发货',
         }
-        ret = {
-            "id": instance.process_tag,
-            "name": process.get(instance.process_tag, None)
-        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_mistake_tag(self, instance):
@@ -311,24 +317,30 @@ class TailOrderSerializer(serializers.ModelSerializer):
             0: "正常",
             1: "快递单号错误",
             2: "生成对账单出错",
-            3: "结算单保存出错",
+            3: "货品明细未发货",
             4: "结算单货品保存出错",
             5: "支出单生成错误",
             6: "支出流水成错误",
             7: "支出划账错误",
             8: "尾货对账单重复",
         }
-        ret = {
-            "id": instance.mistake_tag,
-            "name": mistake_list.get(instance.mistake_tag, None)
-        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_shop(self, instance):
-        ret = {
-            "id": instance.shop.id,
-            "name": instance.shop.name
-        }
+        try:
+            ret = {
+                "id": instance.shop.id,
+                "name": instance.shop.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_order_category(self, instance):
@@ -337,10 +349,13 @@ class TailOrderSerializer(serializers.ModelSerializer):
             2: "售后换货",
 
         }
-        ret = {
-            "id": instance.order_category,
-            "name": order_category.get(instance.order_category, None)
-        }
+        try:
+            ret = {
+                "id": instance.order_category,
+                "name": order_category.get(instance.order_category, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_mode_warehouse(self, instance):
@@ -349,17 +364,23 @@ class TailOrderSerializer(serializers.ModelSerializer):
             1: "二手",
 
         }
-        ret = {
-            "id": instance.mode_warehouse,
-            "name": mode_warehouse.get(instance.mode_warehouse, None)
-        }
+        try:
+            ret = {
+                "id": instance.mode_warehouse,
+                "name": mode_warehouse.get(instance.mode_warehouse, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_sent_city(self, instance):
-        ret = {
-            "id": instance.sent_city.id,
-            "name": instance.sent_city.city,
-        }
+        try:
+            ret = {
+                "id": instance.sent_city.id,
+                "name": instance.sent_city.city,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_goods_details(self, instance):
@@ -374,7 +395,7 @@ class TailOrderSerializer(serializers.ModelSerializer):
                     "name": goods_detail.goods_name.name
                 },
                 "quantity": goods_detail.quantity,
-                "price": goods_detail.price,
+                "settlement_price": goods_detail.settlement_price,
                 "memorandum": goods_detail.memorandum
             }
             ret.append(data)
@@ -383,26 +404,14 @@ class TailOrderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(TailOrderSerializer, self).to_representation(instance)
-        try:
-            ret["shop"] = self.get_shop(instance)
-            ret["order_status"] = self.get_order_status(instance)
-            ret["process_tag"] = self.get_process_tag(instance)
-            ret["mistake_tag"] = self.get_mistake_tag(instance)
-            ret["order_category"] = self.get_order_category(instance)
-            ret["mode_warehouse"] = self.get_mode_warehouse(instance)
-            ret["sent_city"] = self.get_sent_city(instance)
-            ret["goods_details"] = self.get_goods_details(instance)
-        except Exception as e:
-            print(e)
-            error = { "id": -1, "name": "显示错误"}
-            ret["shop"] = error
-            ret["order_status"] = error
-            ret["process_tag"] = error
-            ret["mistake_tag"] = error
-            ret["order_category"] = error
-            ret["mode_warehouse"] = error
-            ret["sent_city"] = error
-            ret["goods_details"] = error
+        ret["shop"] = self.get_shop(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order_category"] = self.get_order_category(instance)
+        ret["mode_warehouse"] = self.get_mode_warehouse(instance)
+        ret["sent_city"] = self.get_sent_city(instance)
+        ret["goods_details"] = self.get_goods_details(instance)
         return ret
 
     def create(self, validated_data):
@@ -684,9 +693,9 @@ class RefundOrderSerializer(serializers.ModelSerializer):
         if len(goods_list) != len(goods_check):
             raise serializers.ValidationError("明细中货品重复！")
         else:
-            amount_list = list(map(lambda x: int(x["settlement_price"]) * int(x["quantity"]), goods_details))
+            amount_list = list(map(lambda x: float(x["settlement_price"]) * float(x["quantity"]), goods_details))
             quantity_list = list(map(lambda x: int(x["quantity"]), goods_details))
-            amount = reduce(lambda x, y: x + y, amount_list)
+            amount = reduce(lambda x, y: round(x + y, 2), amount_list)
             quantity = reduce(lambda x, y: x + y, quantity_list)
             return amount, quantity
 
@@ -870,9 +879,82 @@ class AccountInfoSerializer(serializers.ModelSerializer):
         model = AccountInfo
         fields = "__all__"
 
+    def get_process_tag(self, instance):
+        process = {
+            0: '未处理',
+            1: '待核实',
+            2: '已确认',
+            3: '待清账',
+            4: '已处理',
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_shop(self, instance):
+        try:
+            ret = {
+                "id": instance.shop.id,
+                "name": instance.shop.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_sign_company(self, instance):
+        try:
+            ret = {
+                "id": instance.sign_company.id,
+                "name": instance.sign_company.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_order_category(self, instance):
+        order_category = {
+            1: "销售订单",
+            2: "售后换货",
+            3: "退-退货退款",
+            4: "退-换货退回",
+            5: "退-仅退款",
+        }
+        try:
+            ret = {
+                "id": instance.order_category,
+                "name": order_category.get(instance.order_category, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_mode_warehouse(self, instance):
+        mode_warehouse = {
+            0: "回流",
+            1: "二手",
+
+        }
+        try:
+            ret = {
+                "id": instance.mode_warehouse,
+                "name": mode_warehouse.get(instance.mode_warehouse, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
 
     def to_representation(self, instance):
         ret = super(AccountInfoSerializer, self).to_representation(instance)
+        ret["shop"] = self.get_shop(instance)
+        ret["sign_company"] = self.get_sign_company(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["order_category"] = self.get_order_category(instance)
+        ret["mode_warehouse"] = self.get_mode_warehouse(instance)
         return ret
 
     def create(self, validated_data):

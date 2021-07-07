@@ -573,14 +573,14 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
                             goods_order = TOGoods()
                             goods_order.tail_order = tail_order
                             goods_order.goods_name = goods
-                            goods_order.goods_nickname = goods.goods_name
+                            goods_order.goods_nickname = goods.name
                             goods_order.goods_id = goods.goods_id
                             goods_order.quantity = 1
                             goods_order.price = price
                             goods_order.amount = price
                             goods_order.settlement_price = round(price * obj.sign_company.discount_rate, 2)
                             goods_order.settlement_amount = round(price * obj.sign_company.discount_rate, 2)
-                            current_amount = goods_order.amount
+                            current_amount = goods_order.settlement_amount
                             goods_order.memorandum = '来源 %s 的第 %s 个订单' % (obj.order_id, tail_num + 1)
 
                             try:
@@ -689,7 +689,7 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            check_list.update(process_tag=1)
+            check_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["success"] = n
@@ -842,7 +842,6 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
         queryset = TailOrder.objects.filter(mode_warehouse=1, order_status=1).order_by("id")
         return queryset
 
-
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
@@ -856,7 +855,6 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
             else:
                 handle_list = []
         return handle_list
-
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
@@ -880,6 +878,13 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                 if int(len(obj.track_no)) < 7:
                     data["error"].append("%s 物流追踪信息错误" % obj.order_id)
                     obj.mistake_tag = 1
+                    obj.save()
+                    n -= 1
+                    continue
+
+                if obj.process_tag != 4:
+                    data["error"].append("%s 货品明细未发货，不可以审核" % obj.order_id)
+                    obj.mistake_tag = 3
                     obj.save()
                     n -= 1
                     continue
@@ -958,14 +963,14 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                 error_tag = 0
                 for prestore in all_prestores:
                     if prestore.remaining > charge_amount:
-                        prestore.remaining = prestore.remaining - charge_amount
+                        prestore.remaining = round(prestore.remaining - charge_amount, 2)
                         actual_amount = charge_amount
                         charge_amount = 0
                     else:
-                        charge_amount = charge_amount - prestore.remaining
+                        charge_amount = round(charge_amount - prestore.remaining, 2)
+                        actual_amount = prestore.remaining
                         prestore.remaining = 0
                         prestore.order_status = 4
-                        actual_amount = prestore.remaining
                     expendlist = ExpendList()
                     expendlist.statements = statement
                     expendlist.account = expense_order.account
@@ -985,6 +990,8 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                         break
                 if error_tag:
                     continue
+                expense_order.order_status = 2
+                expense_order.save()
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.process_tag = 4
@@ -1083,15 +1090,15 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                 if not charged_amount:
                     charged_amount = 0
                 all_prestores = Prestore.objects.filter(account=expense_order.account, order_status=3)
-                charge_amount = expense_order.amount - charged_amount
+                charge_amount = round(expense_order.amount - charged_amount, 2)
                 error_tag = 0
                 for prestore in all_prestores:
                     if prestore.remaining > charge_amount:
-                        prestore.remaining = prestore.remaining - charge_amount
+                        prestore.remaining = round(prestore.remaining - charge_amount, 2)
                         actual_amount = charge_amount
                         charge_amount = 0
                     else:
-                        charge_amount = charge_amount - prestore.remaining
+                        charge_amount = round(charge_amount - prestore.remaining, 2)
                         prestore.remaining = 0
                         prestore.order_status = 4
                         actual_amount = prestore.remaining
@@ -1114,6 +1121,8 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                         break
                 if error_tag:
                     continue
+                expense_order.order_status = 2
+                expense_order.save()
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.process_tag = 4
@@ -1155,6 +1164,10 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
+                if obj.process_tag == 4:
+                    data["error"].append("%s 存在已经标记发货的明细，不可以驳回！" % obj.order_id)
+                    n -= 1
+                    continue
                 if obj.order_status > 0:
                     obj.order_status -= 1
                     obj.process_tag = 5
@@ -1171,7 +1184,6 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                             obj.ori_tail_order.process_tag = 5
 
                             obj.ori_tail_order.save()
-                            data["error"].append("%s 取消成功，并且源订单驳回到待审核状态" % obj.order_id)
                         expense = obj.tailtoexpense.expense
                         expense.order_status = 0
                         expense.save()
@@ -1184,6 +1196,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["success"] = n
+        data["false"] = len(reject_list) - n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1265,7 +1278,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
         report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
         for order in resource:
             try:
-                TailOrder.objects.filter(order_id=order["order_id"], order_status=1).update(track_no=order["track_no"])
+                TailOrder.objects.filter(order_id=order["order_id"], order_status=1, mode_warehouse=1).update(track_no=order["track_no"])
                 report_dic["successful"] += 1
             except Exception as e:
                 report_dic["false"] += 1
@@ -1312,19 +1325,74 @@ class TOGoodsCommonViewset(viewsets.ModelViewSet):
         serializer = TOGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)
 
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = TOGoodsFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = TOGoods.objects.filter(id__in=order_ids)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def set_special(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=4)
+            for goods_order in check_list:
+                _q_status = goods_order.tail_order.togoods_set.all().filter(process_tag=0)
+                if _q_status.exists():
+                    goods_order.tail_order.process_tag = 3
+                else:
+                    goods_order.tail_order.process_tag = 4
+                goods_order.tail_order.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def recover(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=0)
+            for goods_order in check_list:
+                goods_order.tail_order.process_tag = 0
+                goods_order.tail_order.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        return Response(data)
+
 
 class TailOrderSpecialViewset(viewsets.ModelViewSet):
     """
     retrieve:
-        返回指定公司
+        返回指定尾货单
     list:
-        返回公司列表
+        返回尾货单列表
     update:
-        更新公司信息
-    destroy:
-        删除公司信息
-    create:
-        创建公司信息
+        更新尾货单信息
     partial_update:
         更新部分公司字段
     """
@@ -1339,24 +1407,9 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return TailOrder.objects.none()
-        queryset = TailOrder.objects.filter(is_delete=0, order_status=1, mode_warehouse=0).order_by("id")
+        queryset = TailOrder.objects.filter(mode_warehouse=0, order_status=1).order_by("id")
         return queryset
 
-    @action(methods=['get'], detail=False)
-    def export(self, request, *args, **kwargs):
-        # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        user = self.request.user
-        if not user.is_superuser:
-            if user.category:
-                request.data["sign_department"] = user.department
-            else:
-                request.data["creator"] = user.username
-        params = request.query_params
-        f = TailOrderFilter(params)
-        serializer = TailOrderSerializer(f.qs, many=True)
-        return Response(serializer.data)
 
     def get_handle_list(self, params):
         params.pop("page", None)
@@ -1371,6 +1424,7 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
             else:
                 handle_list = []
         return handle_list
+
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
@@ -1394,6 +1448,13 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                 if int(len(obj.track_no)) < 7:
                     data["error"].append("%s 物流追踪信息错误" % obj.order_id)
                     obj.mistake_tag = 1
+                    obj.save()
+                    n -= 1
+                    continue
+
+                if obj.process_tag != 4:
+                    data["error"].append("%s 货品明细未发货，不可以审核" % obj.order_id)
+                    obj.mistake_tag = 3
                     obj.save()
                     n -= 1
                     continue
@@ -1472,11 +1533,11 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                 error_tag = 0
                 for prestore in all_prestores:
                     if prestore.remaining > charge_amount:
-                        prestore.remaining = prestore.remaining - charge_amount
+                        prestore.remaining = round(prestore.remaining - charge_amount, 2)
                         actual_amount = charge_amount
                         charge_amount = 0
                     else:
-                        charge_amount = charge_amount - prestore.remaining
+                        charge_amount = round(charge_amount - prestore.remaining, 2)
                         prestore.remaining = 0
                         prestore.order_status = 4
                         actual_amount = prestore.remaining
@@ -1499,6 +1560,8 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                         break
                 if error_tag:
                     continue
+                expense_order.order_status = 2
+                expense_order.save()
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.process_tag = 4
@@ -1597,15 +1660,15 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                 if not charged_amount:
                     charged_amount = 0
                 all_prestores = Prestore.objects.filter(account=expense_order.account, order_status=3)
-                charge_amount = expense_order.amount - charged_amount
+                charge_amount = round(expense_order.amount - charged_amount, 2)
                 error_tag = 0
                 for prestore in all_prestores:
                     if prestore.remaining > charge_amount:
-                        prestore.remaining = prestore.remaining - charge_amount
+                        prestore.remaining = round(prestore.remaining - charge_amount, 2)
                         actual_amount = charge_amount
                         charge_amount = 0
                     else:
-                        charge_amount = charge_amount - prestore.remaining
+                        charge_amount = round(charge_amount - prestore.remaining, 2)
                         prestore.remaining = 0
                         prestore.order_status = 4
                         actual_amount = prestore.remaining
@@ -1628,6 +1691,8 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                         break
                 if error_tag:
                     continue
+                expense_order.order_status = 2
+                expense_order.save()
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.process_tag = 4
@@ -1669,6 +1734,10 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
+                if obj.process_tag == 4:
+                    data["error"].append("%s 存在已经标记发货的明细，不可以驳回！" % obj.order_id)
+                    n -= 1
+                    continue
                 if obj.order_status > 0:
                     obj.order_status -= 1
                     obj.process_tag = 5
@@ -1685,7 +1754,6 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                             obj.ori_tail_order.process_tag = 5
 
                             obj.ori_tail_order.save()
-                            data["error"].append("%s 取消成功，并且源订单驳回到待审核状态" % obj.order_id)
                         expense = obj.tailtoexpense.expense
                         expense.order_status = 0
                         expense.save()
@@ -1698,7 +1766,94 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["success"] = n
+        data["false"] = len(reject_list) - n
         return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+        return Response(data)
+
+    def handle_upload_file(self, _file):
+        INIT_FIELDS_DIC = {"原始单号": "order_id", "物流单号": "track_no"}
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            with pd.ExcelFile(_file) as xls:
+                df = pd.read_excel(xls, sheet_name=0)
+                FILTER_FIELDS = ['原始单号', '物流单号']
+
+                try:
+                    df = df[FILTER_FIELDS]
+                except Exception as e:
+                    report_dic["error"].append(e)
+                    return report_dic
+
+                # 获取表头，对表头进行转换成数据库字段名
+                columns_key = df.columns.values.tolist()
+                for i in range(len(columns_key)):
+                    columns_key[i] = columns_key[i].replace(' ', '').replace('=', '')
+
+                for i in range(len(columns_key)):
+                    if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                        columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+                # 验证一下必要的核心字段是否存在
+                _ret_verify_field = TailOrder.verify_mandatory(columns_key)
+                if _ret_verify_field is not None:
+                    report_dic["error"].append(str(_ret_verify_field))
+                    return report_dic
+
+                # 更改一下DataFrame的表名称
+                columns_key_ori = df.columns.values.tolist()
+                ret_columns_key = dict(zip(columns_key_ori, columns_key))
+                df.rename(columns=ret_columns_key, inplace=True)
+
+                # 更改一下DataFrame的表名称
+                num_end = 0
+                step = 300
+                step_num = int(len(df) / step) + 2
+                i = 1
+                while i < step_num:
+                    num_start = num_end
+                    num_end = step * i
+                    intermediate_df = df.iloc[num_start: num_end]
+
+                    # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                    _ret_list = intermediate_df.to_dict(orient='records')
+                    intermediate_report_dic = self.save_resources(_ret_list)
+                    for k, v in intermediate_report_dic.items():
+                        if k == "error":
+                            if intermediate_report_dic["error"]:
+                                report_dic[k].append(v)
+                        else:
+                            report_dic[k] += v
+                    i += 1
+                return report_dic
+
+        else:
+            error = "只支持excel文件格式！"
+            report_dic["error"].append(error)
+            return report_dic
+
+    def save_resources(self, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        for order in resource:
+            try:
+                TailOrder.objects.filter(order_id=order["order_id"], order_status=1, mode_warehouse=0).update(track_no=order["track_no"])
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic["false"] += 1
+                report_dic["error"].append(e)
+        return report_dic
 
 
 class TOGoodsSpecialViewset(viewsets.ModelViewSet):
@@ -1727,7 +1882,7 @@ class TOGoodsSpecialViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return TOGoods.objects.none()
-        queryset = TOGoods.objects.filter(is_delete=0, tail_order__order_status=1, tail_order__mode_warehouse=1).order_by("id")
+        queryset = TOGoods.objects.filter(is_delete=0, tail_order__order_status=1, tail_order__mode_warehouse=0).order_by("id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -1740,6 +1895,64 @@ class TOGoodsSpecialViewset(viewsets.ModelViewSet):
         serializer = TOGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)
 
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = TOGoodsFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = TOGoods.objects.filter(id__in=order_ids)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def set_special(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=4)
+            for goods_order in check_list:
+                _q_status = goods_order.tail_order.togoods_set.all().filter(process_tag=0)
+                if _q_status.exists():
+                    goods_order.tail_order.process_tag = 3
+                else:
+                    goods_order.tail_order.process_tag = 4
+                goods_order.tail_order.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def recover(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=0)
+            for goods_order in check_list:
+                goods_order.tail_order.process_tag = 0
+                goods_order.tail_order.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        return Response(data)
 
 
 class TailOrderViewset(viewsets.ModelViewSet):

@@ -314,8 +314,40 @@ class ExpendListSerializer(serializers.ModelSerializer):
         model = ExpendList
         fields = "__all__"
 
+    def get_prestore(self, instance):
+        ret = {
+            "id": instance.prestore.id,
+            "name": instance.prestore.order_id
+        }
+        return ret
+
+    def get_prestore_amount(self, instance):
+        return instance.prestore.amount
+
+    def get_account(self, instance):
+        ret = {
+            "id": instance.account.id,
+            "name": instance.account.name
+        }
+        return ret
+
+    def get_statement_expense(self, instance):
+        return instance.statements.expenses
+
+    def get_statment(self, instance):
+        ret = {
+            "id": instance.statements.id,
+            "name": instance.statements.order_id
+        }
+        return ret
+
     def to_representation(self, instance):
         ret = super(ExpendListSerializer, self).to_representation(instance)
+        ret["statements"] = self.get_statment(instance)
+        ret["statment_expense"] = self.get_statement_expense(instance)
+        ret["account"] = self.get_account(instance)
+        ret["prestore"] = self.get_prestore(instance)
+        ret["prestore_amount"] = self.get_prestore_amount(instance)
         return ret
 
     def create(self, validated_data):
