@@ -11,11 +11,12 @@ from rest_framework import status
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from .serializers import OriTailOrderSerializer, OTOGoodsSerializer, TailOrderSerializer, TOGoodsSerializer, \
-    RefundOrderSerializer, ROGoodsSerializer, AccountInfoSerializer, TailPartsOrderSerializer, TailToExpenseSerializer
+    RefundOrderSerializer, ROGoodsSerializer, AccountInfoSerializer, TailPartsOrderSerializer, TailToExpenseSerializer, \
+    RefundToPrestoreSerializer
 from .filters import OriTailOrderFilter, OTOGoodsFilter, TailOrderFilter, TOGoodsFilter, RefundOrderFilter, \
-    ROGoodsFilter, AccountInfoFilter, TailPartsOrderFilter, TailToExpenseFilter
+    ROGoodsFilter, AccountInfoFilter, TailPartsOrderFilter, TailToExpenseFilter, RefundToPrestoreFilter
 from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, AccountInfo, TailPartsOrder, \
-    TailToExpense, TailTOAccount
+    TailToExpense, TailTOAccount, RefundToPrestore
 from apps.sales.advancepayment.models import Expense, Account, Statements, VerificationExpenses, ExpendList, Prestore
 from apps.auth.users.models import UserProfile
 from ut3.permissions import Permissions
@@ -2082,10 +2083,7 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
         if not self.request:
             return RefundOrder.objects.none()
         user = self.request.user
-        if user.category:
-            queryset = RefundOrder.objects.all().order_by("id")
-        else:
-            queryset = RefundOrder.objects.filter(creator=user.username).order_by("id")
+        queryset = RefundOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2176,16 +2174,88 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
                     refund_order.save()
                     n -= 1
                     continue
+                try:
+                    prestore_order = refund_order.refundtoprestore.prestore
+                    if prestore_order.order_status != 1:
+                        data["error"].append("%s 关联预存单出错" % refund_order.order_id)
+                        refund_order.mistake_tag = 10
+                        refund_order.save()
+                        n -= 1
+                        continue
+                    else:
+                        prestore_order.order_status = 2
+                except:
+                    prestore_order = Prestore()
+                    prestore_order.order_status = 2
+                try:
+                    prestore_order.account = request.user.account
+                except:
+                    data["error"].append("%s 当前登录人无预存账户" % refund_order.order_id)
+                    refund_order.mistake_tag = 11
+                    refund_order.save()
+                    n -= 1
+                    continue
+                prestore_order.order_id = "P" + refund_order.order_id
+                prestore_order.bank_sn = refund_order.order_id
+                prestore_order.category = 2
+                prestore_order.amount = refund_order.amount
+                prestore_order.memorandum = "源自退款单：%s" % refund_order.order_id
+                prestore_order.creator = request.user.username
+                try:
+                    prestore_order.save()
+                    refundtoprestore = RefundToPrestore()
+                    refundtoprestore.refund_order = refund_order
+                    refundtoprestore.prestore = prestore_order
+                    refundtoprestore.creator = request.user.username
+                    refundtoprestore.save()
+                except Exception as e:
+                    data["error"].append("%s 创建预存单错误" % refund_order.order_id)
+                    refund_order.mistake_tag = 12
+                    refund_order.save()
+                    n -= 1
+                    continue
                 refund_order.submit_time = datetime.datetime.now()
                 refund_order.order_status = 2
                 refund_order.mistake_tag = 0
                 refund_order.process_tag = 0
                 refund_order.save()
-                refund_order.rogoods_set.all().update(order_status=2)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["success"] = n
         data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                try:
+                    prestore_order = obj.refundtoprestore.prestore
+                    if prestore_order.order_status > 2:
+                        data["error"].append("%s 关联预存单出错,不可驳回，联系管理员" % obj.order_id)
+                        obj.mistake_tag = 10
+                        obj.save()
+                        n -= 1
+                        continue
+                    else:
+                        prestore_order.order_stauts = 0
+                        prestore_order.save()
+                except:
+                    pass
+                obj.rogoods_set.all().delete()
+                obj.order_status = 0
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
         return Response(data)
 
 
@@ -2233,6 +2303,175 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
         f = RefundOrderFilter(params)
         serializer = RefundOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = RefundOrderFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = RefundOrder.objects.filter(id__in=order_ids)
+            else:
+                handle_list = []
+        return handle_list
+
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                try:
+                    prestore_order = obj.refundtoprestore.prestore
+                    if prestore_order.order_status > 2:
+                        data["error"].append("%s 关联预存单出错,不可驳回，联系管理员" % obj.order_id)
+                        obj.mistake_tag = 10
+                        obj.save()
+                        n -= 1
+                        continue
+                    else:
+                        prestore_order.order_stauts = 1
+                        prestore_order.save()
+                except:
+                    data["error"].append("%s 关联预存单出错,不可驳回，联系管理员" % obj.order_id)
+                    obj.mistake_tag = 10
+                    obj.save()
+                    n -= 1
+                    continue
+                _q_ro_goods = obj.rogoods_set.all()
+                mistake_tag = 0
+                for rogoods in _q_ro_goods:
+                    if rogoods.order_status > 2 or rogoods.receipted_quantity > 0:
+                        mistake_tag = 1
+                        break
+                if mistake_tag:
+                    data["error"].append("%s 已存在关联入库，不可以驳回" % obj.order_id)
+                    obj.mistake_tag = 5
+                    obj.save()
+                    n -= 1
+                    continue
+                obj.order_status = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+
+    @action(methods=['patch'], detail=False)
+    def set_handled(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=2)
+            for obj in check_list:
+                obj.process_tag = 2
+                obj.save()
+                obj.rogoods_set.all().update(order_status=2)
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def recover(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                goods_details = obj.rogoods_set.all()
+                mistake_tag = 0
+                for goods in goods_details:
+                    if goods.process_tag !=0:
+                        mistake_tag = 1
+                        break
+                if mistake_tag:
+                    data["error"].append("%s 入库单已经操作，不可以清除标记" % obj.order_id)
+                    obj.mistake_tag = 16
+                    obj.save()
+                    n -= 1
+                    continue
+                goods_details.update(order_status=1)
+                obj.tail_order.process_tag = 0
+                obj.tail_order.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for refund_order in check_list:
+                try:
+                    prestore_order = refund_order.refundtoprestore.prestore
+                    if prestore_order.order_status != 2:
+                        data["error"].append("%s 关联预存单出错" % refund_order.order_id)
+                        refund_order.mistake_tag = 10
+                        refund_order.save()
+                        n -= 1
+                        continue
+                    else:
+                        prestore_order.remaining = prestore_order.amount
+                        prestore_order.order_status = 3
+                        prestore_order.save()
+                except:
+                    data["error"].append("%s 关联预存单出错" % refund_order.order_id)
+                    refund_order.mistake_tag = 10
+                    refund_order.save()
+                    n -= 1
+                    continue
+
+                refund_order.handle_time = datetime.datetime.now()
+                start_time = datetime.datetime.strptime(str(refund_order.submit_time).split(".")[0],
+                                                        "%Y-%m-%d %H:%M:%S")
+                end_time = datetime.datetime.strptime(str(refund_order.handle_time).split(".")[0],
+                                                      "%Y-%m-%d %H:%M:%S")
+                d_value = end_time - start_time
+                days_seconds = d_value.days * 3600
+                total_seconds = days_seconds + d_value.seconds
+                refund_order.handle_interval = math.floor(total_seconds / 60)
+                refund_order.order_status = 3
+                refund_order.mistake_tag = 0
+                refund_order.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
 
 
 class RefundOrderManageViewset(viewsets.ModelViewSet):
@@ -2285,7 +2524,151 @@ class RefundOrderManageViewset(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class ROGoodsViewset(viewsets.ModelViewSet):
+class ROGoodsReceivalViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定公司
+    list:
+        返回公司列表
+    update:
+        更新公司信息
+    destroy:
+        删除公司信息
+    create:
+        创建公司信息
+    partial_update:
+        更新部分公司字段
+    """
+    serializer_class = ROGoodsSerializer
+    filter_class = ROGoodsFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_oriinvoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return ROGoods.objects.none()
+        queryset = ROGoods.objects.filter(order_status=2).order_by("id")
+        return queryset
+
+    @action(methods=['get'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        user = self.request.user
+        if not user.is_superuser:
+            if user.category:
+                request.data["sign_department"] = user.department
+            else:
+                request.data["creator"] = user.username
+        params = request.query_params
+        f = ROGoodsFilter(params)
+        serializer = ROGoodsSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = ROGoodsFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = ROGoods.objects.filter(id__in=order_ids)
+            else:
+                handle_list = []
+        return handle_list
+
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.process_tag != 4:
+                    data["error"].append("%s 入库单未确认" % obj.goods_nickname)
+                    obj.mistake_tag = 3
+                    obj.save()
+                    n -= 1
+                    continue
+                if obj.receipted_quantity != obj.quantity:
+                    data["error"].append("%s 入库数和待收货数不符" % obj.goods_nickname)
+                    obj.mistake_tag = 2
+                    obj.save()
+                    n -= 1
+                    continue
+                if obj.receipted_quantity == 0:
+                    data["error"].append("%s 入库数量是0" % obj.goods_nickname)
+                    obj.mistake_tag = 2
+                    obj.save()
+                    n -= 1
+                    continue
+                refund_quantity = obj.refund_order.rogoods_set.all().aggregate(Sum("receipted_quantity"))["receipted_quantity__sum"]
+                if refund_quantity != obj.refund_order.quantity:
+                    data["error"].append("%s 退款单未完整入库" % obj.refund_order.order_id)
+                    obj.mistake_tag = 4
+                    obj.save()
+                    n -= 1
+                    continue
+                obj.order_status = 3
+                obj.save()
+                obj.refund_order.process_tag = 4
+                obj.refund_order.save()
+
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_handled(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=4)
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def recover(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=0, receipted_quantity=0)
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        return Response(data)
+
+
+
+class ROGoodsManageViewset(viewsets.ModelViewSet):
     """
     retrieve:
         返回指定公司
@@ -2475,6 +2858,46 @@ class TailToExpenseViewset(viewsets.ModelViewSet):
         serializer = TailToExpenseSerializer(f.qs, many=True)
         return Response(serializer.data)
 
+
+class RefundToPrestoreViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定公司
+    list:
+        返回公司列表
+    update:
+        更新公司信息
+    destroy:
+        删除公司信息
+    create:
+        创建公司信息
+    partial_update:
+        更新部分公司字段
+    """
+    serializer_class = RefundToPrestoreSerializer
+    filter_class = RefundToPrestoreFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_oriinvoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return RefundToPrestore.objects.none()
+        user = self.request.user
+        queryset = RefundToPrestore.objects.all().order_by("id")
+        return queryset
+
+    @action(methods=['get'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.query_params
+        f = RefundToPrestoreFilter(params)
+        serializer = RefundToPrestoreSerializer(f.qs, many=True)
+        return Response(serializer.data)
 
 
 

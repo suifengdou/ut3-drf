@@ -10,7 +10,7 @@ from apps.base.company.models import Company
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.base.department.models import Department
-from apps.sales.advancepayment.models import Expense
+from apps.sales.advancepayment.models import Expense, Prestore
 
 
 class OriTailOrder(models.Model):
@@ -327,17 +327,18 @@ class RefundOrder(models.Model):
         (2, '退换金额超出原单金额'),
         (3, '无退货原因'),
         (4, '无返回快递单号'),
-        (5, '换货单必须要先进行标记'),
+        (5, '已存在关联入库，不可以驳回'),
         (6, '非换货单不可以标记'),
         (7, '非已到货状态不可以审核'),
         (8, '退换数量和收货数量不一致'),
         (9, '退换金额和收货金额不一致'),
-        (10, '退换结算单重复'),
-        (11, '生成结算单出错'),
-        (12, '生成结算单货品出错'),
+        (10, '关联预存单出错'),
+        (11, '当前登录人无预存账户'),
+        (12, '创建预存单错误'),
         (13, '关联的订单未发货'),
         (14, '不是退货单不可以审核'),
         (15, '物流单号重复'),
+        (16, '入库单已经操作，不可以清除标记'),
     )
     MODE_W = (
         (0, '回流'),
@@ -438,6 +439,8 @@ class ROGoods(models.Model):
         (0, '正常'),
         (1, '入库数量是0'),
         (2, '入库数和待收货数不符'),
+        (3, '入库单未确认'),
+        (4, '退款单未完整入库'),
     )
     ORDER_STATUS = (
         (0, '已取消'),
@@ -644,7 +647,6 @@ class ArrearsBillOrder(models.Model):
 
     def __str__(self):
         return str(self.order_id)
-
 
 
 # 退款结算单货品明细
@@ -983,3 +985,16 @@ class TailTOAccount(models.Model):
         db_table = 'sales_tailgoods_t2a'
 
 
+class RefundToPrestore(models.Model):
+    refund_order = models.OneToOneField(RefundOrder, on_delete=models.CASCADE, verbose_name='尾货退款单')
+    prestore = models.OneToOneField(Prestore, on_delete=models.CASCADE, verbose_name='预存单')
+
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+
+    class Meta:
+        verbose_name = 'SALES-尾货退款单对照预存表'
+        verbose_name_plural = verbose_name
+        db_table = 'sales_tailorder_refund_prestore'

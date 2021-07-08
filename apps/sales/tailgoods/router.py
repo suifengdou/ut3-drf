@@ -2,7 +2,8 @@ from rest_framework.routers import DefaultRouter
 from .views import OriTailOrderViewset, OTOGoodsViewset, TailOrderViewset, TOGoodsViewset, RefundOrderSubmitViewset, \
     RefundOrderCheckViewset, RefundOrderManageViewset, AccountInfoViewset, TailPartsOrderViewset, \
     OriTailOrderSubmitViewset, OriTailOrderCheckViewset, TailOrderCommonViewset, TailOrderSpecialViewset, \
-    TailToExpenseViewset, TOGoodsCommonViewset, TOGoodsSpecialViewset
+    TailToExpenseViewset, TOGoodsCommonViewset, TOGoodsSpecialViewset, RefundToPrestoreViewset, ROGoodsReceivalViewset, \
+    ROGoodsManageViewset
 
 
 tailgoods_router = DefaultRouter()
@@ -17,9 +18,12 @@ tailgoods_router.register(r'sales/tailgoods/tailorderspecial', TailOrderSpecialV
 tailgoods_router.register(r'sales/tailgoods/togoodsspecial', TOGoodsSpecialViewset, basename='togoodsspecial')
 tailgoods_router.register(r'sales/tailgoods/tailorder', TailOrderViewset, basename='tailorder')
 tailgoods_router.register(r'sales/tailgoods/togoods', TOGoodsViewset, basename='togoods')
-tailgoods_router.register(r'sales/tailgoods/refundordersubmit', RefundOrderSubmitViewset, basename='refundorder')
-tailgoods_router.register(r'sales/tailgoods/refundordercheck', RefundOrderCheckViewset, basename='refundorder')
-tailgoods_router.register(r'sales/tailgoods/refundordermanage', RefundOrderManageViewset, basename='refundorder')
+tailgoods_router.register(r'sales/tailgoods/refundordersubmit', RefundOrderSubmitViewset, basename='refundordersubmit')
+tailgoods_router.register(r'sales/tailgoods/refundordercheck', RefundOrderCheckViewset, basename='refundordercheck')
+tailgoods_router.register(r'sales/tailgoods/refundordermanage', RefundOrderManageViewset, basename='refundordermanage')
+tailgoods_router.register(r'sales/tailgoods/refundotoprestore', RefundToPrestoreViewset, basename='refundotoprestore')
+tailgoods_router.register(r'sales/tailgoods/rogoodsreceival', ROGoodsReceivalViewset, basename='rogoodsreceival')
+tailgoods_router.register(r'sales/tailgoods/rogoodsmanage', ROGoodsManageViewset, basename='rogoodsmanage')
 tailgoods_router.register(r'sales/tailgoods/tgaccount', AccountInfoViewset, basename='tgaccount')
 tailgoods_router.register(r'sales/tailgoods/taiparts', TailPartsOrderViewset, basename='taiparts')
 

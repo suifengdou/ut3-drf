@@ -167,7 +167,7 @@ class PrestoreSubmitViewset(viewsets.ModelViewSet):
         if not self.request:
             return Prestore.objects.none()
         user = self.request.user
-        queryset = Prestore.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = Prestore.objects.filter(creator=user.username, order_status=1, category=1).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -269,7 +269,7 @@ class PrestoreCheckViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Prestore.objects.none()
-        queryset = Prestore.objects.filter(order_status=2).order_by("id")
+        queryset = Prestore.objects.filter(order_status=2, category=1).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)

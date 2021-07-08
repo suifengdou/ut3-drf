@@ -132,10 +132,13 @@ class PrestoreSerializer(serializers.ModelSerializer):
             3: "已入账",
             4: "已清账",
         }
-        ret = {
-            "id": instance.order_status,
-            "name": order_status.get(instance.order_status, None)
-        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_category(self, instance):
@@ -144,30 +147,30 @@ class PrestoreSerializer(serializers.ModelSerializer):
             1: "预存",
             2: "退款"
         }
-        ret = {
-            "id": instance.category,
-            "name": category.get(instance.category, None)
-        }
+        try:
+            ret = {
+                "id": instance.category,
+                "name": category.get(instance.category, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_account(self, instance):
-        ret = {
-            "id": instance.account.id,
-            "name": instance.account.name
-        }
+        try:
+            ret = {
+                "id": instance.account.id,
+                "name": instance.account.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def to_representation(self, instance):
         ret = super(PrestoreSerializer, self).to_representation(instance)
-        try:
-            ret["order_status"] = self.get_order_status(instance)
-            ret["category"] = self.get_category(instance)
-            ret["account"] = self.get_account(instance)
-        except:
-            error = {"id": -1, "name": "显示错误"}
-            ret["order_status"] = error
-            ret["category"] = error
-            ret["account"] = error
+        ret["order_status"] = self.get_order_status(instance)
+        ret["category"] = self.get_category(instance)
+        ret["account"] = self.get_account(instance)
         return ret
 
     def validate_account(self, value):

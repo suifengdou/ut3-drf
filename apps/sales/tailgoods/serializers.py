@@ -7,7 +7,7 @@ from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import ValidationError
 from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, PayBillOrder, PBOGoods, \
     ArrearsBillOrder, ABOGoods, FinalStatement, FinalStatementGoods, AccountInfo, PBillToAccount, ABillToAccount, \
-    TailPartsOrder, TailToExpense
+    TailPartsOrder, TailToExpense, RefundToPrestore
 from apps.base.goods.models import Goods
 
 
@@ -513,17 +513,18 @@ class RefundOrderSerializer(serializers.ModelSerializer):
             2: '退换金额超出原单金额',
             3: '无退货原因',
             4: '无返回快递单号',
-            5: '换货单必须要先进行标记',
+            5: '已存在关联入库，不可以驳回',
             6: '非换货单不可以标记',
             7: '非已到货状态不可以审核',
             8: '退换数量和收货数量不一致',
             9: '退换金额和收货金额不一致',
-            10: '退换结算单重复',
-            11: '生成结算单出错',
-            12: '生成结算单货品出错',
+            10: '关联预存单出错',
+            11: '当前登录人无预存账户',
+            12: '创建预存单错误',
             13: '关联的订单未发货',
             14: '不是退货单不可以审核',
             15: '物流单号重复',
+            16: '入库单已经操作，不可以清除标记',
         }
         try:
             ret = {
@@ -585,6 +586,16 @@ class RefundOrderSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "错误"}
         return ret
 
+    def get_tail_order(self, instance):
+        try:
+            ret = {
+                "id": instance.tail_order.id,
+                "name": instance.tail_order.order_id
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
     def get_goods_details(self, instance):
         goods_details = instance.rogoods_set.all()
         ret = []
@@ -612,6 +623,7 @@ class RefundOrderSerializer(serializers.ModelSerializer):
         ret["order_category"] = self.get_order_category(instance)
         ret["mode_warehouse"] = self.get_mode_warehouse(instance)
         ret["sent_city"] = self.get_sent_city(instance)
+        ret["tail_order"] = self.get_tail_order(instance)
         ret["goods_details"] = self.get_goods_details(instance)
         return ret
 
@@ -718,9 +730,122 @@ class ROGoodsSerializer(serializers.ModelSerializer):
         model = ROGoods
         fields = "__all__"
 
+    def get_order_status(self, instance):
+        order_status = {
+            0: "已取消",
+            1: "待递交",
+            2: "待入库",
+            3: "部分到货",
+            4: "已到货",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = { "id": -1, "name": "错误" }
+        return ret
+
+    def get_process_tag(self, instance):
+        process = {
+            0: '未处理',
+            1: '待处理',
+            2: '已确认',
+            3: '待清账',
+            4: '已处理',
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: '正常',
+            1: '入库数量是0',
+            2: '入库数和待收货数不符',
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_goods_name(self, instance):
+        try:
+            ret = {
+                "id": instance.goods_name.id,
+                "name": instance.goods_name.name,
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_mode_warehouse(self, instance):
+        mode_warehouse = {
+            0: "回流",
+            1: "二手",
+
+        }
+        try:
+            ret = {
+                "id": instance.refund_order.mode_warehouse,
+                "name": mode_warehouse.get(instance.refund_order.mode_warehouse, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_refund_order(self, instance):
+        try:
+            ret = {
+                "id": instance.refund_order.id,
+                "name": instance.refund_order.order_id,
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_track_no(self, instance):
+        try:
+            ret = instance.refund_order.track_no
+        except:
+            ret = "错误"
+        return ret
+
+    def get_sent_consignee(self, instance):
+        try:
+            ret = instance.refund_order.sent_consignee
+        except:
+            ret = "错误"
+        return ret
+
+    def get_sent_smartphone(self, instance):
+        try:
+            ret = instance.refund_order.sent_smartphone
+        except:
+            ret = "错误"
+        return ret
 
     def to_representation(self, instance):
         ret = super(ROGoodsSerializer, self).to_representation(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["goods_name"] = self.get_goods_name(instance)
+        ret["mode_warehouse"] = self.get_mode_warehouse(instance)
+        ret["refund_order"] = self.get_refund_order(instance)
+        ret["track_no"] = self.get_track_no(instance)
+        ret["sent_consignee"] = self.get_sent_consignee(instance)
+        ret["sent_smartphone"] = self.get_sent_smartphone(instance)
         return ret
 
     def create(self, validated_data):
@@ -1036,8 +1161,6 @@ class TailPartsOrderSerializer(serializers.ModelSerializer):
         return instance
 
 
-
-
 class TailToExpenseSerializer(serializers.ModelSerializer):
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
@@ -1049,6 +1172,29 @@ class TailToExpenseSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(TailToExpenseSerializer, self).to_representation(instance)
+        return ret
+
+    def create(self, validated_data):
+        validated_data["creator"] = self.context["request"].user.username
+        return self.Meta.model.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
+
+
+class RefundToPrestoreSerializer(serializers.ModelSerializer):
+    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = RefundToPrestore
+        fields = "__all__"
+
+
+    def to_representation(self, instance):
+        ret = super(RefundToPrestoreSerializer, self).to_representation(instance)
         return ret
 
     def create(self, validated_data):
