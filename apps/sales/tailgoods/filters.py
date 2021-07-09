@@ -39,6 +39,8 @@ class TailOrderFilter(django_filters.FilterSet):
 
 class TOGoodsFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
+    t_order_status = django_filters.CharFilter(field_name="tail_order__order_status")
+    t_mode_warehouse = django_filters.CharFilter(field_name="tail_order__mode_warehouse")
 
     class Meta:
         model = TOGoods
@@ -52,6 +54,7 @@ class RefundOrderFilter(django_filters.FilterSet):
     class Meta:
         model = RefundOrder
         fields = "__all__"
+
 
 
 class ROGoodsFilter(django_filters.FilterSet):

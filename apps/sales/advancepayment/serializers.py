@@ -53,8 +53,6 @@ class AccountSerializer(serializers.ModelSerializer):
         return ret
 
     def to_internal_value(self, data):
-        user = self.context["request"].user
-        data["user"] = user.id
         return super(AccountSerializer, self).to_internal_value(data)
 
     def create(self, validated_data):

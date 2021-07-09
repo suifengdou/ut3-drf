@@ -16,7 +16,7 @@ from .serializers import OriTailOrderSerializer, OTOGoodsSerializer, TailOrderSe
 from .filters import OriTailOrderFilter, OTOGoodsFilter, TailOrderFilter, TOGoodsFilter, RefundOrderFilter, \
     ROGoodsFilter, AccountInfoFilter, TailPartsOrderFilter, TailToExpenseFilter, RefundToPrestoreFilter
 from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, AccountInfo, TailPartsOrder, \
-    TailToExpense, TailTOAccount, RefundToPrestore
+    TailToExpense, TailTOAccount, RefundToPrestore, ROGoodsToAccount
 from apps.sales.advancepayment.models import Expense, Account, Statements, VerificationExpenses, ExpendList, Prestore
 from apps.auth.users.models import UserProfile
 from ut3.permissions import Permissions
@@ -413,7 +413,6 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
                     setattr(tail_order, key, value)
 
                 tail_order.sent_province = obj.sent_city.province
-                tail_order.creator = self.request.user.username
                 tail_order.ori_amount = obj.amount
                 tail_order.quantity = obj.quantity
                 tail_order.ori_tail_order = obj
@@ -480,7 +479,7 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
                     verify_order = TailToExpense()
                     verify_order.expense = expense_order
                     verify_order.tail_order = tail_order
-                    verify_order.creator = request.user.username
+                    verify_order.creator = obj.creator
                     verify_order.save()
                 tail_order.amount = amount
                 tail_order.save()
@@ -553,13 +552,12 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
                         tail_order.ori_tail_order = obj
                         copy_fields_order = ['shop', 'order_category', 'sent_consignee', 'sent_smartphone',
                                              'sent_city', 'sent_district', 'sent_address', 'mode_warehouse',
-                                             'message', 'sign_company', 'sign_department']
+                                             'message', 'sign_company', 'sign_department', 'creator']
                         for key in copy_fields_order:
                             value = getattr(obj, key, None)
                             setattr(tail_order, key, value)
 
                         tail_order.sent_province = obj.sent_city.province
-                        tail_order.creator = self.request.user.username
                         tail_order.ori_amount = obj.amount
                         try:
                             tail_order.save()
@@ -585,7 +583,7 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
                             goods_order.memorandum = '来源 %s 的第 %s 个订单' % (obj.order_id, tail_num + 1)
 
                             try:
-                                goods_order.creator = self.request.user.username
+                                goods_order.creator = obj.creator
                                 goods_order.save()
                             except Exception as e:
                                 data["error"].append("%s 生成订单货品出错，请仔细检查 %s" % (obj.order_id, e))
@@ -627,7 +625,7 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
                             verify_order = TailToExpense()
                             verify_order.expense = expense_order
                             verify_order.tail_order = tail_order
-                            verify_order.creator = request.user.username
+                            verify_order.creator = obj.creator
                             verify_order.save()
 
                         tail_order.amount = current_amount
@@ -948,8 +946,10 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                 statement.account = expense_order.account
                 statement.category = expense_order.category
                 statement.expenses = expense_order.amount
+                statement.creator = obj.creator
                 verifyexpense = VerificationExpenses()
                 verifyexpense.expense = expense_order
+                verifyexpense.creator = obj.creator
                 try:
                     statement.save()
                     verifyexpense.statement = statement
@@ -977,7 +977,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                     expendlist.account = expense_order.account
                     expendlist.prestore = prestore
                     expendlist.amount = actual_amount
-                    expendlist.creator = request.user.username
+                    expendlist.creator = obj.creator
                     try:
                         prestore.save()
                         expendlist.save()
@@ -1046,7 +1046,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                         value = getattr(goods_order, key, None)
                         setattr(acc_order, key, value)
 
-                    acc_order.creator = self.request.user.username
+                    acc_order.creator = obj.creator
                     if not acc_order.order_id:
                         acc_order.order_id = "%s-%s-%s" % (obj.order_id, i, goods_order.goods_id)
                     i += 1
@@ -1073,8 +1073,10 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                 statement.account = expense_order.account
                 statement.category = expense_order.category
                 statement.expenses = expense_order.amount
+                statement.creator = obj.creator
                 verifyexpense = VerificationExpenses()
                 verifyexpense.expense = expense_order
+                verifyexpense.creator = obj.creator
                 try:
                     statement.save()
                     verifyexpense.statement = statement
@@ -1108,7 +1110,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                     expendlist.account = expense_order.account
                     expendlist.prestore = prestore
                     expendlist.amount = actual_amount
-                    expendlist.creator = request.user.username
+                    expendlist.creator = obj.creator
                     try:
                         expendlist.save()
                         prestore.save()
@@ -1461,50 +1463,43 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                     continue
 
                 i = 1
-                repeat_tag = 0
+                error_tag = 0
                 goods_orders = obj.togoods_set.all()
                 for goods_order in goods_orders:
-                    _q_t2a = TailTOAccount.objects.filter(tail_goods=goods_order)
-                    if _q_t2a:
-                        data["error"].append("%s 生成尾货对账单重复，联系管理员处理" % obj.order_id)
-                        obj.mistake_tag = 8
-                        obj.save()
-                        repeat_tag = 1
-                        break
-
-                    acc_order = AccountInfo()
+                    try:
+                        account_order = goods_order.tailtoaccount.account_order
+                    except:
+                        account_order = AccountInfo()
                     copy_fields_order = ['shop', 'order_category', 'mode_warehouse', 'sent_consignee',
                                          'sign_company', 'sign_department', 'sent_smartphone', 'message']
-
                     for key in copy_fields_order:
                         value = getattr(obj, key, None)
-                        setattr(acc_order, key, value)
+                        setattr(account_order, key, value)
 
                     copy_fields_goods = ['goods_id', 'goods_name', 'goods_nickname', 'quantity',
                                          'settlement_price', 'settlement_amount']
 
                     for key in copy_fields_goods:
                         value = getattr(goods_order, key, None)
-                        setattr(acc_order, key, value)
+                        setattr(account_order, key, value)
 
-                    acc_order.creator = self.request.user.username
-                    acc_order.order_id = "%s-%s-%s" % (obj.order_id, i, goods_order.goods_id)
+                    account_order.creator = obj.creator
+                    account_order.order_id = "%s-%s-%s" % (obj.order_id, i, goods_order.goods_id)
                     i += 1
-                    acc_order.submit_time = datetime.datetime.now()
+                    account_order.submit_time = datetime.datetime.now()
                     pb2acc_order = TailTOAccount()
                     pb2acc_order.tail_goods = goods_order
                     try:
-                        acc_order.save()
-                        pb2acc_order.account_order = acc_order
+                        account_order.save()
+                        pb2acc_order.account_order = account_order
                         pb2acc_order.save()
                     except Exception as e:
                         data["error"].append("%s 生成结算单出错 %s" % (obj.order_id, e))
                         obj.mistake_tag = 2
                         obj.save()
-                        repeat_tag = 1
+                        error_tag = 1
                         break
-                if repeat_tag:
-                    n -= 1
+                if error_tag:
                     continue
                 expense_order = obj.tailtoexpense.expense
                 statement = Statements()
@@ -1518,8 +1513,10 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                 statement.account = expense_order.account
                 statement.category = expense_order.category
                 statement.expenses = expense_order.amount
+                statement.creator = obj.creator
                 verifyexpense = VerificationExpenses()
                 verifyexpense.expense = expense_order
+                verifyexpense.creator = obj.creator
                 try:
                     statement.save()
                     verifyexpense.statement = statement
@@ -1547,7 +1544,7 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                     expendlist.account = expense_order.account
                     expendlist.prestore = prestore
                     expendlist.amount = actual_amount
-                    expendlist.creator = request.user.username
+                    expendlist.creator = obj.creator
                     try:
                         prestore.save()
                         expendlist.save()
@@ -1566,11 +1563,7 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.process_tag = 4
-
                 obj.save()
-
-
-
                 print(obj)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
@@ -1643,8 +1636,10 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                 statement.account = expense_order.account
                 statement.category = expense_order.category
                 statement.expenses = expense_order.amount
+                statement.creator = obj.creator
                 verifyexpense = VerificationExpenses()
                 verifyexpense.expense = expense_order
+                verifyexpense.creator = obj.creator
                 try:
                     statement.save()
                     verifyexpense.statement = statement
@@ -2200,13 +2195,16 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
                 prestore_order.category = 2
                 prestore_order.amount = refund_order.amount
                 prestore_order.memorandum = "源自退款单：%s" % refund_order.order_id
-                prestore_order.creator = request.user.username
+                prestore_order.creator = refund_order.creator
                 try:
                     prestore_order.save()
-                    refundtoprestore = RefundToPrestore()
+                    try:
+                        refundtoprestore = refund_order.refundtoprestore
+                    except:
+                        refundtoprestore = RefundToPrestore()
                     refundtoprestore.refund_order = refund_order
                     refundtoprestore.prestore = prestore_order
-                    refundtoprestore.creator = request.user.username
+                    refundtoprestore.creator = refund_order.creator
                     refundtoprestore.save()
                 except Exception as e:
                     data["error"].append("%s 创建预存单错误" % refund_order.order_id)
@@ -2319,6 +2317,103 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
 
 
     @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for refund_order in check_list:
+                try:
+                    if refund_order.process_tag != 4:
+                        data["error"].append("%s 货品单据未入库" % refund_order.order_id)
+                        refund_order.mistake_tag = 7
+                        refund_order.save()
+                        n -= 1
+                        continue
+                    prestore_order = refund_order.refundtoprestore.prestore
+                    if prestore_order.order_status != 2:
+                        data["error"].append("%s 关联预存单出错" % refund_order.order_id)
+                        refund_order.mistake_tag = 10
+                        refund_order.save()
+                        n -= 1
+                        continue
+                    else:
+                        prestore_order.remaining = prestore_order.amount
+                        prestore_order.order_status = 3
+                        prestore_order.save()
+                except:
+                    data["error"].append("%s 关联预存单出错" % refund_order.order_id)
+                    refund_order.mistake_tag = 10
+                    refund_order.save()
+                    n -= 1
+                    continue
+                goods_orders = refund_order.rogoods_set.all()
+                i = 1
+                error_tag = 0
+                for goods_order in goods_orders:
+                    try:
+                        account_order = goods_order.rogoodstoaccount.account_order
+                    except:
+                        account_order = AccountInfo()
+                    copy_fields_order = ['shop', 'order_category', 'mode_warehouse', 'sent_consignee',
+                                         'sign_company', 'sign_department', 'sent_smartphone', 'message']
+
+                    for key in copy_fields_order:
+                        value = getattr(refund_order, key, None)
+                        setattr(account_order, key, value)
+
+                    copy_fields_goods = ['goods_id', 'goods_name', 'goods_nickname',
+                                         'settlement_price']
+
+                    for key in copy_fields_goods:
+                        value = getattr(goods_order, key, None)
+                        setattr(account_order, key, value)
+                    account_order.quantity = goods_order.receipted_quantity
+                    account_order.settlement_amount = -goods_order.settlement_amount
+                    account_order.creator = refund_order.creator
+                    account_order.order_id = "%s-%s-%s" % (refund_order.order_id, i, goods_order.goods_id)
+                    i += 1
+                    account_order.submit_time = datetime.datetime.now()
+                    rog2acc_order = ROGoodsToAccount()
+                    rog2acc_order.ro_order = goods_order
+                    try:
+                        account_order.save()
+                        rog2acc_order.account_order = account_order
+                        rog2acc_order.save()
+                    except Exception as e:
+                        data["error"].append("%s 生成结算单出错 %s" % (refund_order.order_id, e))
+                        refund_order.mistake_tag =18
+                        refund_order.save()
+                        n -= 1
+                        error_tag = 1
+                        break
+                if error_tag:
+                    continue
+                refund_order.handle_time = datetime.datetime.now()
+                start_time = datetime.datetime.strptime(str(refund_order.submit_time).split(".")[0],
+                                                        "%Y-%m-%d %H:%M:%S")
+                end_time = datetime.datetime.strptime(str(refund_order.handle_time).split(".")[0],
+                                                      "%Y-%m-%d %H:%M:%S")
+                d_value = end_time - start_time
+                days_seconds = d_value.days * 3600
+                total_seconds = days_seconds + d_value.seconds
+                refund_order.handle_interval = math.floor(total_seconds / 60)
+                refund_order.order_status = 3
+                refund_order.mistake_tag = 0
+                refund_order.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
         params = request.data
         reject_list = self.get_handle_list(params)
@@ -2330,23 +2425,6 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
-                try:
-                    prestore_order = obj.refundtoprestore.prestore
-                    if prestore_order.order_status > 2:
-                        data["error"].append("%s 关联预存单出错,不可驳回，联系管理员" % obj.order_id)
-                        obj.mistake_tag = 10
-                        obj.save()
-                        n -= 1
-                        continue
-                    else:
-                        prestore_order.order_stauts = 1
-                        prestore_order.save()
-                except:
-                    data["error"].append("%s 关联预存单出错,不可驳回，联系管理员" % obj.order_id)
-                    obj.mistake_tag = 10
-                    obj.save()
-                    n -= 1
-                    continue
                 _q_ro_goods = obj.rogoods_set.all()
                 mistake_tag = 0
                 for rogoods in _q_ro_goods:
@@ -2359,13 +2437,31 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
                     obj.save()
                     n -= 1
                     continue
+                try:
+                    prestore_order = obj.refundtoprestore.prestore
+                    if prestore_order.order_status > 2:
+                        data["error"].append("%s 关联预存单出错,不可驳回，联系管理员" % obj.order_id)
+                        obj.mistake_tag = 10
+                        obj.save()
+                        n -= 1
+                        continue
+                    else:
+                        prestore_order.order_status = 1
+                        prestore_order.save()
+                except:
+                    data["error"].append("%s 关联预存单出错,不可驳回，联系管理员" % obj.order_id)
+                    obj.mistake_tag = 10
+                    obj.save()
+                    n -= 1
+                    continue
+                _q_ro_goods.update(order_status=1)
                 obj.order_status = 1
                 obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["success"] = n
+        data["false"] = len(reject_list) - n
         return Response(data)
-
 
     @action(methods=['patch'], detail=False)
     def set_handled(self, request, *args, **kwargs):
@@ -2413,60 +2509,8 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
                     n -= 1
                     continue
                 goods_details.update(order_status=1)
-                obj.tail_order.process_tag = 0
-                obj.tail_order.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        print(request)
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "success": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for refund_order in check_list:
-                try:
-                    prestore_order = refund_order.refundtoprestore.prestore
-                    if prestore_order.order_status != 2:
-                        data["error"].append("%s 关联预存单出错" % refund_order.order_id)
-                        refund_order.mistake_tag = 10
-                        refund_order.save()
-                        n -= 1
-                        continue
-                    else:
-                        prestore_order.remaining = prestore_order.amount
-                        prestore_order.order_status = 3
-                        prestore_order.save()
-                except:
-                    data["error"].append("%s 关联预存单出错" % refund_order.order_id)
-                    refund_order.mistake_tag = 10
-                    refund_order.save()
-                    n -= 1
-                    continue
-
-                refund_order.handle_time = datetime.datetime.now()
-                start_time = datetime.datetime.strptime(str(refund_order.submit_time).split(".")[0],
-                                                        "%Y-%m-%d %H:%M:%S")
-                end_time = datetime.datetime.strptime(str(refund_order.handle_time).split(".")[0],
-                                                      "%Y-%m-%d %H:%M:%S")
-                d_value = end_time - start_time
-                days_seconds = d_value.days * 3600
-                total_seconds = days_seconds + d_value.seconds
-                refund_order.handle_interval = math.floor(total_seconds / 60)
-                refund_order.order_status = 3
-                refund_order.mistake_tag = 0
-                refund_order.save()
+                obj.process_tag = 0
+                obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["success"] = n
@@ -2621,6 +2665,7 @@ class ROGoodsReceivalViewset(viewsets.ModelViewSet):
                     obj.save()
                     n -= 1
                     continue
+
                 obj.order_status = 3
                 obj.save()
                 obj.refund_order.process_tag = 4

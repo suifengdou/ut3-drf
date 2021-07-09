@@ -339,6 +339,8 @@ class RefundOrder(models.Model):
         (14, '不是退货单不可以审核'),
         (15, '物流单号重复'),
         (16, '入库单已经操作，不可以清除标记'),
+        (17, '重复生成结算单，联系管理员'),
+        (18, '生成结算单出错'),
     )
     MODE_W = (
         (0, '回流'),
@@ -972,7 +974,7 @@ class TailToExpense(models.Model):
 
 class TailTOAccount(models.Model):
     tail_goods = models.OneToOneField(TOGoods, on_delete=models.CASCADE, verbose_name='尾货订单货品')
-    account_order = models.ForeignKey(AccountInfo, on_delete=models.CASCADE, verbose_name='对账明细单')
+    account_order = models.OneToOneField(AccountInfo, on_delete=models.CASCADE, verbose_name='对账明细单')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -998,3 +1000,18 @@ class RefundToPrestore(models.Model):
         verbose_name = 'SALES-尾货退款单对照预存表'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailorder_refund_prestore'
+
+
+class ROGoodsToAccount(models.Model):
+    ro_order = models.OneToOneField(ROGoods, on_delete=models.CASCADE, verbose_name='退款单货品明细')
+    account_order = models.OneToOneField(AccountInfo, on_delete=models.CASCADE, verbose_name='对账明细单')
+
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+
+    class Meta:
+        verbose_name = 'SALES-尾货退款对账对照表'
+        verbose_name_plural = verbose_name
+        db_table = 'sales_tailgoods_refund_ro2acc'
