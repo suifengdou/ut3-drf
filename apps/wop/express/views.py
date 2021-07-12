@@ -1,3 +1,4 @@
+import re
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework.authentication import SessionAuthentication
@@ -40,7 +41,7 @@ class EWOReverseCreateViewset(viewsets.ModelViewSet):
         if not self.request:
             return ExpressWorkOrder.objects.none()
         user = self.request.user
-        queryset = ExpressWorkOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = ExpressWorkOrder.objects.filter(company=user.company, order_status=1,  wo_category=1).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -82,10 +83,8 @@ class EWOReverseCreateViewset(viewsets.ModelViewSet):
         }
         if n:
             for order in check_list:
-                if order.amount <= 0:
-                    order.mistake_tag = 1
-                    data["error"].append("%s 预存单金额错误" % order.order_id)
-                    order.save()
+                if not re.match(r'^[SF0-9]+$', order.track_id):
+                    data["error"].append("%s 快递单号错误" % order.track_id)
                     n -= 1
                     continue
                 order.order_status = 2
@@ -142,7 +141,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
         if not self.request:
             return ExpressWorkOrder.objects.none()
         user = self.request.user
-        queryset = ExpressWorkOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = ExpressWorkOrder.objects.filter(company=user.company, order_status=1, wo_category=0).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -184,10 +183,8 @@ class EWOCreateViewset(viewsets.ModelViewSet):
         }
         if n:
             for order in check_list:
-                if order.amount <= 0:
-                    order.mistake_tag = 1
-                    data["error"].append("%s 预存单金额错误" % order.order_id)
-                    order.save()
+                if not re.match(r'^[SF0-9]+$', order.track_id):
+                    data["error"].append("%s 快递单号错误" % order.track_id)
                     n -= 1
                     continue
                 order.order_status = 2
@@ -243,8 +240,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ExpressWorkOrder.objects.none()
-        user = self.request.user
-        queryset = ExpressWorkOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = ExpressWorkOrder.objects.filter(order_status=2, wo_category=1).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -262,13 +258,14 @@ class EWOHandleViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
+        params["order_status"] = 2
+        params["wo_category"] = 1
         if all_select_tag:
             handle_list = ExpressWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=2, wo_category=1)
             else:
                 handle_list = []
         return handle_list
@@ -285,16 +282,24 @@ class EWOHandleViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            for order in check_list:
-                if order.amount <= 0:
-                    order.mistake_tag = 1
-                    data["error"].append("%s 预存单金额错误" % order.order_id)
-                    order.save()
+            for obj in check_list:
+                if not obj.feedback:
+                    data["error"].append("%s 无反馈内容, 不可以审核" % obj.track_id)
                     n -= 1
                     continue
-                order.order_status = 2
-                order.mistake_tag = 0
-                order.save()
+                if obj.is_return:
+                    if not obj.return_express_id:
+                        data["error"].append("%s 返回的单据无返回单号" % obj.track_id)
+                        n -= 1
+                        continue
+                if obj.is_losing:
+                    if obj.process_tag != 8:
+                        data["error"].append("%s 丢件必须确认丢失才可以审核" % obj.track_id)
+                        n -= 1
+                        continue
+                obj.order_status = 3
+                obj.mistake_tag = 0
+                obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["success"] = n
@@ -312,10 +317,18 @@ class EWOHandleViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            for obj in reject_list:
+                if not obj.feedback:
+                    data["error"].append("%s 无反馈内容" % obj.track_id)
+                    n -= 1
+                    continue
+                else:
+                    obj.order_status = 1
+                    obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["success"] = n
+        data["false"] = len(reject_list) - n
         return Response(data)
 
 
@@ -345,8 +358,8 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ExpressWorkOrder.objects.none()
-        user = self.request.user
-        queryset = ExpressWorkOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        company = self.request.user.company
+        queryset = ExpressWorkOrder.objects.filter(company=company, order_status=2, wo_category=0).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -364,13 +377,14 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
+        params["order_status"] = 2
+        params["wo_category"] = 0
         if all_select_tag:
             handle_list = ExpressWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=2, wo_category=0)
             else:
                 handle_list = []
         return handle_list
@@ -387,16 +401,24 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            for order in check_list:
-                if order.amount <= 0:
-                    order.mistake_tag = 1
-                    data["error"].append("%s 预存单金额错误" % order.order_id)
-                    order.save()
+            for obj in check_list:
+                if not obj.feedback:
+                    data["error"].append("%s 无反馈内容, 不可以审核" % obj.track_id)
                     n -= 1
                     continue
-                order.order_status = 2
-                order.mistake_tag = 0
-                order.save()
+                if obj.is_return:
+                    if not obj.return_express_id:
+                        data["error"].append("%s 返回的单据无返回单号" % obj.track_id)
+                        n -= 1
+                        continue
+                if obj.is_losing:
+                    if obj.process_tag != 8:
+                        data["error"].append("%s 丢件必须确认丢失才可以审核" % obj.track_id)
+                        n -= 1
+                        continue
+                obj.order_status = 3
+                obj.mistake_tag = 0
+                obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["success"] = n
@@ -414,10 +436,18 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            for obj in reject_list:
+                if not obj.feedback:
+                    data["error"].append("%s 无反馈内容" % obj.track_id)
+                    n -= 1
+                    continue
+                else:
+                    obj.order_status = 1
+                    obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["success"] = n
+        data["false"] = len(reject_list) - n
         return Response(data)
 
 
@@ -447,8 +477,7 @@ class EWOCheckViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ExpressWorkOrder.objects.none()
-        user = self.request.user
-        queryset = ExpressWorkOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = ExpressWorkOrder.objects.filter(order_status=3).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -550,7 +579,7 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
         if not self.request:
             return ExpressWorkOrder.objects.none()
         user = self.request.user
-        queryset = ExpressWorkOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = ExpressWorkOrder.objects.filter(order_status=4).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -652,7 +681,10 @@ class EWOManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return ExpressWorkOrder.objects.none()
         user = self.request.user
-        queryset = ExpressWorkOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        if user.category:
+            queryset = ExpressWorkOrder.objects.all().order_by("id")
+        else:
+            queryset = ExpressWorkOrder.objects.filter(company=user.company).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)

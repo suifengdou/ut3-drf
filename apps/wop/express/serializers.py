@@ -43,11 +43,11 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         order_status = {
             0: "已被取消",
-            1: "快递未递",
-            2: "逆向未理",
-            3: "正向未递",
-            4: "快递在理",
-            5: "复核未理",
+            1: "创建未提",
+            2: "递交未理",
+            3: "反馈复核",
+            4: "财务审核",
+            5: "工单完结",
             6: "终审未理",
             7: "财务审核",
             8: "工单完结",
