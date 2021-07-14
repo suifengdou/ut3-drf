@@ -48,6 +48,14 @@ class UserViewset(viewsets.ModelViewSet):
     def get_user_info(self, request, *args, **kwargs):
         user = request.user
         print(user.get_all_permissions())
+        company = {
+            "id": user.company.id,
+            "name": user.company.name
+        }
+        department = {
+            "id": user.department.id,
+            "name": user.department.name
+        }
         if user.is_superuser:
             roles = ["AllPrivileges"]
         else:
@@ -57,7 +65,9 @@ class UserViewset(viewsets.ModelViewSet):
             "name": user.username,
             "roles": roles,
             "avatar": 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
-            "introduction": "UT3用户"
+            "introduction": "UT3用户",
+            "company": company,
+            "department": department
         }
         return response.Response(data)
 

@@ -46,10 +46,10 @@ class ExpressWorkOrder(models.Model):
         (8, '已丢件'),
     )
     HANDLERS = (
-        (0, '皮卡丘'),
-        (1, '伊布'),
-        (2, '可达鸭'),
-        (3, '波比克'),
+        (0, '未处理'),
+        (1, '在处理'),
+        (2, '待核实'),
+        (3, '已处理'),
     )
 
     track_id = models.CharField(unique=True, max_length=100, verbose_name='快递单号', help_text='快递单号')
@@ -73,7 +73,7 @@ class ExpressWorkOrder(models.Model):
 
     wo_category = models.SmallIntegerField(choices=WO_CATEGORY, default=0, verbose_name='工单类型')
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
-    mid_handler = models.SmallIntegerField(choices=HANDLERS, default=0, verbose_name='跟单小伙伴')
+    mid_handler = models.SmallIntegerField(choices=HANDLERS, default=0, verbose_name='处理状态')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')

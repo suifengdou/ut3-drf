@@ -73,7 +73,8 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
             4: "催派查",
             5: "丢件核",
             6: "纠纷中",
-            7: "其他",
+            7: "其他类",
+            8: "已丢件",
         }
         try:
             ret = {
@@ -129,10 +130,10 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
 
     def get_mid_handler(self, instance):
         mid_handler = {
-            0: "皮卡丘",
-            1: "伊布",
-            2: "可达鸭",
-            3: "波比克",
+            0: "未处理",
+            1: "在处理",
+            2: "待核实",
+            3: "已处理",
         }
         try:
             ret = {
@@ -158,20 +159,16 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["creator"] = self.context["request"].user.username
-        if not validated_data["track_id"]:
-            raise serializers.ValidationError("未填快递单号！")
-        if not validated_data["company"]:
-            if self.context["request"].user.company:
-                validated_data["company"] = self.context["request"].user.company
-            else:
-                raise serializers.ValidationError("登陆账号没有设置公司，不可以创建！")
+        _q_express_order = self.Meta.model.objects.filter(track_id=validated_data["track_id"])
+        if _q_express_order.exists():
+            raise serializers.ValidationError("相同快递单号只可创建一次工单！")
         work_order = self.Meta.model.objects.create(**validated_data)
+
         return work_order
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
-        update_tim = validated_data.pop("update_tim", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
         return instance

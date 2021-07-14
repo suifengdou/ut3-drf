@@ -52,6 +52,8 @@ class EWOReverseCreateViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["order_status"] = 1
+        params["wo_category"] = 1
         f = ExpressWorkOrderFilter(params)
         serializer = ExpressWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -87,6 +89,15 @@ class EWOReverseCreateViewset(viewsets.ModelViewSet):
                     data["error"].append("%s 快递单号错误" % order.track_id)
                     n -= 1
                     continue
+                if order.is_losing and order.is_return:
+                    data["error"].append("%s 丢件和返回不可同时存在！" % order.track_id)
+                    n -= 1
+                    continue
+                if any([order.is_return, order.return_express_id]):
+                    if not all([order.is_return, order.return_express_id]):
+                        data["error"].append("%s 返回时，返回单号必填，或者有返回单号，必须确认返回项！" % order.track_id)
+                        n -= 1
+                        continue
                 order.order_status = 2
                 order.mistake_tag = 0
                 order.save()
@@ -152,6 +163,8 @@ class EWOCreateViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["order_status"] = 1
+        params["wo_category"] = 0
         f = ExpressWorkOrderFilter(params)
         serializer = ExpressWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -188,7 +201,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
                     n -= 1
                     continue
                 order.order_status = 2
-                order.mistake_tag = 0
+                order.mid_handler = 3
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
@@ -240,7 +253,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ExpressWorkOrder.objects.none()
-        queryset = ExpressWorkOrder.objects.filter(order_status=2, wo_category=1).order_by("id")
+        queryset = ExpressWorkOrder.objects.filter(order_status=2, wo_category=1, mid_handler__in=[0, 1, 2]).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -251,6 +264,8 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["order_status"] = 2
+        params["wo_category"] = 1
         f = ExpressWorkOrderFilter(params)
         serializer = ExpressWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -260,15 +275,54 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 2
         params["wo_category"] = 1
+        params["mid_handler__in"] = '0, 1, 2'
         if all_select_tag:
             handle_list = ExpressWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=2, wo_category=1)
+                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=2, wo_category=1, mid_handler__in=[0, 1, 2])
             else:
                 handle_list = []
         return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def set_lossing(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=8)
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def recover(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=0)
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
@@ -297,8 +351,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
                         data["error"].append("%s 丢件必须确认丢失才可以审核" % obj.track_id)
                         n -= 1
                         continue
-                obj.order_status = 3
-                obj.mistake_tag = 0
+                obj.mid_handler = 3
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
@@ -359,7 +412,7 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
         if not self.request:
             return ExpressWorkOrder.objects.none()
         company = self.request.user.company
-        queryset = ExpressWorkOrder.objects.filter(company=company, order_status=2, wo_category=0).order_by("id")
+        queryset = ExpressWorkOrder.objects.filter(company=company, order_status=2, mid_handler=3).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -370,6 +423,9 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["order_status"] = 2
+        params["wo_category"] = 0
+        params["company"] = user.company
         f = ExpressWorkOrderFilter(params)
         serializer = ExpressWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -379,6 +435,7 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 2
         params["wo_category"] = 0
+        params["company"] = self.request.user.company
         if all_select_tag:
             handle_list = ExpressWorkOrderFilter(params).qs
         else:
