@@ -45,10 +45,6 @@ class DealerWorkOrder(models.Model):
         (2, '维修'),
     )
 
-    LOGICAL_DEXISION = (
-        (0, '否'),
-        (1, '是'),
-    )
     PLATFORM = (
         (0, '无'),
         (1, '淘系'),
@@ -62,14 +58,14 @@ class DealerWorkOrder(models.Model):
     quantity = models.IntegerField(verbose_name='数量')
     amount = models.FloatField(verbose_name='合计金额')
     wo_category = models.SmallIntegerField(choices=WO_CATEGORY, default=0, verbose_name='工单类型')
-    is_customer_post = models.SmallIntegerField(choices=LOGICAL_DEXISION, default=0, verbose_name='是否客户邮寄')
+    is_customer_post = models.BooleanField(default=False, verbose_name='是否客户邮寄')
     return_express_company = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回快递公司')
     return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号')
 
     submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间')
     servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服')
     services_interval = models.IntegerField(null=True, blank=True, verbose_name='客服处理间隔(分钟)')
-    is_losing = models.SmallIntegerField(choices=LOGICAL_DEXISION, default=0, verbose_name='是否丢件')
+    is_losing = models.BooleanField(default=False, verbose_name='是否丢件')
     feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='客服处理意见')
 
     handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='经销商处理人')

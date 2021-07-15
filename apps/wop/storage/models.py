@@ -53,6 +53,12 @@ class StorageWorkOrder(models.Model):
     wo_category = models.SmallIntegerField(choices=WO_CATEGORY, default=0, verbose_name='工单类型')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='供应商')
 
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+    mid_node = models.BooleanField(default=False, verbose_name='中间节点', help_text='中间节点')
+
     class Meta:
         verbose_name = 'WOP-仓储工单'
         verbose_name_plural = verbose_name

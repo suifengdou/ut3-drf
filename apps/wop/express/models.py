@@ -64,7 +64,7 @@ class ExpressWorkOrder(models.Model):
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='快递处理时间')
     express_interval = models.IntegerField(null=True, blank=True, verbose_name='快递处理间隔(分钟)')
     feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='反馈内容')
-    is_losing = models.BooleanField(default=False, verbose_name='是否丢件')
+    is_losing = models.BooleanField(default=False, verbose_name='是否理赔')
 
     return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号')
     is_return = models.BooleanField(default=True, verbose_name='是否返回')

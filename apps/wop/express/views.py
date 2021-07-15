@@ -1,4 +1,5 @@
 import re
+import datetime
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework.authentication import SessionAuthentication
@@ -200,6 +201,8 @@ class EWOCreateViewset(viewsets.ModelViewSet):
                     data["error"].append("%s 快递单号错误" % order.track_id)
                     n -= 1
                     continue
+                order.servicer = request.user.username
+                order.submit_time = datetime.datetime.now()
                 order.order_status = 2
                 order.mid_handler = 3
                 order.save()
@@ -441,7 +444,7 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=2, wo_category=0)
+                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=2, mid_handler=3)
             else:
                 handle_list = []
         return handle_list
@@ -552,13 +555,13 @@ class EWOCheckViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
+        params["order_status"] = 3
         if all_select_tag:
             handle_list = ExpressWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=3)
             else:
                 handle_list = []
         return handle_list
@@ -576,14 +579,11 @@ class EWOCheckViewset(viewsets.ModelViewSet):
         }
         if n:
             for order in check_list:
-                if order.amount <= 0:
-                    order.mistake_tag = 1
-                    data["error"].append("%s 预存单金额错误" % order.order_id)
-                    order.save()
-                    n -= 1
-                    continue
-                order.order_status = 2
-                order.mistake_tag = 0
+
+                if order.is_losing:
+                    order.order_status = 4
+                else:
+                    order.order_status = 5
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
