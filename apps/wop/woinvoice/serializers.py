@@ -115,7 +115,7 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
     def get_sent_city(self, instance):
         ret = {
             "id": instance.sent_city.id,
-            "name": instance.sent_city.city
+            "name": instance.sent_city.name
         }
         return ret
 
@@ -386,7 +386,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def get_sent_city(self, instance):
         ret = {
             "id": instance.sent_city.id,
-            "name": instance.sent_city.city
+            "name": instance.sent_city.name
         }
         return ret
 

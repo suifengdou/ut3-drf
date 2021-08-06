@@ -1622,8 +1622,8 @@ class InvoiceHandleViewset(viewsets.ModelViewSet):
                     deliver_order.consignee = work_order.sent_consignee
                     deliver_order.address = work_order.sent_address
                     deliver_order.smartphone = work_order.sent_smartphone
-                    deliver_order.province = invoice_order.sent_city.province.province
-                    deliver_order.city = invoice_order.sent_city.city
+                    deliver_order.province = invoice_order.sent_city.province.name
+                    deliver_order.city = invoice_order.sent_city.name
                     if work_order.nickname:
                         deliver_order.nickname = work_order.nickname
                     else:
@@ -1638,7 +1638,7 @@ class InvoiceHandleViewset(viewsets.ModelViewSet):
                         _q_district = District.objects.filter(city=work_order.sent_city,
                                                               district=work_order.sent_district)
                         if _q_district.exists():
-                            deliver_order.district = _q_district[0].district
+                            deliver_order.district = _q_district[0].name
                         else:
                             deliver_order.district = '其他区'
                     _q_invoice_orders = work_order.invoice_set.all()

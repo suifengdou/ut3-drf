@@ -18,19 +18,11 @@ class DealerWorkOrder(models.Model):
     )
     PROCESSTAG = (
         (0, '未处理'),
-        (1, '处理中'),
-        (2, '已在途'),
-        (3, '收异常'),
-        (4, '未退回'),
-        (5, '丢件核'),
-        (6, '已处理'),
-        (7, '终端清'),
-        (8, '已对账'),
-
+        (1, '已处理'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '返回单号为空'),
+        (1, '返回单号或快递为空'),
         (2, '处理意见为空'),
         (3, '经销商反馈为空'),
         (4, '先标记为已处理才能审核'),
@@ -51,33 +43,33 @@ class DealerWorkOrder(models.Model):
         (2, '非淘'),
     )
 
-    order_id = models.CharField(unique=True, max_length=100, verbose_name='源订单单号')
-    information = models.TextField(max_length=600, verbose_name='初始问题信息')
-    memo = models.TextField(null=True, blank=True, verbose_name='经销商反馈')
-    goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='机器型号')
-    quantity = models.IntegerField(verbose_name='数量')
-    amount = models.FloatField(verbose_name='合计金额')
-    wo_category = models.SmallIntegerField(choices=WO_CATEGORY, default=0, verbose_name='工单类型')
-    is_customer_post = models.BooleanField(default=False, verbose_name='是否客户邮寄')
-    return_express_company = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回快递公司')
-    return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号')
+    order_id = models.CharField(unique=True, max_length=100, verbose_name='源订单单号', help_text='源订单单号')
+    information = models.TextField(max_length=600, verbose_name='初始问题信息', help_text='初始问题信息')
+    memo = models.TextField(null=True, blank=True, verbose_name='经销商反馈', help_text='经销商反馈')
+    goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='机器型号', help_text='机器型号')
+    quantity = models.IntegerField(verbose_name='数量', help_text='数量')
+    amount = models.FloatField(verbose_name='合计金额', help_text='合计金额')
+    wo_category = models.SmallIntegerField(choices=WO_CATEGORY, default=0, verbose_name='工单类型', help_text='工单类型')
+    is_customer_post = models.BooleanField(default=False, verbose_name='是否客户邮寄', help_text='是否客户邮寄')
+    return_express_company = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回快递公司', help_text='返回快递公司')
+    return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号', help_text='返回单号')
 
-    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间')
-    servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服')
-    services_interval = models.IntegerField(null=True, blank=True, verbose_name='客服处理间隔(分钟)')
-    is_losing = models.BooleanField(default=False, verbose_name='是否丢件')
-    feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='客服处理意见')
+    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间', help_text='客服提交时间')
+    servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服', help_text='客服')
+    services_interval = models.IntegerField(null=True, blank=True, verbose_name='客服处理间隔(分钟)', help_text='客服处理间隔(分钟)')
+    is_losing = models.BooleanField(default=False, verbose_name='是否丢件', help_text='是否丢件')
+    feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='客服处理意见', help_text='客服处理意见')
 
-    handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='经销商处理人')
-    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='经销商处理时间')
-    express_interval = models.IntegerField(null=True, blank=True, verbose_name='经销商处理间隔(分钟)')
+    handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='经销商处理人', help_text='经销商处理人')
+    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='经销商处理时间', help_text='经销商处理时间')
+    express_interval = models.IntegerField(null=True, blank=True, verbose_name='经销商处理间隔(分钟)', help_text='经销商处理间隔(分钟)')
 
-    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态')
+    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='dealer', verbose_name='经销商')
-    process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
-    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因')
-    platform = models.SmallIntegerField(choices=PLATFORM, default=0, verbose_name='平台')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='dealer', verbose_name='经销商', help_text='经销商')
+    process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签', help_text='处理标签')
+    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')
+    platform = models.SmallIntegerField(choices=PLATFORM, default=0, verbose_name='平台', help_text='平台')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')

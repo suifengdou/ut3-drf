@@ -13,7 +13,7 @@ class WarehouseTypeFilter(django_filters.FilterSet):
 
     class Meta:
         model = WarehouseType
-        fields = ["category", "create_time", "update_time", "is_delete", "creator"]
+        fields = "__all__"
 
 
 class WarehouseFilter(django_filters.FilterSet):
@@ -21,5 +21,4 @@ class WarehouseFilter(django_filters.FilterSet):
 
     class Meta:
         model = Warehouse
-        fields = ["name", "warehouse_id", "city", "receiver", "mobile",
-                  "address", "category", "order_status", "create_time", "update_time", "is_delete", "creator"]
+        fields = "__all__"

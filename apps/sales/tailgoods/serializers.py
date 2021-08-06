@@ -133,7 +133,7 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
         try:
             ret = {
                 "id": instance.sent_city.id,
-                "name": instance.sent_city.city,
+                "name": instance.sent_city.name,
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -377,7 +377,7 @@ class TailOrderSerializer(serializers.ModelSerializer):
         try:
             ret = {
                 "id": instance.sent_city.id,
-                "name": instance.sent_city.city,
+                "name": instance.sent_city.name,
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -581,7 +581,7 @@ class RefundOrderSerializer(serializers.ModelSerializer):
         try:
             ret = {
                 "id": instance.sent_city.id,
-                "name": instance.sent_city.city,
+                "name": instance.sent_city.name,
             }
         except:
             ret = {"id": -1, "name": "错误"}

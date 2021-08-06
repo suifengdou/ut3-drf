@@ -6,10 +6,15 @@
 # @Software: PyCharm
 
 import django_filters
+from django_filters.filters import BaseInFilter, NumberFilter
 from .models import DealerWorkOrder
+
+class NumberInFilter(BaseInFilter, NumberFilter):
+    pass
 
 class DealerWorkOrderFilter(django_filters.FilterSet):
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+    order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
         model = DealerWorkOrder

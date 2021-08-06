@@ -42,10 +42,10 @@ class StorageWorkOrder(models.Model):
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='供应处理时间')
     express_interval = models.IntegerField(null=True, blank=True, verbose_name='供应处理间隔(分钟)')
     feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='逆向反馈内容')
-    is_losing = models.BooleanField(default=False, verbose_name='是否涉及理赔')
+    is_losing = models.BooleanField(default=False, verbose_name='是否理赔')
 
     return_express_id = models.CharField(null=True, blank=True, max_length=200, verbose_name='正向反馈内容')
-    is_return = models.BooleanField(default=True, verbose_name='是否反馈')
+    is_return = models.BooleanField(default=False, verbose_name='是否反馈')
     memo = models.TextField(null=True, blank=True, verbose_name='备注')
 
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态')
@@ -57,7 +57,6 @@ class StorageWorkOrder(models.Model):
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
-    mid_node = models.BooleanField(default=False, verbose_name='中间节点', help_text='中间节点')
 
     class Meta:
         verbose_name = 'WOP-仓储工单'

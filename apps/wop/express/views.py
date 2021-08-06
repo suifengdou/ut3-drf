@@ -1,4 +1,4 @@
-import re
+import re, math
 import datetime
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
@@ -354,6 +354,17 @@ class EWOHandleViewset(viewsets.ModelViewSet):
                         data["error"].append("%s 丢件必须确认丢失才可以审核" % obj.track_id)
                         n -= 1
                         continue
+
+                obj.submit_time = datetime.datetime.now()
+                start_time = datetime.datetime.strptime(str(obj.update_time).split(".")[0],
+                                                        "%Y-%m-%d %H:%M:%S")
+                end_time = datetime.datetime.strptime(str(obj.submit_time).split(".")[0],
+                                                      "%Y-%m-%d %H:%M:%S")
+                d_value = end_time - start_time
+                days_seconds = d_value.days * 3600
+                total_seconds = days_seconds + d_value.seconds
+                obj.services_interval = math.floor(total_seconds / 60)
+                obj.servicer = request.user.username
                 obj.mid_handler = 3
                 obj.save()
         else:
@@ -373,18 +384,10 @@ class EWOHandleViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            for obj in reject_list:
-                if not obj.feedback:
-                    data["error"].append("%s 无反馈内容" % obj.track_id)
-                    n -= 1
-                    continue
-                else:
-                    obj.order_status = 1
-                    obj.save()
+            reject_list.update(order_status=1)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["success"] = n
-        data["false"] = len(reject_list) - n
         return Response(data)
 
 
@@ -427,7 +430,7 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         params["order_status"] = 2
-        params["wo_category"] = 0
+        params["mid_handler"] = 3
         params["company"] = user.company
         f = ExpressWorkOrderFilter(params)
         serializer = ExpressWorkOrderSerializer(f.qs, many=True)
@@ -476,6 +479,17 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
                         data["error"].append("%s 丢件必须确认丢失才可以审核" % obj.track_id)
                         n -= 1
                         continue
+
+                obj.handle_time = datetime.datetime.now()
+                start_time = datetime.datetime.strptime(str(obj.submit_time).split(".")[0],
+                                                        "%Y-%m-%d %H:%M:%S")
+                end_time = datetime.datetime.strptime(str(obj.handle_time).split(".")[0],
+                                                      "%Y-%m-%d %H:%M:%S")
+                d_value = end_time - start_time
+                days_seconds = d_value.days * 3600
+                total_seconds = days_seconds + d_value.seconds
+                obj.express_interval = math.floor(total_seconds / 60)
+                obj.handler = request.user.username
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
@@ -497,13 +511,11 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
-                if not obj.feedback:
-                    data["error"].append("%s 无反馈内容" % obj.track_id)
-                    n -= 1
-                    continue
-                else:
+                if obj.wo_category == 0:
                     obj.order_status = 1
-                    obj.save()
+                else:
+                    obj.mid_handler = 0
+                obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["success"] = n
@@ -654,13 +666,13 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
+        params["order_status"] = 4
         if all_select_tag:
             handle_list = ExpressWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=4)
             else:
                 handle_list = []
         return handle_list
@@ -677,36 +689,9 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            for order in check_list:
-                if order.amount <= 0:
-                    order.mistake_tag = 1
-                    data["error"].append("%s 预存单金额错误" % order.order_id)
-                    order.save()
-                    n -= 1
-                    continue
-                order.order_status = 2
-                order.mistake_tag = 0
-                order.save()
+            check_list.update(order_status=5)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "success": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
         data["success"] = n
         return Response(data)
 
@@ -755,62 +740,3 @@ class EWOManageViewset(viewsets.ModelViewSet):
         f = ExpressWorkOrderFilter(params)
         serializer = ExpressWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
-
-    def get_handle_list(self, params):
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
-        if all_select_tag:
-            handle_list = ExpressWorkOrderFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = ExpressWorkOrder.objects.filter(id__in=order_ids, order_status=1)
-            else:
-                handle_list = []
-        return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        print(request)
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "success": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for order in check_list:
-                if order.amount <= 0:
-                    order.mistake_tag = 1
-                    data["error"].append("%s 预存单金额错误" % order.order_id)
-                    order.save()
-                    n -= 1
-                    continue
-                order.order_status = 2
-                order.mistake_tag = 0
-                order.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "success": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
-        return Response(data)

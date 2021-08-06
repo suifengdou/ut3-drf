@@ -55,7 +55,9 @@ INSTALLED_APPS = [
     'apps.wop.express.apps.ExpressConfig',
     'apps.wop.storage.apps.StorageConfig',
     'apps.sales.advancepayment.apps.AdvancepaymentConfig',
-    'apps.sales.tailgoods.apps.TailgoodsConfig'
+    'apps.sales.tailgoods.apps.TailgoodsConfig',
+    'apps.crm.order.apps.OrderConfig',
+    'apps.crm.customers.apps.CustomersConfig'
 ]
 
 AUTH_USER_MODEL = "users.UserProfile"

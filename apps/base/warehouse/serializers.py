@@ -12,9 +12,30 @@ class WarehouseSerializer(serializers.ModelSerializer):
         model = Warehouse
         fields = "__all__"
 
+    def get_city(self, instance):
+        try:
+            ret = {
+                "id": instance.city.id,
+                "name": instance.city.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_category(self, instance):
+        try:
+            ret = {
+                "id": instance.category.id,
+                "name": instance.category.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
 
     def to_representation(self, instance):
         ret = super(WarehouseSerializer, self).to_representation(instance)
+        ret["city"] = self.get_city(instance)
+        ret["category"] = self.get_category(instance)
         return ret
 
     def create(self, validated_data):
@@ -33,8 +54,7 @@ class WarehouseTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WarehouseType
-        fields = ["id", "category", "create_time", "update_time", "is_delete", "creator"]
-
+        fields = "__all__"
 
     def to_representation(self, instance):
         ret = super(WarehouseTypeSerializer, self).to_representation(instance)
