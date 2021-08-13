@@ -8,41 +8,29 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
-from .models import ManualOrder, MOGoods, ManualOrderExport
+from .models import OriginData, BatchTable
 
 class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
-class ManualOrderFilter(django_filters.FilterSet):
+class OriginDataFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+    goods_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
-        model = ManualOrder
+        model = OriginData
         fields = "__all__"
 
 
-class MOGoodsFilter(django_filters.FilterSet):
+class BatchTableFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
-        model = MOGoods
+        model = BatchTable
         fields = "__all__"
-
-
-class ManualOrderExportFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    erp_order_id = django_filters.CharFilter(field_name="erp_order_id", lookup_expr='icontains')
-    order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
-
-    class Meta:
-        model = ManualOrderExport
-        fields = "__all__"
-
-
 
 
 

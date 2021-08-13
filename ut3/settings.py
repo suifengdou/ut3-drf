@@ -57,7 +57,9 @@ INSTALLED_APPS = [
     'apps.sales.advancepayment.apps.AdvancepaymentConfig',
     'apps.sales.tailgoods.apps.TailgoodsConfig',
     'apps.crm.order.apps.OrderConfig',
-    'apps.crm.customers.apps.CustomersConfig'
+    'apps.crm.customers.apps.CustomersConfig',
+    'apps.dfc.manualorder.apps.ManualorderConfig',
+    'apps.dfc.batchtable.apps.BatchtableConfig'
 ]
 
 AUTH_USER_MODEL = "users.UserProfile"

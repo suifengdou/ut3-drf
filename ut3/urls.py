@@ -37,6 +37,8 @@ from apps.sales.advancepayment.router import advance_router
 from apps.sales.tailgoods.router import tailgoods_router
 from apps.crm.order.router import order_router
 from apps.crm.customers.router import customer_router
+from apps.dfc.manualorder.router import manualorder_router
+from apps.dfc.batchtable.router import batchdata_router
 
 
 route.registry.extend(group_router.registry)
@@ -55,6 +57,8 @@ route.registry.extend(advance_router.registry)
 route.registry.extend(tailgoods_router.registry)
 route.registry.extend(order_router.registry)
 route.registry.extend(customer_router.registry)
+route.registry.extend(manualorder_router.registry)
+route.registry.extend(batchdata_router.registry)
 
 
 urlpatterns = [

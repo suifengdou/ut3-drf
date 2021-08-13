@@ -14,7 +14,9 @@ from rest_framework.response import Response
 from rest_framework import serializers
 from .models import OriOrderInfo, OrderInfo, BMSOrderInfo
 from .serializers import OriOrderInfoSerializer, OrderInfoSerializer, BMSOrderInfoSerializer
+
 from .filters import OriOrderInfoFilter, BMSOrderInfoFilter
+from apps.dfc.manualorder.models import ManualOrder
 
 
 
@@ -87,14 +89,25 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
         }
         if n:
             for order in check_list:
-                if order.is_customer_post:
-                    if not all([order.return_express_company, order.return_express_id]):
-                        order.mistake_tag = 1
-                        data["error"].append("%s 返回单号或快递为空" % order.order_id)
-                        order.save()
-                        n -= 1
-                        continue
-                order.order_status = 2
+                fields = ["buyer_nick", "receiver_name", "receiver_address", "receiver_mobile"]
+                m_fields = ["nickname", "receiver", "address", "mobile"]
+                if order.src_tids:
+                    _q_bms_order = BMSOrderInfo.objects.filter(src_tids=order.src_tids)
+                    if _q_bms_order.exists():
+                        bms_order = _q_bms_order[0]
+                        for field in fields:
+                            setattr(order, field, getattr(bms_order, field, None))
+                    else:
+                        _q_manual_order = ManualOrder.objects.filter(erp_order_id=order.src_tids)
+                        if _q_manual_order.exists():
+                            manual_order = _q_manual_order[0]
+                            for index in range(len(fields)):
+                                setattr(order, fields[index], getattr(manual_order, m_fields[index], None))
+                        else:
+                            n -= 1
+                else:
+                    n -= 1
+                order.process_tag = 1
                 order.mistake_tag = 0
                 order.save()
         else:
@@ -116,13 +129,12 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
         }
         if n:
             for order in check_list:
-                if order.is_customer_post:
-                    if not all([order.return_express_company, order.return_express_id]):
-                        order.mistake_tag = 1
-                        data["error"].append("%s 返回单号或快递为空" % order.order_id)
-                        order.save()
-                        n -= 1
-                        continue
+                if not order.receiver_mobile:
+                    order.mistake_tag = 1
+                    data["error"].append("%s 先校正订单" % order.order_id)
+                    order.save()
+                    n -= 1
+                    continue
                 order.order_status = 2
                 order.mistake_tag = 0
                 order.save()

@@ -36,10 +36,13 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
             1: '专票',
             2: '普票'
         }
-        ret = {
-            "id": instance.order_category,
-            "name": category.get(instance.order_category, None)
-        }
+        try:
+            ret = {
+                "id": instance.order_category,
+                "name": category.get(instance.order_category, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_process_tag(self, instance):
@@ -53,10 +56,13 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
             6: '已处理',
             7: '未申请',
         }
-        ret = {
-            "id": instance.process_tag,
-            "name": process.get(instance.process_tag, None)
-        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_mistake_tag(self, instance):
@@ -79,10 +85,13 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
             15: "导入货品错误",
             16: "源单号格式错误",
         }
-        ret = {
-            "id": instance.mistake_tag,
-            "name": mistake_list.get(instance.mistake_tag, None)
-        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_order_status(self, instance):
@@ -92,45 +101,63 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
             2: "正在审核",
             3: "单据生成",
         }
-        ret = {
-            "id": instance.order_status,
-            "name": order_status.get(instance.order_status, None)
-        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_shop(self, instance):
-        ret = {
-            "id": instance.shop.id,
-            "name": instance.shop.name
-        }
+        try:
+            ret = {
+                "id": instance.shop.id,
+                "name": instance.shop.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_company(self, instance):
-        ret = {
-            "id": instance.company.id,
-            "name": instance.company.name
-        }
+        try:
+            ret = {
+                "id": instance.company.id,
+                "name": instance.company.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_sent_city(self, instance):
-        ret = {
-            "id": instance.sent_city.id,
-            "name": instance.sent_city.name
-        }
+        try:
+            ret = {
+                "id": instance.sent_city.id,
+                "name": instance.sent_city.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_sign_company(self, instance):
-        ret = {
-            "id": instance.sign_company.id,
-            "name": instance.sign_company.name
-        }
+        try:
+            ret = {
+                "id": instance.sign_company.id,
+                "name": instance.sign_company.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_sign_department(self, instance):
-        ret = {
-            "id": instance.sign_department.id,
-            "name": instance.sign_department.name
-        }
+        try:
+            ret = {
+                "id": instance.sign_department.id,
+                "name": instance.sign_department.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_goods_details(self, instance):
@@ -154,27 +181,15 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(OriInvoiceSerializer, self).to_representation(instance)
         ret["order_status"] = self.get_order_status(instance)
-        try:
-            ret["order_category"] = self.get_order_category(instance)
-            ret["process_tag"] = self.get_process_tag(instance)
-            ret["mistake_tag"] = self.get_mistake_tag(instance)
-            ret["shop"] = self.get_shop(instance)
-            ret["company"] = self.get_company(instance)
-            ret["sent_city"] = self.get_sent_city(instance)
-            ret["sign_company"] = self.get_sign_company(instance)
-            ret["sign_department"] = self.get_sign_department(instance)
-            ret["goods_details"] = self.get_goods_details(instance)
-        except:
-            error = { "id": -1, "name": "显示错误"}
-            ret["order_category"] = error
-            ret["process_tag"] = error
-            ret["mistake_tag"] = error
-            ret["shop"] = error
-            ret["company"] = error
-            ret["sent_city"] = error
-            ret["sign_company"] = error
-            ret["sign_department"] = error
-            ret["goods_details"] = [error]
+        ret["order_category"] = self.get_order_category(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["shop"] = self.get_shop(instance)
+        ret["company"] = self.get_company(instance)
+        ret["sent_city"] = self.get_sent_city(instance)
+        ret["sign_company"] = self.get_sign_company(instance)
+        ret["sign_department"] = self.get_sign_department(instance)
+        ret["goods_details"] = self.get_goods_details(instance)
         return ret
 
     def create(self, validated_data):

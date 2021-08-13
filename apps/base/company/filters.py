@@ -11,8 +11,8 @@ from .models import Company
 class CompanyFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
     tax_fil_number = django_filters.CharFilter(field_name="tax_fil_number", lookup_expr='icontains')
+    create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Company
-        fields = ["name", "company", "tax_fil_number", "order_status", "category", "spain_invoice",
-                  "special_invoice", "discount_rate", "create_time", "update_time", "is_delete", "creator"]
+        fields = "__all__"

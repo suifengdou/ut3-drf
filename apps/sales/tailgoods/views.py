@@ -2212,6 +2212,7 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
                     refund_order.save()
                     n -= 1
                     continue
+
                 refund_order.submit_time = datetime.datetime.now()
                 refund_order.order_status = 2
                 refund_order.mistake_tag = 0

@@ -48,14 +48,21 @@ class UserViewset(viewsets.ModelViewSet):
     def get_user_info(self, request, *args, **kwargs):
         user = request.user
         print(user.get_all_permissions())
-        company = {
-            "id": user.company.id,
-            "name": user.company.name
-        }
-        department = {
-            "id": user.department.id,
-            "name": user.department.name
-        }
+        error = {"id": -1, "name": "错误"}
+        try:
+            company = {
+                "id": user.company.id,
+                "name": user.company.name
+            }
+        except:
+            company = error
+        try:
+            department = {
+                "id": user.department.id,
+                "name": user.department.name
+            }
+        except:
+            department = error
         if user.is_superuser:
             roles = ["AllPrivileges"]
         else:

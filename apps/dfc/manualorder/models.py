@@ -4,6 +4,7 @@ import django.utils.timezone as timezone
 import pandas as pd
 from apps.base.goods.models import Goods
 from apps.base.shop.models import Shop
+from apps.base.department.models import Department
 from apps.utils.geography.models import Province, City, District
 
 
@@ -19,16 +20,35 @@ class ManualOrder(models.Model):
         (2, '开箱即损'),
         (3, '礼品赠品'),
     )
+    MISTAKE_LIST = (
+        (0, '正常'),
+        (1, '货品名称错误'),
+        (2, '14天内重复订单'),
+        (3, '14天外重复订单'),
+        (4, '省市区出错'),
+        (5, '输出单保存出错'),
+        (6, '同名订单'),
+        (7, '手机错误'),
+        (8, '集运仓地址'),
+        (9, '无店铺'),
+        (10, '售后配件需要补全sn、部件和描述')
+    )
+    PROCESS_TAG = (
+        (0, '未处理'),
+        (1, '已处理'),
+        (2, '驳回'),
+        (3, '特殊订单'),
+    )
 
     erp_order_id = models.CharField(null=True, blank=True, unique=True, max_length=50, verbose_name='原始单号')
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺名称')
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, verbose_name='店铺名称')
     nickname = models.CharField(max_length=50, verbose_name='网名')
     receiver = models.CharField(max_length=50, verbose_name='收件人')
     address = models.CharField(max_length=250, verbose_name='地址')
     mobile = models.CharField(max_length=50, verbose_name='手机')
 
-    province = models.ForeignKey(Province, on_delete=models.CASCADE, verbose_name='省')
-    city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='市')
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, null=True, blank=True, verbose_name='省')
+    city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, verbose_name='市')
     district = models.ForeignKey(District, on_delete=models.CASCADE, null=True, blank=True, verbose_name='区')
 
     order_id = models.CharField(null=True, blank=True, max_length=50, verbose_name='订单号')
@@ -39,6 +59,10 @@ class ManualOrder(models.Model):
     m_sn = models.CharField(null=True, blank=True, max_length=50, verbose_name='机器序列号')
     broken_part = models.CharField(null=True, blank=True, max_length=50, verbose_name='故障部位')
     description = models.CharField(null=True, blank=True, max_length=200, verbose_name='故障描述')
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, verbose_name='部门')
+
+    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误标签')
+    process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -52,6 +76,17 @@ class ManualOrder(models.Model):
 
     def __str__(self):
         return self.order_id
+
+    @classmethod
+    def verify_mandatory(cls, columns_key):
+        VERIFY_FIELD = ["shop", "nickname", "receiver", "address", "mobile", "goods_id", "quantity",
+                        "order_category", "m_sn", "broken_part", "description"]
+
+        for i in VERIFY_FIELD:
+            if i not in columns_key:
+                return 'verify_field error, must have mandatory field: "{}""'.format(i)
+        else:
+            return None
 
 
 class MOGoods(models.Model):
@@ -82,7 +117,7 @@ class MOGoods(models.Model):
         db_table = 'dfc_manualorder_goods'
 
     def __str__(self):
-        return self.ori_tail_order.order_id
+        return self.goods_name
 
 
 class ManualOrderExport(models.Model):
@@ -134,3 +169,8 @@ class ManualOrderExport(models.Model):
 
     def __str__(self):
         return self.order_id
+
+
+
+
+
