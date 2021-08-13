@@ -1,6 +1,7 @@
 from django.db import models
 from apps.base.goods.models import Goods
 from apps.base.shop.models import Shop
+from apps.utils.geography.models import Province, City, District
 # Create your models here.
 
 
@@ -95,9 +96,9 @@ class BatchTable(models.Model):
     buyer_remark = models.CharField(max_length=300, verbose_name='买家备注')
     cs_memoranda = models.CharField(max_length=300, verbose_name='客服备注')
 
-    province = models.CharField(max_length=50, verbose_name='省')
-    city = models.CharField(max_length=50, verbose_name='市')
-    district = models.CharField(max_length=50, null=True, blank=True, verbose_name='区')
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, null=True, blank=True, verbose_name='省')
+    city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, verbose_name='市')
+    district = models.ForeignKey(District, on_delete=models.CASCADE, null=True, blank=True, verbose_name='区')
 
     order_id = models.CharField(null=True, blank=True, max_length=50, db_index=True, verbose_name='订单号')
     order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='状态')
