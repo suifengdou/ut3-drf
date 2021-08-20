@@ -11,8 +11,7 @@ class NationalitySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Nationality
-        fields = ["id", "nationality", "abbreviation", "area_code", "create_time", "update_time",
-                  "is_delete", "creator"]
+        fields = "__all__"
 
 
     def to_representation(self, instance):
@@ -37,7 +36,7 @@ class ProvinceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Province
-        fields = ["id", "nationality", "province", "area_code", "create_time", "update_time", "is_delete", "creator"]
+        fields = "__all__"
 
     def to_representation(self, instance):
         ret = super(ProvinceSerializer, self).to_representation(instance)
@@ -61,8 +60,7 @@ class CitySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = City
-        fields = ["id", "nationality", "province", "city", "area_code", "create_time", "update_time",
-                  "is_delete", "creator"]
+        fields = "__all__"
 
 
     def to_representation(self, instance):
@@ -86,8 +84,7 @@ class DistrictSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = District
-        fields = ["id", "nationality", "province", "city", "district", "create_time", "update_time",
-                  "is_delete", "creator"]
+        fields = "__all__"
 
 
     def to_representation(self, instance):

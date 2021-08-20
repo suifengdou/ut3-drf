@@ -172,9 +172,9 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                 serial_number = str(datetime.date.today()).replace("-", "")
                 obj.erp_order_id = serial_number + _prefix + str(obj.id)
                 error_tag = 0
-                all_goods_detials = obj.mogoods_set.all()
-                for goods_detial in all_goods_detials:
-                    _q_export_mo = ManualOrderExport.objects.filter(mobile=obj.mobile, goods_id=goods_detial.goods_id)
+                all_goods_details = obj.mogoods_set.all()
+                for goods_detail in all_goods_details:
+                    _q_export_mo = ManualOrderExport.objects.filter(mobile=obj.mobile, goods_id=goods_detail.goods_id)
                     if _q_export_mo.exists():
                         if obj.process_tag != 3:
                             delta_date = (obj.create_time - _q_export_mo[0].create_time).days
@@ -193,12 +193,12 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                                 obj.save()
                                 break
                     if not export_order.goods_id:
-                        export_order.goods_id = goods_detial.goods_id
-                        export_order.goods_name = goods_detial.goods_name.name
-                        export_order.quantity = goods_detial.quantity
+                        export_order.goods_id = goods_detail.goods_id
+                        export_order.goods_name = goods_detail.goods_name.name
+                        export_order.quantity = goods_detail.quantity
                         export_order.buyer_remark = "%s %s 创建" % (obj.department.name, obj.creator)
-                    goods_info = "+ %s*%s" % (goods_detial.goods_name.name, goods_detial.quantity)
-                    goods_id_info = "+ %s*%s" % (goods_detial.goods_id, goods_detial.quantity)
+                    goods_info = "+ %s*%s" % (goods_detail.goods_name.name, goods_detail.quantity)
+                    goods_id_info = "+ %s*%s" % (goods_detail.goods_id, goods_detail.quantity)
                     export_order.buyer_remark = str(export_order.buyer_remark) + goods_info
                     export_order.cs_memoranda = str(export_order.cs_memoranda) + goods_id_info
                 if error_tag:

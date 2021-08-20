@@ -1,3 +1,4 @@
+# coding=utf-8
 from django.db import models
 from apps.base.goods.models import Goods
 from apps.base.shop.models import Shop
@@ -13,7 +14,11 @@ class OriginData(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '缺货')
+        (1, '地址无法提取省市区'),
+        (2, '手机号错误'),
+        (3, '集运仓地址'),
+        (4, '重复递交'),
+        (5, '输出单保存出错'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -23,7 +28,7 @@ class OriginData(models.Model):
     )
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺名称')
-    order_id = models.CharField(null=True, blank=True, max_length=50, db_index=True, verbose_name='订单号')
+    order_id = models.CharField(max_length=50, db_index=True, verbose_name='订单号')
     nickname = models.CharField(max_length=50, verbose_name='网名')
     receiver = models.CharField(max_length=50, verbose_name='收件人')
     address = models.CharField(max_length=250, verbose_name='地址')

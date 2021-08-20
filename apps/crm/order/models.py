@@ -1,3 +1,4 @@
+# coding: utf8
 from django.db import models
 from apps.base.company.models import Company
 from apps.base.shop.models import Shop
@@ -24,6 +25,9 @@ class OriOrderInfo(models.Model):
         (0, '正常'),
         (1, '未校正订单'),
         (2, '待确认重复订单'),
+        (3, 'UT未创建货品'),
+        (4, 'UT未创建店铺'),
+        (5, 'UT未创建仓库'),
 
     )
     PROCESS_TAG = (
@@ -109,7 +113,7 @@ class OrderInfo(models.Model):
         (2, '退款'),
     )
 
-    ori_order = models.ForeignKey(OriOrderInfo, on_delete=models.CASCADE, verbose_name='原始订单', help_text='原始订单')
+    ori_order = models.OneToOneField(OriOrderInfo, on_delete=models.CASCADE, verbose_name='原始订单', help_text='原始订单')
     buyer_nick = models.CharField(max_length=150, db_index=True, verbose_name='客户网名', help_text='客户网名')
     trade_no = models.CharField(max_length=120, db_index=True, verbose_name='订单编号', help_text='订单编号')
     receiver_name = models.CharField(max_length=150, verbose_name='收件人', help_text='收件人')

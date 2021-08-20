@@ -94,6 +94,71 @@ class OrderInfoSerializer(serializers.ModelSerializer):
         model = OrderInfo
         fields = "__all__"
 
+    def get_goods_name(self, instance):
+        try:
+            ret = {
+                "id": instance.goods_name.id,
+                "name": instance.goods_name.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_shop_name(self, instance):
+        try:
+            ret = {
+                "id": instance.shop_name.id,
+                "name": instance.shop_name.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_warehouse_name(self, instance):
+        try:
+            ret = {
+                "id": instance.warehouse_name.id,
+                "name": instance.warehouse_name.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_customer(self, instance):
+        try:
+            ret = {
+                "id": instance.customer.id,
+                "name": instance.customer.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_city(self, instance):
+        try:
+            ret = {
+                "id": instance.city.id,
+                "name": instance.city.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
     def get_process_tag(self, instance):
         process_list = {
             0: '未处理',
@@ -155,6 +220,11 @@ class OrderInfoSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(OrderInfoSerializer, self).to_representation(instance)
+        ret["goods_name"] = self.get_goods_name(instance)
+        ret["shop_name"] = self.get_shop_name(instance)
+        ret["warehouse_name"] = self.get_warehouse_name(instance)
+        ret["customer"] = self.get_customer(instance)
+        ret["city"] = self.get_city(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["order_status"] = self.get_order_status(instance)

@@ -120,3 +120,11 @@ class CustomerViewset(viewsets.ModelViewSet):
         data["success"] = n
         return Response(data)
 
+
+
+
+
+
+
+
+

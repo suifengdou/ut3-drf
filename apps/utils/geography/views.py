@@ -28,8 +28,7 @@ class NationalityViewset(viewsets.ModelViewSet):
     queryset = Nationality.objects.all().order_by("id")
     serializer_class = NationalitySerializer
     filter_class = NationalityFilter
-    filter_fields = ("nationality", "abbreviation", "area_code", "create_time", "update_time",
-                     "is_delete", "creator")
+    filter_fields =  "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
         "GET": ['geography.view_nationality']
@@ -54,7 +53,7 @@ class ProvinceViewset(viewsets.ModelViewSet):
     queryset = Province.objects.all().order_by("id")
     serializer_class = ProvinceSerializer
     filter_class = ProvinceFilter
-    filter_fields = ("nationality", "province", "area_code", "create_time", "update_time", "is_delete", "creator")
+    filter_fields =  "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
         "GET": ['geography.view_nationality']
@@ -78,8 +77,7 @@ class CityViewset(viewsets.ModelViewSet):
     queryset = City.objects.all().order_by("id")
     serializer_class = CitySerializer
     filter_class = CityFilter
-    filter_fields = ("nationality", "province", "city", "area_code", "create_time", "update_time",
-                     "is_delete", "creator")
+    filter_fields =  "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
         "GET": ['geography.view_city']
@@ -104,8 +102,7 @@ class DistrictViewset(viewsets.ModelViewSet):
     queryset = District.objects.all().order_by("id")
     serializer_class = DistrictSerializer
     filter_class = DistrictFilter
-    filter_fields = ("nationality", "province", "city", "district", "create_time", "update_time",
-                     "is_delete", "creator")
+    filter_fields =  "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
         "GET": ['geography.view_district']

@@ -59,7 +59,10 @@ INSTALLED_APPS = [
     'apps.crm.order.apps.OrderConfig',
     'apps.crm.customers.apps.CustomersConfig',
     'apps.dfc.manualorder.apps.ManualorderConfig',
-    'apps.dfc.batchtable.apps.BatchtableConfig'
+    'apps.dfc.batchtable.apps.BatchtableConfig',
+    'apps.psi.inventory.apps.InventoryConfig',
+    'apps.psi.outbound.apps.OutboundConfig',
+    'apps.psi.inbound.apps.InboundConfig'
 ]
 
 AUTH_USER_MODEL = "users.UserProfile"

@@ -29,3 +29,13 @@ class BMSOrderInfoFilter(django_filters.FilterSet):
     class Meta:
         model = BMSOrderInfo
         fields = "__all__"
+
+
+class OrderInfoFilter(django_filters.FilterSet):
+    create_time = django_filters.DateTimeFromToRangeFilter()
+    trade_no = django_filters.CharFilter(field_name="trade_no", lookup_expr='icontains')
+    order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
+
+    class Meta:
+        model = OrderInfo
+        fields = "__all__"

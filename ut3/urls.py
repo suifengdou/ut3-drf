@@ -39,6 +39,9 @@ from apps.crm.order.router import order_router
 from apps.crm.customers.router import customer_router
 from apps.dfc.manualorder.router import manualorder_router
 from apps.dfc.batchtable.router import batchdata_router
+from apps.psi.inventory.router import inventory_router
+from apps.psi.outbound.router import outbound_router
+from apps.psi.inbound.router import inbound_router
 
 
 route.registry.extend(group_router.registry)
@@ -59,6 +62,9 @@ route.registry.extend(order_router.registry)
 route.registry.extend(customer_router.registry)
 route.registry.extend(manualorder_router.registry)
 route.registry.extend(batchdata_router.registry)
+route.registry.extend(inbound_router.registry)
+route.registry.extend(inventory_router.registry)
+route.registry.extend(outbound_router.registry)
 
 
 urlpatterns = [

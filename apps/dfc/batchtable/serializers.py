@@ -52,11 +52,11 @@ class OriginDataSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "货品名称错误",
-            2: "14天内重复订单",
-            3: "14天外重复订单",
-            4: "二级市出错",
-            5: "网名错误",
+            1: "地址无法提取省市区",
+            2: "手机号错误",
+            3: "集运仓地址",
+            4: "重复递交",
+            5: "输出单保存出错",
             6: "同名订单",
             7: "手机错误",
             8: "集运仓地址",
@@ -114,6 +114,56 @@ class BatchTableSerializer(serializers.ModelSerializer):
         model = BatchTable
         fields = "__all__"
 
+    def get_shop(self, instance):
+        try:
+            ret = {
+                "id": instance.shop.id,
+                "name": instance.shop.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_province(self, instance):
+        try:
+            ret = {
+                "id": instance.province.id,
+                "name": instance.province.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_city(self, instance):
+        try:
+            ret = {
+                "id": instance.city.id,
+                "name": instance.city.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_district(self, instance):
+        try:
+            ret = {
+                "id": instance.district.id,
+                "name": instance.district.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_goods_name(self, instance):
+        try:
+            ret = {
+                "id": instance.goods_name.id,
+                "name": instance.goods_name.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_order_status(self, instance):
         status = {
             1: "已取消",
@@ -131,6 +181,11 @@ class BatchTableSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(BatchTableSerializer, self).to_representation(instance)
+        ret["shop"] = self.get_shop(instance)
+        ret["province"] = self.get_province(instance)
+        ret["city"] = self.get_city(instance)
+        ret["district"] = self.get_district(instance)
+        ret["goods_name"] = self.get_goods_name(instance)
         ret["order_status"] = self.get_order_status(instance)
         return ret
 

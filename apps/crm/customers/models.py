@@ -6,7 +6,7 @@ from apps.base.warehouse.models import Warehouse
 
 class Customer(models.Model):
 
-    mobile = models.CharField(max_length=30, unique=True, db_index=True, verbose_name='手机')
+    name = models.CharField(max_length=30, unique=True, db_index=True, verbose_name='会员名')
     memorandum = models.CharField(null=True, blank=True, max_length=30, verbose_name='备注')
 
 
@@ -16,7 +16,7 @@ class Customer(models.Model):
         db_table = 'crm_customer'
 
     def __str__(self):
-        return str(self.mobile)
+        return str(self.name)
 
 
 

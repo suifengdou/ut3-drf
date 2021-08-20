@@ -7,14 +7,16 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
-from .models import Customer
+from .models import Inventory
 
 class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
-class CustomerFilter(django_filters.FilterSet):
-    name__in = NumberInFilter(field_name="mobile", lookup_expr="in")
+class InventoryFilter(django_filters.FilterSet):
+    create_time = django_filters.DateTimeFromToRangeFilter()
+    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
 
     class Meta:
-        model = Customer
+        model = Inventory
         fields = "__all__"
+

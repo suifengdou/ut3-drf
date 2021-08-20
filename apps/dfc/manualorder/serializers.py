@@ -9,7 +9,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-    goods_detial = serializers.JSONField(required=False)
+    goods_detail = serializers.JSONField(required=False)
 
     class Meta:
         model = ManualOrder
@@ -133,7 +133,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_goods_detial(self, instance):
+    def get_goods_detail(self, instance):
         ret = []
         all_goods = instance.mogoods_set.all()
         for goods in all_goods:
@@ -151,7 +151,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         ret["process_tag"] = self.get_process_tag(instance)
         ret["order_category"] = self.get_order_category(instance)
         ret["order_status"] = self.get_order_status(instance)
-        ret["goods_detial"] = self.get_goods_detial(instance)
+        ret["goods_detail"] = self.get_goods_detail(instance)
         return ret
 
     def check_goods_details(self, goods_details):
