@@ -14,7 +14,6 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 class InventoryFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
 
     class Meta:
         model = Inventory

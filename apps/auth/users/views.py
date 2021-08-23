@@ -84,47 +84,16 @@ class UserPasswordViewset(viewsets.GenericViewSet,
     serializer_class = UserPasswordSerializer
 
 
-class UserAction(viewsets.ViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+class DashboardViewset(viewsets.ViewSet, mixins.ListModelMixin):
+    permission_classes = (IsAuthenticated, )
 
     def list(self, request, *args, **kwargs):
-        print(request)
         data = {
-            "id": "1",
-            "name": "mmk",
-            "roles": "admin"
+            "card1": {
+                "cck": 2,
+                "ccm": 3
+            },
+            "ppc": "ok"
         }
         return response.Response(data)
 
-    def create(self, request, *args, **kwargs):
-        print(request)
-        data = {
-            "id": "1",
-            "name": "mmk",
-            "roles": "admin"
-        }
-        return response.Response(data)
-
-    @action(methods=['post'], detail=False)
-    def check(self, request, *args, **kwargs):
-        print(request)
-        data = {
-            "id": "1",
-            "name": "mmk",
-            "roles": "admin"
-        }
-        return response.Response(data)
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        serializer = UserSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
-
-
-    def partial_update(self, request, *args, **kwargs):
-        kwargs['partial'] = True
-        return self.update(request, *args, **kwargs)

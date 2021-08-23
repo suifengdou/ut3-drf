@@ -25,6 +25,7 @@ from .filters import OriginDataFilter, BatchTableFilter
 from apps.utils.geography.models import Province, City, District
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
+from apps.dfc.manualorder.models import ManualOrder, MOGoods
 
 
 
@@ -130,12 +131,19 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                                 '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
                                 '白沙黎族自治县', '中山市', '东莞市']
                 if obj.erp_order_id:
-                    _q_repeat_order = BatchTable.objects.filter(erp_order_id=obj.erp_order_id)
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
                     if _q_repeat_order.exists():
-                        spare_order = _q_repeat_order[0]
-                        if spare_order.order_status == 0:
-                            order = spare_order
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
                             order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
                         else:
                             data["error"].append("%s重复递交，已存在输出单据" % obj.id)
                             n -= 1
@@ -143,9 +151,13 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                             obj.save()
                             continue
                     else:
-                        order = BatchTable()
+                        order = ManualOrder()
                 else:
-                    order =  BatchTable()
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
                 address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
                 seg_list = jieba.lcut(address)
                 num = 0
@@ -229,17 +241,29 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                     obj.save()
                     continue
 
-                _prefix = "BO"
-                serial_number = str(datetime.date.today()).replace("-", "")
-                obj.erp_order_id = serial_number + _prefix + str(obj.id)
-
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "goods_name", "goods_id", "quantity", "erp_order_id", "order_id"]
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
 
                 try:
+                    order.department = request.user.department
                     order.creator = request.user.username
                     order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
                 except Exception as e:
                     data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
                     n -= 1

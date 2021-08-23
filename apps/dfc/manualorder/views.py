@@ -85,35 +85,6 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
         return handle_list
 
     @action(methods=['patch'], detail=False)
-    def fix(self, request, *args, **kwargs):
-        print(request)
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "success": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for order in check_list:
-                if order.src_tids:
-                    if not all([order.return_express_company, order.return_express_id]):
-                        order.mistake_tag = 1
-                        data["error"].append("%s 返回单号或快递为空" % order.order_id)
-                        order.save()
-                        n -= 1
-                        continue
-                order.order_status = 2
-                order.mistake_tag = 0
-                order.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
         print(request)
         params = request.data
@@ -135,37 +106,43 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                     if not all([obj.m_sn, obj.broken_part, obj.description]):
                         data["error"].append("%s售后配件需要补全sn、部件和描述" % obj.id)
                         n -= 1
-                        obj.mistakes = 10
+                        obj.mistake_tag = 10
                         obj.save()
                         continue
+                if not obj.department:
+                    data["error"].append("%s无部门" % str(obj.id))
+                    n -= 1
+                    obj.mistake_tag = 11
+                    obj.save()
+                    continue
                 if not all([obj.province, obj.city]):
                     data["error"].append("%s省市不可为空" % obj.id)
                     n -= 1
-                    obj.mistakes = 4
+                    obj.mistake_tag = 4
                     obj.save()
                     continue
                 if obj.city.name not in special_city and not obj.district:
                     data["error"].append("%s 区县不可为空" % obj.id)
                     n -= 1
-                    obj.mistakes = 4
+                    obj.mistake_tag = 4
                     obj.save()
                     continue
-                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[34578]\d{9}))$", obj.mobile):
+                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[345789]\d{9}))$", obj.mobile):
                     data["error"].append("%s 手机错误" % obj.id)
                     n -= 1
-                    obj.mistakes = 7
+                    obj.mistake_tag = 7
                     obj.save()
                     continue
                 if not obj.shop:
                     data["error"].append("%s 无店铺" % obj.id)
                     n -= 1
-                    obj.mistakes = 9
+                    obj.mistake_tag = 9
                     obj.save()
                     continue
                 if '集运' in str(obj.address):
                     data["error"].append("%s地址是集运仓" % obj.id)
                     n -= 1
-                    obj.mistakes = 8
+                    obj.mistake_tag = 8
                     obj.save()
                     continue
                 _prefix = "MO"
@@ -182,23 +159,23 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                                 error_tag = 1
                                 data["error"].append("%s14天内重复" % obj.order_id)
                                 n -= 1
-                                obj.mistakes = 2
+                                obj.mistake_tag = 2
                                 obj.save()
                                 break
                             else:
                                 error_tag = 1
                                 data["error"].append("%s14天外重复" % obj.order_id)
                                 n -= 1
-                                obj.mistakes = 2
+                                obj.mistake_tag = 2
                                 obj.save()
                                 break
                     if not export_order.goods_id:
                         export_order.goods_id = goods_detail.goods_id
                         export_order.goods_name = goods_detail.goods_name.name
                         export_order.quantity = goods_detail.quantity
-                        export_order.buyer_remark = "%s %s 创建" % (obj.department.name, obj.creator)
-                    goods_info = "+ %s*%s" % (goods_detail.goods_name.name, goods_detail.quantity)
-                    goods_id_info = "+ %s*%s" % (goods_detail.goods_id, goods_detail.quantity)
+                        export_order.buyer_remark = "%s %s 创建" % (str(obj.department.name), str(obj.creator))
+                    goods_info = "+ %sx%s" % (goods_detail.goods_name.name, goods_detail.quantity)
+                    goods_id_info = "+ %sx%s" % (goods_detail.goods_id, goods_detail.quantity)
                     export_order.buyer_remark = str(export_order.buyer_remark) + goods_info
                     export_order.cs_memoranda = str(export_order.cs_memoranda) + goods_id_info
                 if error_tag:
@@ -212,7 +189,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
                     n -= 1
-                    obj.mistakes = 5
+                    obj.mistake_tag = 5
                     obj.save()
                     continue
 
@@ -237,6 +214,8 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
+            for obj in reject_list:
+                obj.mogoods_set.all().delete()
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
@@ -730,11 +709,9 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["company"] = user.company
         params["order_status"] = 1
         f = ManualOrderExportFilter(params)
         serializer = ManualOrderExportSerializer(f.qs, many=True)

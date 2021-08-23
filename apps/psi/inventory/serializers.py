@@ -10,7 +10,6 @@ class InventorySerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-    balance = serializers.JSONField()
 
     class Meta:
         model = Inventory
@@ -44,7 +43,7 @@ class InventorySerializer(serializers.ModelSerializer):
 
     def get_balance(self, instance):
         try:
-            balance = InboundDetail.objects.filter(goods_name=instance.goods_name, ib_order_id__warehouse=instance.warehouse).aggregate(Sum("quantity_valid"))["quantity_valid__sum"]
+            balance = InboundDetail.objects.filter(goods_name=instance.goods_name, ib_order_id__warehouse=instance.warehouse).aggregate(Sum("valid_quantity"))["valid_quantity__sum"]
         except Exception as e:
             balance = 0
         return balance

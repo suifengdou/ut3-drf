@@ -12,7 +12,7 @@ class ManualOrder(models.Model):
     ORDERSTATUS = (
         (0, '已取消'),
         (1, '未处理'),
-        (2, '已完成'),
+        (2, '已导入'),
     )
 
     ORDER_CATEGORY = (
@@ -31,7 +31,9 @@ class ManualOrder(models.Model):
         (7, '手机错误'),
         (8, '集运仓地址'),
         (9, '无店铺'),
-        (10, '售后配件需要补全sn、部件和描述')
+        (10, '售后配件需要补全sn、部件和描述'),
+        (11, '无部门'),
+        (12, '缺货')
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -92,8 +94,9 @@ class ManualOrder(models.Model):
 class MOGoods(models.Model):
     ORDER_STATUS = (
         (0, '已取消'),
-        (1, '未发货'),
-        (2, '已发货'),
+        (1, '未处理'),
+        (2, '已导入'),
+        (3, '已发货'),
     )
 
     manual_order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='原始尾货订单')
@@ -104,7 +107,8 @@ class MOGoods(models.Model):
     memorandum = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')
 
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='货品状态')
-
+    logistics_name = models.CharField(null=True, blank=True, max_length=60, verbose_name='物流公司', help_text='物流公司')
+    logistics_no = models.CharField(null=True, blank=True, max_length=150, verbose_name='物流单号', help_text='物流单号')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')

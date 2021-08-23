@@ -47,7 +47,7 @@ class InventoryViewset(viewsets.ModelViewSet):
         if not self.request:
             return Inventory.objects.none()
         user = self.request.user
-        queryset = Inventory.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = Inventory.objects.all().order_by("id")
         return queryset
 
     @action(methods=['get'], detail=False)

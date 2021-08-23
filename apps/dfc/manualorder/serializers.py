@@ -84,7 +84,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         status = {
             0: "已取消",
             1: "未处理",
-            2: "已完成",
+            2: "已导入",
         }
         try:
             ret = {
@@ -101,13 +101,15 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             1: "货品名称错误",
             2: "14天内重复订单",
             3: "14天外重复订单",
-            4: "二级市出错",
-            5: "网名错误",
+            4: "省市区出错",
+            5: "输出单保存出错",
             6: "同名订单",
             7: "手机错误",
             8: "集运仓地址",
             9: "无店铺",
             10: "售后配件需要补全sn、部件和描述",
+            11: "无部门",
+            12: "缺货",
         }
         try:
             ret = {
@@ -240,8 +242,9 @@ class MOGoodsSerializer(serializers.ModelSerializer):
 
     def get_order_status(self, instance):
         status = {
-            1: "已取消",
-            2: "未发货",
+            0: "已取消",
+            1: "未发货",
+            2: "已导入",
             3: "已发货",
         }
         try:
@@ -275,7 +278,7 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
-        model = ManualOrder
+        model = ManualOrderExport
         fields = "__all__"
 
     def get_shop(self, instance):
