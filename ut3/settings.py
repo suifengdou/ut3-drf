@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'apps.sales.tailgoods.apps.TailgoodsConfig',
     'apps.crm.order.apps.OrderConfig',
     'apps.crm.customers.apps.CustomersConfig',
+    'apps.crm.dialog.apps.DialogConfig',
     'apps.dfc.manualorder.apps.ManualorderConfig',
     'apps.dfc.batchtable.apps.BatchtableConfig',
     'apps.psi.inventory.apps.InventoryConfig',

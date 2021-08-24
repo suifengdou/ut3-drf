@@ -6,6 +6,7 @@ from apps.base.warehouse.models import Warehouse
 from apps.base.goods.models import Goods
 from apps.crm.customers.models import Customer
 from apps.utils.geography.models import City
+from apps.base.shop.models import Platform
 
 
 from apps.auth.users.models import UserProfile
@@ -17,7 +18,7 @@ class Servicer(models.Model):
         (1, '人工'),
     )
     name = models.CharField(max_length=150, verbose_name='昵称')
-    platform = models.CharField(max_length=60, verbose_name='平台')
+    platform = models.ForeignKey(Platform, on_delete=models.CASCADE, verbose_name='平台')
     username = models.ForeignKey(UserProfile, on_delete=models.CASCADE, blank=True, null=True, verbose_name='人名')
     category = models.SmallIntegerField(choices=CATEGORY, default=1, verbose_name='客服类型')
 
@@ -33,43 +34,6 @@ class Servicer(models.Model):
 
     def __str__(self):
         return self.name
-
-
-class Sensitive(models.Model):
-    ORDER_STATUS = (
-        (0, '被取消'),
-        (1, '正常'),
-    )
-    CATEGORY = (
-        (0, '负向'),
-        (1, '正面'),
-    )
-    words = models.CharField(max_length=10, unique=True, verbose_name='敏感字')
-    index_num = models.IntegerField(verbose_name='指数')
-    category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='敏感字类型')
-    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
-    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
-    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
-
-    class Meta:
-        verbose_name = 'CRM-对话-敏感字'
-        verbose_name_plural = verbose_name
-        db_table = 'crm_dialog_sensitive'
-
-    def __str__(self):
-        return self.words
-
-    @classmethod
-    def verify_mandatory(cls, columns_key):
-        VERIFY_FIELD = ['words', 'index']
-
-        for i in VERIFY_FIELD:
-            if i not in columns_key:
-                return 'verify_field error, must have mandatory field: "{}""'.format(i)
-        else:
-            return None
 
 
 class DialogTag(models.Model):
@@ -100,7 +64,7 @@ class DialogTag(models.Model):
         return self.name
 
 
-class OriDialogTB(models.Model):
+class DialogTB(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '正常'),
@@ -118,16 +82,16 @@ class OriDialogTB(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-淘系对话客户-查询'
+        verbose_name = 'CRM-淘系对话-客户'
         unique_together = ('shop', 'customer')
         verbose_name_plural = verbose_name
-        db_table = 'crm_dialog_oritaobao'
+        db_table = 'crm_dialog_taobao'
 
     def __str__(self):
         return self.customer
 
 
-class OriDetailTB(models.Model):
+class DialogTBDetail(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '正常'),
@@ -136,10 +100,6 @@ class OriDetailTB(models.Model):
     STATUS = (
         (0, '客服'),
         (1, '顾客'),
-    )
-    LOGICAL_DECISION = (
-        (0, '否'),
-        (1, '是'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
@@ -161,7 +121,7 @@ class OriDetailTB(models.Model):
         (2, '差价'),
     )
 
-    dialog_tb = models.ForeignKey(OriDialogTB, on_delete=models.CASCADE, verbose_name='对话')
+    dialog = models.ForeignKey(DialogTB, on_delete=models.CASCADE, verbose_name='对话')
     sayer = models.CharField(max_length=150, verbose_name='讲话者', db_index=True)
     d_status = models.SmallIntegerField(choices=STATUS, verbose_name='角色')
     time = models.DateTimeField(verbose_name='时间', db_index=True)
@@ -171,8 +131,8 @@ class OriDetailTB(models.Model):
     index_num = models.IntegerField(default=0, verbose_name='对话负面指数')
 
     category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='内容类型')
-    extract_tag = models.SmallIntegerField(choices=LOGICAL_DECISION, default=0, verbose_name='是否提取订单', db_index=True)
-    sensitive_tag = models.SmallIntegerField(choices=LOGICAL_DECISION, default=0, verbose_name='是否过滤')
+    extract_tag = models.BooleanField(default=False, verbose_name='是否提取订单', db_index=True)
+    sensitive_tag = models.BooleanField(default=False, verbose_name='是否过滤')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态', db_index=True)
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -181,15 +141,30 @@ class OriDetailTB(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-淘系对话信息-查询'
+        verbose_name = 'CRM-淘系对话-信息'
         verbose_name_plural = verbose_name
-        db_table = 'crm_diadetail_oritaobao'
+        db_table = 'crm_dialog_taobao_detail'
 
     def __str__(self):
         return self.sayer
 
 
-class OriDialogJD(models.Model):
+class DialogTBWords(models.Model):
+    dialog_detail = models.ForeignKey(DialogTBDetail, on_delete=models.CASCADE, verbose_name="对话")
+    words = models.CharField(max_length=10, unique=True, verbose_name='分词')
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+
+    class Meta:
+        verbose_name = 'CRM-淘系对话-分词'
+        verbose_name_plural = verbose_name
+        db_table = 'crm_dialog_taobao_detail_words'
+
+    def __str__(self):
+        return self.words
+
+
+class DialogJD(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '正常'),
@@ -212,16 +187,16 @@ class OriDialogJD(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-京东对话客户-查询'
+        verbose_name = 'CRM-京东对话-客户'
         unique_together = ('shop', 'customer')
         verbose_name_plural = verbose_name
-        db_table = 'crm_dialog_orijingdong'
+        db_table = 'crm_dialog_jd'
 
     def __str__(self):
         return self.customer
 
 
-class OriDetailJD(models.Model):
+class DialogJDDetail(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '未过滤'),
@@ -246,7 +221,7 @@ class OriDetailJD(models.Model):
         (1, '订单'),
     )
 
-    dialog_jd = models.ForeignKey(OriDialogJD, on_delete=models.CASCADE, verbose_name='对话')
+    dialog = models.ForeignKey(DialogJD, on_delete=models.CASCADE, verbose_name='对话')
     sayer = models.CharField(max_length=150, verbose_name='讲话者', db_index=True)
     d_status = models.SmallIntegerField(choices=STATUS, verbose_name='角色')
     time = models.DateTimeField(verbose_name='时间', db_index=True)
@@ -267,15 +242,29 @@ class OriDetailJD(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-京东对话信息-查询'
+        verbose_name = 'CRM-京东对话-信息'
         verbose_name_plural = verbose_name
-        db_table = 'crm_diadetail_orijingdong'
+        db_table = 'crm_dialog_jd_detail'
 
     def __str__(self):
         return self.sayer
 
 
-class OriDialogOW(models.Model):
+class DialogJDWords(models.Model):
+    dialog_detail = models.ForeignKey(DialogJDDetail, on_delete=models.CASCADE, verbose_name="对话")
+    words = models.CharField(max_length=10, unique=True, verbose_name='分词')
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'CRM-京东对话-分词'
+        verbose_name_plural = verbose_name
+        db_table = 'crm_dialog_jd_detail_words'
+
+    def __str__(self):
+        return self.words
+
+
+class DialogOW(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '正常'),
@@ -293,10 +282,10 @@ class OriDialogOW(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-官网对话客户'
+        verbose_name = 'CRM-官网对话-客户'
         unique_together = ('shop', 'customer')
         verbose_name_plural = verbose_name
-        db_table = 'crm_dialog_oriofficial'
+        db_table = 'crm_dialog_official'
 
     def __str__(self):
         return self.customer
@@ -312,7 +301,7 @@ class OriDialogOW(models.Model):
             return None
 
 
-class OriDetailOW(models.Model):
+class DialogOWDetail(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '正常'),
@@ -328,7 +317,7 @@ class OriDetailOW(models.Model):
         (1, '订单'),
     )
 
-    dialog_ow = models.ForeignKey(OriDialogOW, on_delete=models.CASCADE, verbose_name='对话')
+    dialog = models.ForeignKey(DialogOW, on_delete=models.CASCADE, verbose_name='对话')
     sayer = models.CharField(max_length=150, verbose_name='讲话者', db_index=True)
     d_status = models.BooleanField(default=False,  verbose_name='是否客服')
     time = models.DateTimeField(verbose_name='时间', db_index=True)
@@ -349,15 +338,26 @@ class OriDetailOW(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-官网对话信息'
+        verbose_name = 'CRM-官网对话-信息'
         verbose_name_plural = verbose_name
-        db_table = 'crm_diadetail_oriofficial'
+        db_table = 'crm_dialog_official_detail'
 
     def __str__(self):
         return self.sayer
 
 
+class DialogOWWords(models.Model):
+    dialog_detail = models.ForeignKey(DialogOWDetail, on_delete=models.CASCADE, verbose_name="对话")
+    words = models.CharField(max_length=10, unique=True, verbose_name='分词')
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
 
+    class Meta:
+        verbose_name = 'CRM-官网对话-分词'
+        verbose_name_plural = verbose_name
+        db_table = 'crm_dialog_official_detail_words'
+
+    def __str__(self):
+        return self.words
 
 
 
