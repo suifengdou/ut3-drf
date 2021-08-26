@@ -9,17 +9,17 @@ from .models import Servicer, DialogTB, DialogTBDetail, DialogTBWords, DialogJD,
 class ServicerSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", label="更新时间", help_text="更新时间")
 
     class Meta:
         model = Servicer
         fields = "__all__"
 
-    def get_platform(self, instance):
+    def get_shop(self, instance):
         try:
             ret = {
-                "id": instance.platform.id,
-                "name": instance.platform.name,
+                "id": instance.shop.id,
+                "name": instance.shop.name,
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -29,7 +29,7 @@ class ServicerSerializer(serializers.ModelSerializer):
         try:
             ret = {
                 "id": instance.username.id,
-                "name": instance.username.name,
+                "name": instance.username.username,
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -50,8 +50,9 @@ class ServicerSerializer(serializers.ModelSerializer):
         return ret
 
     def to_representation(self, instance):
+        print("1")
         ret = super(ServicerSerializer, self).to_representation(instance)
-        ret["platform"] = self.get_platform(instance)
+        ret["shop"] = self.get_shop(instance)
         ret["username"] = self.get_username(instance)
         ret["category"] = self.get_category(instance)
         return ret
@@ -62,7 +63,8 @@ class ServicerSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogTBSerializer(serializers.ModelSerializer):
@@ -84,14 +86,15 @@ class DialogTBSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogTBDetailSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
+    time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     class Meta:
         model = DialogTBDetail
         fields = "__all__"
@@ -101,6 +104,36 @@ class DialogTBDetailSerializer(serializers.ModelSerializer):
             ret = {
                 "id": instance.dialog.id,
                 "name": instance.dialog.customer,
+                "shop": instance.dialog.shop
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_d_status(self, instance):
+        status_list = {
+            0: "客服",
+            1: "顾客"
+        }
+        try:
+            ret = {
+                "id": instance.d_status,
+                "name": status_list.get(instance.d_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_category(self, instance):
+        category_list = {
+            0: "常规",
+            1: "订单",
+            2: "差价"
+        }
+        try:
+            ret = {
+                "id": instance.category,
+                "name": category_list.get(instance.category, None)
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -109,6 +142,8 @@ class DialogTBDetailSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(DialogTBDetailSerializer, self).to_representation(instance)
         ret["dialog"] = self.get_dialog(instance)
+        ret["d_status"] = self.get_d_status(instance)
+        ret["category"] = self.get_category(instance)
         return ret
 
     def create(self, validated_data):
@@ -117,7 +152,8 @@ class DialogTBDetailSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogTBWordsSerializer(serializers.ModelSerializer):
@@ -150,7 +186,8 @@ class DialogTBWordsSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogJDSerializer(serializers.ModelSerializer):
@@ -172,14 +209,15 @@ class DialogJDSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogJDDetailSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
+    time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     class Meta:
         model = DialogJDDetail
         fields = "__all__"
@@ -189,6 +227,37 @@ class DialogJDDetailSerializer(serializers.ModelSerializer):
             ret = {
                 "id": instance.dialog.id,
                 "name": instance.dialog.customer,
+                "shop": instance.dialog.shop
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+
+    def get_d_status(self, instance):
+        status_list = {
+            0: "客服",
+            1: "顾客"
+        }
+        try:
+            ret = {
+                "id": instance.d_status,
+                "name": status_list.get(instance.d_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_category(self, instance):
+        category_list = {
+            0: "常规",
+            1: "订单",
+            2: "差价"
+        }
+        try:
+            ret = {
+                "id": instance.category,
+                "name": category_list.get(instance.category, None)
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -197,6 +266,8 @@ class DialogJDDetailSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(DialogJDDetailSerializer, self).to_representation(instance)
         ret["dialog"] = self.get_dialog(instance)
+        ret["d_status"] = self.get_d_status(instance)
+        ret["category"] = self.get_category(instance)
         return ret
 
     def create(self, validated_data):
@@ -205,7 +276,8 @@ class DialogJDDetailSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogJDWordsSerializer(serializers.ModelSerializer):
@@ -238,7 +310,8 @@ class DialogJDWordsSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogOWSerializer(serializers.ModelSerializer):
@@ -260,14 +333,15 @@ class DialogOWSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogOWDetailSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
+    time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     class Meta:
         model = DialogOWDetail
         fields = "__all__"
@@ -277,6 +351,36 @@ class DialogOWDetailSerializer(serializers.ModelSerializer):
             ret = {
                 "id": instance.dialog.id,
                 "name": instance.dialog.customer,
+                "shop": instance.dialog.shop
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_d_status(self, instance):
+        status_list = {
+            0: "客服",
+            1: "顾客"
+        }
+        try:
+            ret = {
+                "id": instance.d_status,
+                "name": status_list.get(instance.d_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_category(self, instance):
+        category_list = {
+            0: "常规",
+            1: "订单",
+            2: "差价"
+        }
+        try:
+            ret = {
+                "id": instance.category,
+                "name": category_list.get(instance.category, None)
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -285,6 +389,8 @@ class DialogOWDetailSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(DialogOWDetailSerializer, self).to_representation(instance)
         ret["dialog"] = self.get_dialog(instance)
+        ret["d_status"] = self.get_d_status(instance)
+        ret["category"] = self.get_category(instance)
         return ret
 
     def create(self, validated_data):
@@ -293,7 +399,8 @@ class DialogOWDetailSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class DialogOWWordsSerializer(serializers.ModelSerializer):
@@ -326,7 +433,8 @@ class DialogOWWordsSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 

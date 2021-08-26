@@ -6,7 +6,7 @@ from apps.base.warehouse.models import Warehouse
 from apps.base.goods.models import Goods
 from apps.crm.customers.models import Customer
 from apps.utils.geography.models import City
-from apps.base.shop.models import Platform
+from apps.base.shop.models import Shop
 
 
 from apps.auth.users.models import UserProfile
@@ -18,8 +18,8 @@ class Servicer(models.Model):
         (1, '人工'),
     )
     name = models.CharField(max_length=150, verbose_name='昵称')
-    platform = models.ForeignKey(Platform, on_delete=models.CASCADE, verbose_name='平台')
-    username = models.ForeignKey(UserProfile, on_delete=models.CASCADE, blank=True, null=True, verbose_name='人名')
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺')
+    username = models.ForeignKey(UserProfile, on_delete=models.CASCADE, null=True, blank=True, verbose_name='人名')
     category = models.SmallIntegerField(choices=CATEGORY, default=1, verbose_name='客服类型')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -98,8 +98,9 @@ class DialogTBDetail(models.Model):
     )
 
     STATUS = (
-        (0, '客服'),
-        (1, '顾客'),
+        (0, '顾客'),
+        (1, '客服'),
+        (2, '机器人'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
@@ -123,7 +124,7 @@ class DialogTBDetail(models.Model):
 
     dialog = models.ForeignKey(DialogTB, on_delete=models.CASCADE, verbose_name='对话')
     sayer = models.CharField(max_length=150, verbose_name='讲话者', db_index=True)
-    d_status = models.SmallIntegerField(choices=STATUS, verbose_name='角色')
+    d_status = models.SmallIntegerField(choices=STATUS, default=0,verbose_name='角色')
     time = models.DateTimeField(verbose_name='时间', db_index=True)
     interval = models.IntegerField(verbose_name='对话间隔(秒)')
     content = models.TextField(verbose_name='内容')
@@ -169,16 +170,12 @@ class DialogJD(models.Model):
         (0, '被取消'),
         (1, '正常'),
     )
-    CATEGORY = (
-        (0, '自动'),
-        (1, '人工'),
-    )
+
     shop = models.CharField(max_length=60, verbose_name='店铺', db_index=True)
     customer = models.CharField(max_length=150, verbose_name='客户', db_index=True)
     start_time = models.DateTimeField(verbose_name='开始时间')
     end_time = models.DateTimeField(verbose_name='结束时间')
     min = models.IntegerField(verbose_name='总人次')
-    category = models.SmallIntegerField(choices=CATEGORY, default=1, verbose_name='对话类型')
     dialog_tag = models.ForeignKey(DialogTag, on_delete=models.CASCADE, null=True, blank=True, verbose_name='对话标签')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态', db_index=True)
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -202,10 +199,10 @@ class DialogJDDetail(models.Model):
         (1, '未过滤'),
         (2, '未质检'),
     )
-
     STATUS = (
-        (0, '客服'),
-        (1, '顾客'),
+        (0, '顾客'),
+        (1, '客服'),
+        (2, '机器人'),
     )
     LOGICAL_DECISION = (
         (0, '否'),
@@ -223,7 +220,7 @@ class DialogJDDetail(models.Model):
 
     dialog = models.ForeignKey(DialogJD, on_delete=models.CASCADE, verbose_name='对话')
     sayer = models.CharField(max_length=150, verbose_name='讲话者', db_index=True)
-    d_status = models.SmallIntegerField(choices=STATUS, verbose_name='角色')
+    d_status = models.SmallIntegerField(choices=STATUS, default=0, verbose_name='角色')
     time = models.DateTimeField(verbose_name='时间', db_index=True)
     interval = models.IntegerField(verbose_name='对话间隔(秒)')
     content = models.TextField(verbose_name='内容')
@@ -316,16 +313,20 @@ class DialogOWDetail(models.Model):
         (0, '常规'),
         (1, '订单'),
     )
+    STATUS = (
+        (0, '顾客'),
+        (1, '客服'),
+        (2, '机器人'),
+    )
 
     dialog = models.ForeignKey(DialogOW, on_delete=models.CASCADE, verbose_name='对话')
     sayer = models.CharField(max_length=150, verbose_name='讲话者', db_index=True)
-    d_status = models.BooleanField(default=False,  verbose_name='是否客服')
     time = models.DateTimeField(verbose_name='时间', db_index=True)
     interval = models.IntegerField(verbose_name='对话间隔(秒)')
     content = models.TextField(verbose_name='内容')
 
     index_num = models.IntegerField(default=0, verbose_name='对话负面指数')
-
+    d_status = models.SmallIntegerField(choices=STATUS, default=0, verbose_name='角色')
     category = models.BooleanField(choices=CATEGORY, default=0, verbose_name='内容类型')
     extract_tag = models.BooleanField(default=False, verbose_name='是否提取订单')
     sensitive_tag = models.BooleanField(default=False, verbose_name='是否过滤')

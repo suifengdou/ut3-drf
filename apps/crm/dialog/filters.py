@@ -16,7 +16,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 class ServicerFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    goods_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+    name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
 
     class Meta:
         model = Servicer

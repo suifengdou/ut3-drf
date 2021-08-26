@@ -102,7 +102,8 @@ class OriginDataSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 class BatchTableSerializer(serializers.ModelSerializer):
@@ -195,7 +196,8 @@ class BatchTableSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        return self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 
