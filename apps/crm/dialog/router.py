@@ -2,7 +2,7 @@ from rest_framework.routers import DefaultRouter
 from .views import ServicerViewset, DialogTBViewset, DialogTBDetailViewset, DialogTBDetailSubmitViewset, \
     DialogTBDetailSubmitMyselfViewset, DialogTBWordsViewset, DialogJDViewset, DialogJDDetailSubmitViewset, \
     DialogJDDetailViewset, DialogJDWordsViewset, DialogOWViewset, DialogOWDetailSubmitViewset, DialogOWDetailViewset, \
-    DialogOWWordsViewset
+    DialogOWWordsViewset, DialogOWViewsetSubmit
 
 
 dialgo_router = DefaultRouter()
@@ -17,6 +17,7 @@ dialgo_router.register(r'crm/dialog/dialogjddetailsubmit', DialogJDDetailSubmitV
 dialgo_router.register(r'crm/dialog/dialogjddetail', DialogJDDetailViewset, basename='dialogjddetail')
 dialgo_router.register(r'crm/dialog/dialogjdbwords', DialogJDWordsViewset, basename='dialogjdbwords')
 dialgo_router.register(r'crm/dialog/dialogow', DialogOWViewset, basename='dialogow')
+dialgo_router.register(r'crm/dialog/dialogowsubmit', DialogOWViewset, basename='dialogowsubmit')
 dialgo_router.register(r'crm/dialog/dialogowdetailsubmit', DialogOWDetailSubmitViewset, basename='dialogowdetailsubmit')
 dialgo_router.register(r'crm/dialog/dialogowdetail', DialogOWDetailViewset, basename='dialogowdetail')
 dialgo_router.register(r'crm/dialog/dialogowwords', DialogOWWordsViewset, basename='dialogowwords')

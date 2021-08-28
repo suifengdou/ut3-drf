@@ -1,3 +1,3202 @@
-from django.shortcuts import render
+import datetime, math
+import re
+import pandas as pd
+from decimal import Decimal
+import numpy as np
 
-# Create your views here.
+import jieba
+import jieba.posseg as pseg
+import jieba.analyse
+from collections import defaultdict
+
+from rest_framework import viewsets, mixins, response
+from django.contrib.auth import get_user_model
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from ut3.permissions import Permissions
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import serializers
+from .models import OriMaintenance, Maintenance, MaintenanceSummary
+from .serializers import OriMaintenanceSerializer, MaintenanceSerializer, MaintenanceSummarySerializer
+from .filters import OriMaintenanceFilter, MaintenanceFilter, MaintenanceSummaryFilter
+from apps.utils.geography.models import Province, City, District
+from apps.base.shop.models import Shop
+from apps.base.goods.models import Goods
+from apps.dfc.manualorder.models import ManualOrder, MOGoods
+
+
+class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = OriMaintenanceSerializer
+    filter_class = OriMaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return OriMaintenance.objects.none()
+        queryset = OriMaintenance.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = OriMaintenanceFilter(params)
+        serializer = OriMaintenanceSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = OriMaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = OriMaintenance.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                                '白沙黎族自治县', '中山市', '东莞市']
+                if obj.erp_order_id:
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                    if _q_repeat_order.exists():
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
+                            order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
+                        else:
+                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 4
+                            obj.save()
+                            continue
+                    else:
+                        order = ManualOrder()
+                else:
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
+                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
+                seg_list = jieba.lcut(address)
+                num = 0
+                for words in seg_list:
+                    num += 1
+                    if not order.province:
+                        _q_province = Province.objects.filter(name__contains=words)
+                        if len(_q_province) == 1:
+                            if not _q_province.exists():
+                                _q_province_again = Province.objects.filter(name__contains=words[:2])
+                                if _q_province_again.exists():
+                                    order.province = _q_province_again[0]
+                            else:
+                                order.province = _q_province[0]
+                    if not order.city:
+                        _q_city = City.objects.filter(name__contains=words)
+                        if len(_q_city) == 1:
+                            if not _q_city.exists():
+                                _q_city_again = City.objects.filter(name__contains=words[:2])
+                                if _q_city_again.exists():
+                                    order.city = _q_city_again[0]
+                                    if num < 3 and not order.province:
+                                        order.province = order.city.province
+                            else:
+                                order.city = _q_city[0]
+                                if num < 3 and not order.province:
+                                    order.province = order.city.province
+                    if not order.district:
+                        if not order.city:
+                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
+                            if len(_q_district_direct) == 1:
+                                if _q_district_direct.exists():
+                                    order.district = _q_district_direct[0]
+                                    order.city = order.district.city
+                                    break
+                        else:
+                            if order.city.name in special_city:
+                                break
+                            _q_district = District.objects.filter(city=order.city, name__contains=words)
+                            if not _q_district:
+                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                                if len(_q_district_again) == 1:
+                                    if _q_district_again.exists():
+                                        order.district = _q_district_again[0]
+                                        order.city = order.district.city
+                                        break
+                            else:
+                                order.district = _q_district[0]
+                                break
+                if not order.city:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+
+                if order.province != order.city.province:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if order.city.name not in special_city and not order.district:
+                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                    data["error"].append("%s 手机错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                if '集运' in str(obj.address):
+                    data["error"].append("%s地址是集运仓" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                for field in order_fields:
+                    setattr(order, field, getattr(obj, field, None))
+
+                try:
+                    order.department = request.user.department
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                obj.submit_user = request.user.username
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        print(request)
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "保修单号": "order_id",
+            "保修单状态": "order_status",
+            "收发仓库": "warehouse",
+            "处理登记人": "completer",
+            "保修类型": "maintenance_type",
+            "故障类型": "fault_type",
+            "送修类型": "transport_type",
+            "序列号": "machine_sn",
+            "换新序列号": "new_machine_sn",
+            "发货订单编号": "send_order_id",
+            "保修结束语": "appraisal",
+            "关联店铺": "shop",
+            "购买时间": "purchase_time",
+            "创建时间": "ori_create_time",
+            "创建人": "ori_creator",
+            "审核时间": "handle_time",
+            "审核人": "handler_name",
+            "保修完成时间": "finish_time",
+            "保修金额": "fee",
+            "保修数量": "quantity",
+            "最后修改时间": "last_handle_time",
+            "客户网名": "buyer_nick",
+            "寄件客户姓名": "sender_name",
+            "寄件客户手机": "sender_mobile",
+            "寄件客户省市县": "sender_area",
+            "寄件客户地址": "sender_address",
+            "收件物流公司": "send_logistics_company",
+            "收件物流单号": "send_logistics_no",
+            "收件备注": "send_memory",
+            "寄回客户姓名": "return_name",
+            "寄回客户手机": "return_mobile",
+            "寄回省市区": "return_area",
+            "寄回地址": "return_address",
+            "寄件指定物流公司": "return_logistics_company",
+            "寄件物流单号": "return_logistics_no",
+            "寄件备注": "return_memory",
+            "保修货品商家编码": "goods_id",
+            "保修货品名称": "goods_name",
+            "保修货品简称": "goods_abbreviation",
+            "故障描述": "description",
+            "是否在保修期内": "is_guarantee",
+            "收费状态": "charge_status",
+            "收费金额": "charge_amount",
+            "收费说明": "charge_memory"
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["保修单号", "保修单状态", "收发仓库", "处理登记人", "保修类型", "故障类型", "送修类型", "序列号",
+                             "换新序列号", "发货订单编号", "保修结束语", "关联店铺", "购买时间", "创建时间", "创建人", "审核时间",
+                             "审核人", "保修完成时间", "保修金额", "保修数量", "最后修改时间", "客户网名", "寄件客户姓名",
+                             "寄件客户手机", "寄件客户省市县", "寄件客户地址", "收件物流公司", "收件物流单号", "收件备注",
+                             "寄回客户姓名", "寄回客户手机", "寄回省市区", "寄回地址", "寄件指定物流公司", "寄件物流单号",
+                             "寄件备注", "保修货品商家编码", "保修货品名称", "保修货品简称", "故障描述", "是否在保修期内",
+                             "收费状态", "收费金额", "收费说明"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = OriMaintenance.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+
+        for row in resource:
+            _q_repeat_order = OriMaintenance.objects.filter(order_id=row["order_id"])
+            if _q_repeat_order.exists():
+                report_dic["discard"] += 1
+                report_dic["error"].append("%s提交重复" % row["order_id"])
+                continue
+            for keyword in ["purchase_time", "ori_create_time", "handle_time", "finish_time", "last_handle_time"]:
+                if row[keyword] == "0000-00-00 00:00:00":
+                    row[keyword] = None
+            order = OriMaintenance()
+            order_fields = ["order_id", "order_status", "warehouse", "completer", "maintenance_type",
+                            "fault_type", "transport_type", "machine_sn", "new_machine_sn", "send_order_id",
+                            "appraisal", "shop", "purchase_time", "ori_create_time", "ori_creator", "handle_time",
+                            "handler_name", "finish_time", "fee", "quantity", "last_handle_time", "buyer_nick",
+                            "sender_name", "sender_mobile", "sender_area", "sender_address", "send_logistics_company",
+                            "send_logistics_no", "send_memory", "return_name", "return_mobile", "return_area",
+                            "return_address", "return_logistics_company", "return_logistics_no", "return_memory",
+                            "goods_id", "goods_name", "goods_abbreviation", "description", "is_guarantee",
+                            "charge_status", "charge_amount", "charge_memory"]
+            for field in order_fields:
+                setattr(order, field, row[field])
+
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["order_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
+
+class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = OriMaintenanceSerializer
+    filter_class = OriMaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return OriMaintenance.objects.none()
+        queryset = OriMaintenance.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = OriMaintenanceFilter(params)
+        serializer = OriMaintenanceSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = OriMaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = OriMaintenance.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                                '白沙黎族自治县', '中山市', '东莞市']
+                if obj.erp_order_id:
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                    if _q_repeat_order.exists():
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
+                            order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
+                        else:
+                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 4
+                            obj.save()
+                            continue
+                    else:
+                        order = ManualOrder()
+                else:
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
+                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
+                seg_list = jieba.lcut(address)
+                num = 0
+                for words in seg_list:
+                    num += 1
+                    if not order.province:
+                        _q_province = Province.objects.filter(name__contains=words)
+                        if len(_q_province) == 1:
+                            if not _q_province.exists():
+                                _q_province_again = Province.objects.filter(name__contains=words[:2])
+                                if _q_province_again.exists():
+                                    order.province = _q_province_again[0]
+                            else:
+                                order.province = _q_province[0]
+                    if not order.city:
+                        _q_city = City.objects.filter(name__contains=words)
+                        if len(_q_city) == 1:
+                            if not _q_city.exists():
+                                _q_city_again = City.objects.filter(name__contains=words[:2])
+                                if _q_city_again.exists():
+                                    order.city = _q_city_again[0]
+                                    if num < 3 and not order.province:
+                                        order.province = order.city.province
+                            else:
+                                order.city = _q_city[0]
+                                if num < 3 and not order.province:
+                                    order.province = order.city.province
+                    if not order.district:
+                        if not order.city:
+                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
+                            if len(_q_district_direct) == 1:
+                                if _q_district_direct.exists():
+                                    order.district = _q_district_direct[0]
+                                    order.city = order.district.city
+                                    break
+                        else:
+                            if order.city.name in special_city:
+                                break
+                            _q_district = District.objects.filter(city=order.city, name__contains=words)
+                            if not _q_district:
+                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                                if len(_q_district_again) == 1:
+                                    if _q_district_again.exists():
+                                        order.district = _q_district_again[0]
+                                        order.city = order.district.city
+                                        break
+                            else:
+                                order.district = _q_district[0]
+                                break
+                if not order.city:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+
+                if order.province != order.city.province:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if order.city.name not in special_city and not order.district:
+                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                    data["error"].append("%s 手机错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                if '集运' in str(obj.address):
+                    data["error"].append("%s地址是集运仓" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                for field in order_fields:
+                    setattr(order, field, getattr(obj, field, None))
+
+                try:
+                    order.department = request.user.department
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                obj.submit_user = request.user.username
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        print(request)
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "通话ID": "call_id",
+            "类型": "category",
+            "开启服务时间": "start_time",
+            "结束服务时间": "end_time",
+            "服务时长": "total_duration",
+            "通话时长": "call_duration",
+            "排队时长": "queue_time",
+            "振铃时长": "ring_time",
+            "静音时长": "muted_duration",
+            "静音次数": "muted_time",
+            "主叫号码": "calling_num",
+            "被叫号码": "called_num",
+            "号码归属地": "attribution",
+            "用户名": "nickname",
+            "手机号码": "smartphone",
+            "ivr语音导航": "ivr",
+            "分流客服组": "group",
+            "接待客服": "servicer",
+            "重复咨询": "repeated_num",
+            "接听状态": "answer_status",
+            "挂机方": "on_hook",
+            "满意度": "satisfaction",
+            "服务录音": "call_recording",
+            "一级分类": "primary_classification",
+            "二级分类": "secondary_classification",
+            "三级分类": "three_level_classification",
+            "四级分类": "four_level_classification",
+            "五级分类": "five_level_classification",
+            "咨询备注": "remark",
+            "问题解决状态": "problem_status",
+            "购买日期": "purchase_time",
+            "购买店铺": "shop",
+            "产品型号": "goods_type",
+            "出厂序列号": "m_sn",
+            "是否建配件工单": "is_order",
+            "补寄原因": "order_category",
+            "配件信息": "goods_details",
+            "损坏部位": "broken_part",
+            "损坏描述": "description",
+            "收件人姓名": "receiver",
+            "建单手机": "mobile",
+            "省市区": "area",
+            "详细地址": "address"
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
+                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
+                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
+                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
+                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
+                             "是否建配件工单", "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
+                             "建单手机", "省市区", "详细地址"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = OriMaintenance.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+
+        for row in resource:
+            _q_calllog = OriMaintenance.objects.filter(call_id=row["call_id"])
+            if _q_calllog.exists():
+                report_dic["discard"] += 1
+                report_dic["error"].append("%s提交重复" % row["call_id"])
+                continue
+            order = OriMaintenance()
+            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
+                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
+                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
+                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
+                            "call_recording", "primary_classification", "secondary_classification",
+                            "three_level_classification", "four_level_classification", "five_level_classification",
+                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn", "is_order",
+                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
+                            "area", "address"]
+            for field in order_fields:
+                setattr(order, field, row[field])
+
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["call_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
+
+class OriMaintenanceWorkingViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = OriMaintenanceSerializer
+    filter_class = OriMaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return OriMaintenance.objects.none()
+        queryset = OriMaintenance.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = OriMaintenanceFilter(params)
+        serializer = OriMaintenanceSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = OriMaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = OriMaintenance.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                                '白沙黎族自治县', '中山市', '东莞市']
+                if obj.erp_order_id:
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                    if _q_repeat_order.exists():
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
+                            order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
+                        else:
+                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 4
+                            obj.save()
+                            continue
+                    else:
+                        order = ManualOrder()
+                else:
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
+                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
+                seg_list = jieba.lcut(address)
+                num = 0
+                for words in seg_list:
+                    num += 1
+                    if not order.province:
+                        _q_province = Province.objects.filter(name__contains=words)
+                        if len(_q_province) == 1:
+                            if not _q_province.exists():
+                                _q_province_again = Province.objects.filter(name__contains=words[:2])
+                                if _q_province_again.exists():
+                                    order.province = _q_province_again[0]
+                            else:
+                                order.province = _q_province[0]
+                    if not order.city:
+                        _q_city = City.objects.filter(name__contains=words)
+                        if len(_q_city) == 1:
+                            if not _q_city.exists():
+                                _q_city_again = City.objects.filter(name__contains=words[:2])
+                                if _q_city_again.exists():
+                                    order.city = _q_city_again[0]
+                                    if num < 3 and not order.province:
+                                        order.province = order.city.province
+                            else:
+                                order.city = _q_city[0]
+                                if num < 3 and not order.province:
+                                    order.province = order.city.province
+                    if not order.district:
+                        if not order.city:
+                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
+                            if len(_q_district_direct) == 1:
+                                if _q_district_direct.exists():
+                                    order.district = _q_district_direct[0]
+                                    order.city = order.district.city
+                                    break
+                        else:
+                            if order.city.name in special_city:
+                                break
+                            _q_district = District.objects.filter(city=order.city, name__contains=words)
+                            if not _q_district:
+                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                                if len(_q_district_again) == 1:
+                                    if _q_district_again.exists():
+                                        order.district = _q_district_again[0]
+                                        order.city = order.district.city
+                                        break
+                            else:
+                                order.district = _q_district[0]
+                                break
+                if not order.city:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+
+                if order.province != order.city.province:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if order.city.name not in special_city and not order.district:
+                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                    data["error"].append("%s 手机错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                if '集运' in str(obj.address):
+                    data["error"].append("%s地址是集运仓" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                for field in order_fields:
+                    setattr(order, field, getattr(obj, field, None))
+
+                try:
+                    order.department = request.user.department
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                obj.submit_user = request.user.username
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        print(request)
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "通话ID": "call_id",
+            "类型": "category",
+            "开启服务时间": "start_time",
+            "结束服务时间": "end_time",
+            "服务时长": "total_duration",
+            "通话时长": "call_duration",
+            "排队时长": "queue_time",
+            "振铃时长": "ring_time",
+            "静音时长": "muted_duration",
+            "静音次数": "muted_time",
+            "主叫号码": "calling_num",
+            "被叫号码": "called_num",
+            "号码归属地": "attribution",
+            "用户名": "nickname",
+            "手机号码": "smartphone",
+            "ivr语音导航": "ivr",
+            "分流客服组": "group",
+            "接待客服": "servicer",
+            "重复咨询": "repeated_num",
+            "接听状态": "answer_status",
+            "挂机方": "on_hook",
+            "满意度": "satisfaction",
+            "服务录音": "call_recording",
+            "一级分类": "primary_classification",
+            "二级分类": "secondary_classification",
+            "三级分类": "three_level_classification",
+            "四级分类": "four_level_classification",
+            "五级分类": "five_level_classification",
+            "咨询备注": "remark",
+            "问题解决状态": "problem_status",
+            "购买日期": "purchase_time",
+            "购买店铺": "shop",
+            "产品型号": "goods_type",
+            "出厂序列号": "m_sn",
+            "是否建配件工单": "is_order",
+            "补寄原因": "order_category",
+            "配件信息": "goods_details",
+            "损坏部位": "broken_part",
+            "损坏描述": "description",
+            "收件人姓名": "receiver",
+            "建单手机": "mobile",
+            "省市区": "area",
+            "详细地址": "address"
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
+                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
+                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
+                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
+                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
+                             "是否建配件工单", "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
+                             "建单手机", "省市区", "详细地址"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = OriMaintenance.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+
+        for row in resource:
+            _q_calllog = OriMaintenance.objects.filter(call_id=row["call_id"])
+            if _q_calllog.exists():
+                report_dic["discard"] += 1
+                report_dic["error"].append("%s提交重复" % row["call_id"])
+                continue
+            order = OriMaintenance()
+            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
+                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
+                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
+                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
+                            "call_recording", "primary_classification", "secondary_classification",
+                            "three_level_classification", "four_level_classification", "five_level_classification",
+                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn", "is_order",
+                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
+                            "area", "address"]
+            for field in order_fields:
+                setattr(order, field, row[field])
+
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["call_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
+
+class OriMaintenanceViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = OriMaintenanceSerializer
+    filter_class = OriMaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return OriMaintenance.objects.none()
+        queryset = OriMaintenance.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = OriMaintenanceFilter(params)
+        serializer = OriMaintenanceSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = OriMaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = OriMaintenance.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                                '白沙黎族自治县', '中山市', '东莞市']
+                if obj.erp_order_id:
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                    if _q_repeat_order.exists():
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
+                            order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
+                        else:
+                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 4
+                            obj.save()
+                            continue
+                    else:
+                        order = ManualOrder()
+                else:
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
+                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
+                seg_list = jieba.lcut(address)
+                num = 0
+                for words in seg_list:
+                    num += 1
+                    if not order.province:
+                        _q_province = Province.objects.filter(name__contains=words)
+                        if len(_q_province) == 1:
+                            if not _q_province.exists():
+                                _q_province_again = Province.objects.filter(name__contains=words[:2])
+                                if _q_province_again.exists():
+                                    order.province = _q_province_again[0]
+                            else:
+                                order.province = _q_province[0]
+                    if not order.city:
+                        _q_city = City.objects.filter(name__contains=words)
+                        if len(_q_city) == 1:
+                            if not _q_city.exists():
+                                _q_city_again = City.objects.filter(name__contains=words[:2])
+                                if _q_city_again.exists():
+                                    order.city = _q_city_again[0]
+                                    if num < 3 and not order.province:
+                                        order.province = order.city.province
+                            else:
+                                order.city = _q_city[0]
+                                if num < 3 and not order.province:
+                                    order.province = order.city.province
+                    if not order.district:
+                        if not order.city:
+                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
+                            if len(_q_district_direct) == 1:
+                                if _q_district_direct.exists():
+                                    order.district = _q_district_direct[0]
+                                    order.city = order.district.city
+                                    break
+                        else:
+                            if order.city.name in special_city:
+                                break
+                            _q_district = District.objects.filter(city=order.city, name__contains=words)
+                            if not _q_district:
+                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                                if len(_q_district_again) == 1:
+                                    if _q_district_again.exists():
+                                        order.district = _q_district_again[0]
+                                        order.city = order.district.city
+                                        break
+                            else:
+                                order.district = _q_district[0]
+                                break
+                if not order.city:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+
+                if order.province != order.city.province:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if order.city.name not in special_city and not order.district:
+                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                    data["error"].append("%s 手机错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                if '集运' in str(obj.address):
+                    data["error"].append("%s地址是集运仓" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                for field in order_fields:
+                    setattr(order, field, getattr(obj, field, None))
+
+                try:
+                    order.department = request.user.department
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                obj.submit_user = request.user.username
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        print(request)
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "通话ID": "call_id",
+            "类型": "category",
+            "开启服务时间": "start_time",
+            "结束服务时间": "end_time",
+            "服务时长": "total_duration",
+            "通话时长": "call_duration",
+            "排队时长": "queue_time",
+            "振铃时长": "ring_time",
+            "静音时长": "muted_duration",
+            "静音次数": "muted_time",
+            "主叫号码": "calling_num",
+            "被叫号码": "called_num",
+            "号码归属地": "attribution",
+            "用户名": "nickname",
+            "手机号码": "smartphone",
+            "ivr语音导航": "ivr",
+            "分流客服组": "group",
+            "接待客服": "servicer",
+            "重复咨询": "repeated_num",
+            "接听状态": "answer_status",
+            "挂机方": "on_hook",
+            "满意度": "satisfaction",
+            "服务录音": "call_recording",
+            "一级分类": "primary_classification",
+            "二级分类": "secondary_classification",
+            "三级分类": "three_level_classification",
+            "四级分类": "four_level_classification",
+            "五级分类": "five_level_classification",
+            "咨询备注": "remark",
+            "问题解决状态": "problem_status",
+            "购买日期": "purchase_time",
+            "购买店铺": "shop",
+            "产品型号": "goods_type",
+            "出厂序列号": "m_sn",
+            "是否建配件工单": "is_order",
+            "补寄原因": "order_category",
+            "配件信息": "goods_details",
+            "损坏部位": "broken_part",
+            "损坏描述": "description",
+            "收件人姓名": "receiver",
+            "建单手机": "mobile",
+            "省市区": "area",
+            "详细地址": "address"
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
+                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
+                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
+                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
+                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
+                             "是否建配件工单", "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
+                             "建单手机", "省市区", "详细地址"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = OriMaintenance.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+
+        for row in resource:
+            _q_calllog = OriMaintenance.objects.filter(call_id=row["call_id"])
+            if _q_calllog.exists():
+                report_dic["discard"] += 1
+                report_dic["error"].append("%s提交重复" % row["call_id"])
+                continue
+            order = OriMaintenance()
+            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
+                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
+                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
+                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
+                            "call_recording", "primary_classification", "secondary_classification",
+                            "three_level_classification", "four_level_classification", "five_level_classification",
+                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn", "is_order",
+                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
+                            "area", "address"]
+            for field in order_fields:
+                setattr(order, field, row[field])
+
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["call_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
+
+class MaintenanceSubmitViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MaintenanceSerializer
+    filter_class = MaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return Maintenance.objects.none()
+        queryset = Maintenance.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = MaintenanceFilter(params)
+        serializer = MaintenanceSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = MaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = Maintenance.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                                '白沙黎族自治县', '中山市', '东莞市']
+                if obj.erp_order_id:
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                    if _q_repeat_order.exists():
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
+                            order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
+                        else:
+                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 4
+                            obj.save()
+                            continue
+                    else:
+                        order = ManualOrder()
+                else:
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
+                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
+                seg_list = jieba.lcut(address)
+                num = 0
+                for words in seg_list:
+                    num += 1
+                    if not order.province:
+                        _q_province = Province.objects.filter(name__contains=words)
+                        if len(_q_province) == 1:
+                            if not _q_province.exists():
+                                _q_province_again = Province.objects.filter(name__contains=words[:2])
+                                if _q_province_again.exists():
+                                    order.province = _q_province_again[0]
+                            else:
+                                order.province = _q_province[0]
+                    if not order.city:
+                        _q_city = City.objects.filter(name__contains=words)
+                        if len(_q_city) == 1:
+                            if not _q_city.exists():
+                                _q_city_again = City.objects.filter(name__contains=words[:2])
+                                if _q_city_again.exists():
+                                    order.city = _q_city_again[0]
+                                    if num < 3 and not order.province:
+                                        order.province = order.city.province
+                            else:
+                                order.city = _q_city[0]
+                                if num < 3 and not order.province:
+                                    order.province = order.city.province
+                    if not order.district:
+                        if not order.city:
+                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
+                            if len(_q_district_direct) == 1:
+                                if _q_district_direct.exists():
+                                    order.district = _q_district_direct[0]
+                                    order.city = order.district.city
+                                    break
+                        else:
+                            if order.city.name in special_city:
+                                break
+                            _q_district = District.objects.filter(city=order.city, name__contains=words)
+                            if not _q_district:
+                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                                if len(_q_district_again) == 1:
+                                    if _q_district_again.exists():
+                                        order.district = _q_district_again[0]
+                                        order.city = order.district.city
+                                        break
+                            else:
+                                order.district = _q_district[0]
+                                break
+                if not order.city:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+
+                if order.province != order.city.province:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if order.city.name not in special_city and not order.district:
+                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                    data["error"].append("%s 手机错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                if '集运' in str(obj.address):
+                    data["error"].append("%s地址是集运仓" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                for field in order_fields:
+                    setattr(order, field, getattr(obj, field, None))
+
+                try:
+                    order.department = request.user.department
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                obj.submit_user = request.user.username
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        print(request)
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "通话ID": "call_id",
+            "类型": "category",
+            "开启服务时间": "start_time",
+            "结束服务时间": "end_time",
+            "服务时长": "total_duration",
+            "通话时长": "call_duration",
+            "排队时长": "queue_time",
+            "振铃时长": "ring_time",
+            "静音时长": "muted_duration",
+            "静音次数": "muted_time",
+            "主叫号码": "calling_num",
+            "被叫号码": "called_num",
+            "号码归属地": "attribution",
+            "用户名": "nickname",
+            "手机号码": "smartphone",
+            "ivr语音导航": "ivr",
+            "分流客服组": "group",
+            "接待客服": "servicer",
+            "重复咨询": "repeated_num",
+            "接听状态": "answer_status",
+            "挂机方": "on_hook",
+            "满意度": "satisfaction",
+            "服务录音": "call_recording",
+            "一级分类": "primary_classification",
+            "二级分类": "secondary_classification",
+            "三级分类": "three_level_classification",
+            "四级分类": "four_level_classification",
+            "五级分类": "five_level_classification",
+            "咨询备注": "remark",
+            "问题解决状态": "problem_status",
+            "购买日期": "purchase_time",
+            "购买店铺": "shop",
+            "产品型号": "goods_type",
+            "出厂序列号": "m_sn",
+            "是否建配件工单": "is_order",
+            "补寄原因": "order_category",
+            "配件信息": "goods_details",
+            "损坏部位": "broken_part",
+            "损坏描述": "description",
+            "收件人姓名": "receiver",
+            "建单手机": "mobile",
+            "省市区": "area",
+            "详细地址": "address"
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
+                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
+                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
+                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
+                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
+                             "是否建配件工单", "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
+                             "建单手机", "省市区", "详细地址"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = Maintenance.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+
+        for row in resource:
+            _q_calllog = Maintenance.objects.filter(call_id=row["call_id"])
+            if _q_calllog.exists():
+                report_dic["discard"] += 1
+                report_dic["error"].append("%s提交重复" % row["call_id"])
+                continue
+            order = Maintenance()
+            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
+                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
+                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
+                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
+                            "call_recording", "primary_classification", "secondary_classification",
+                            "three_level_classification", "four_level_classification", "five_level_classification",
+                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn", "is_order",
+                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
+                            "area", "address"]
+            for field in order_fields:
+                setattr(order, field, row[field])
+
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["call_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
+
+class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MaintenanceSerializer
+    filter_class = MaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return Maintenance.objects.none()
+        queryset = Maintenance.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = MaintenanceFilter(params)
+        serializer = MaintenanceSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = MaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = Maintenance.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                                '白沙黎族自治县', '中山市', '东莞市']
+                if obj.erp_order_id:
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                    if _q_repeat_order.exists():
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
+                            order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
+                        else:
+                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 4
+                            obj.save()
+                            continue
+                    else:
+                        order = ManualOrder()
+                else:
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
+                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
+                seg_list = jieba.lcut(address)
+                num = 0
+                for words in seg_list:
+                    num += 1
+                    if not order.province:
+                        _q_province = Province.objects.filter(name__contains=words)
+                        if len(_q_province) == 1:
+                            if not _q_province.exists():
+                                _q_province_again = Province.objects.filter(name__contains=words[:2])
+                                if _q_province_again.exists():
+                                    order.province = _q_province_again[0]
+                            else:
+                                order.province = _q_province[0]
+                    if not order.city:
+                        _q_city = City.objects.filter(name__contains=words)
+                        if len(_q_city) == 1:
+                            if not _q_city.exists():
+                                _q_city_again = City.objects.filter(name__contains=words[:2])
+                                if _q_city_again.exists():
+                                    order.city = _q_city_again[0]
+                                    if num < 3 and not order.province:
+                                        order.province = order.city.province
+                            else:
+                                order.city = _q_city[0]
+                                if num < 3 and not order.province:
+                                    order.province = order.city.province
+                    if not order.district:
+                        if not order.city:
+                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
+                            if len(_q_district_direct) == 1:
+                                if _q_district_direct.exists():
+                                    order.district = _q_district_direct[0]
+                                    order.city = order.district.city
+                                    break
+                        else:
+                            if order.city.name in special_city:
+                                break
+                            _q_district = District.objects.filter(city=order.city, name__contains=words)
+                            if not _q_district:
+                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                                if len(_q_district_again) == 1:
+                                    if _q_district_again.exists():
+                                        order.district = _q_district_again[0]
+                                        order.city = order.district.city
+                                        break
+                            else:
+                                order.district = _q_district[0]
+                                break
+                if not order.city:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+
+                if order.province != order.city.province:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if order.city.name not in special_city and not order.district:
+                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                    data["error"].append("%s 手机错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                if '集运' in str(obj.address):
+                    data["error"].append("%s地址是集运仓" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                for field in order_fields:
+                    setattr(order, field, getattr(obj, field, None))
+
+                try:
+                    order.department = request.user.department
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                obj.submit_user = request.user.username
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        print(request)
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "通话ID": "call_id",
+            "类型": "category",
+            "开启服务时间": "start_time",
+            "结束服务时间": "end_time",
+            "服务时长": "total_duration",
+            "通话时长": "call_duration",
+            "排队时长": "queue_time",
+            "振铃时长": "ring_time",
+            "静音时长": "muted_duration",
+            "静音次数": "muted_time",
+            "主叫号码": "calling_num",
+            "被叫号码": "called_num",
+            "号码归属地": "attribution",
+            "用户名": "nickname",
+            "手机号码": "smartphone",
+            "ivr语音导航": "ivr",
+            "分流客服组": "group",
+            "接待客服": "servicer",
+            "重复咨询": "repeated_num",
+            "接听状态": "answer_status",
+            "挂机方": "on_hook",
+            "满意度": "satisfaction",
+            "服务录音": "call_recording",
+            "一级分类": "primary_classification",
+            "二级分类": "secondary_classification",
+            "三级分类": "three_level_classification",
+            "四级分类": "four_level_classification",
+            "五级分类": "five_level_classification",
+            "咨询备注": "remark",
+            "问题解决状态": "problem_status",
+            "购买日期": "purchase_time",
+            "购买店铺": "shop",
+            "产品型号": "goods_type",
+            "出厂序列号": "m_sn",
+            "是否建配件工单": "is_order",
+            "补寄原因": "order_category",
+            "配件信息": "goods_details",
+            "损坏部位": "broken_part",
+            "损坏描述": "description",
+            "收件人姓名": "receiver",
+            "建单手机": "mobile",
+            "省市区": "area",
+            "详细地址": "address"
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
+                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
+                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
+                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
+                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
+                             "是否建配件工单", "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
+                             "建单手机", "省市区", "详细地址"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = Maintenance.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+
+        for row in resource:
+            _q_calllog = Maintenance.objects.filter(call_id=row["call_id"])
+            if _q_calllog.exists():
+                report_dic["discard"] += 1
+                report_dic["error"].append("%s提交重复" % row["call_id"])
+                continue
+            order = Maintenance()
+            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
+                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
+                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
+                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
+                            "call_recording", "primary_classification", "secondary_classification",
+                            "three_level_classification", "four_level_classification", "five_level_classification",
+                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn", "is_order",
+                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
+                            "area", "address"]
+            for field in order_fields:
+                setattr(order, field, row[field])
+
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["call_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
+
+class MaintenanceViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MaintenanceSerializer
+    filter_class = MaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return Maintenance.objects.none()
+        queryset = Maintenance.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = MaintenanceFilter(params)
+        serializer = MaintenanceSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = MaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = Maintenance.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                                '白沙黎族自治县', '中山市', '东莞市']
+                if obj.erp_order_id:
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                    if _q_repeat_order.exists():
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
+                            order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
+                        else:
+                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 4
+                            obj.save()
+                            continue
+                    else:
+                        order = ManualOrder()
+                else:
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
+                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
+                seg_list = jieba.lcut(address)
+                num = 0
+                for words in seg_list:
+                    num += 1
+                    if not order.province:
+                        _q_province = Province.objects.filter(name__contains=words)
+                        if len(_q_province) == 1:
+                            if not _q_province.exists():
+                                _q_province_again = Province.objects.filter(name__contains=words[:2])
+                                if _q_province_again.exists():
+                                    order.province = _q_province_again[0]
+                            else:
+                                order.province = _q_province[0]
+                    if not order.city:
+                        _q_city = City.objects.filter(name__contains=words)
+                        if len(_q_city) == 1:
+                            if not _q_city.exists():
+                                _q_city_again = City.objects.filter(name__contains=words[:2])
+                                if _q_city_again.exists():
+                                    order.city = _q_city_again[0]
+                                    if num < 3 and not order.province:
+                                        order.province = order.city.province
+                            else:
+                                order.city = _q_city[0]
+                                if num < 3 and not order.province:
+                                    order.province = order.city.province
+                    if not order.district:
+                        if not order.city:
+                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
+                            if len(_q_district_direct) == 1:
+                                if _q_district_direct.exists():
+                                    order.district = _q_district_direct[0]
+                                    order.city = order.district.city
+                                    break
+                        else:
+                            if order.city.name in special_city:
+                                break
+                            _q_district = District.objects.filter(city=order.city, name__contains=words)
+                            if not _q_district:
+                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                                if len(_q_district_again) == 1:
+                                    if _q_district_again.exists():
+                                        order.district = _q_district_again[0]
+                                        order.city = order.district.city
+                                        break
+                            else:
+                                order.district = _q_district[0]
+                                break
+                if not order.city:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+
+                if order.province != order.city.province:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if order.city.name not in special_city and not order.district:
+                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                    data["error"].append("%s 手机错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                if '集运' in str(obj.address):
+                    data["error"].append("%s地址是集运仓" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                for field in order_fields:
+                    setattr(order, field, getattr(obj, field, None))
+
+                try:
+                    order.department = request.user.department
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                obj.submit_user = request.user.username
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        print(request)
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "通话ID": "call_id",
+            "类型": "category",
+            "开启服务时间": "start_time",
+            "结束服务时间": "end_time",
+            "服务时长": "total_duration",
+            "通话时长": "call_duration",
+            "排队时长": "queue_time",
+            "振铃时长": "ring_time",
+            "静音时长": "muted_duration",
+            "静音次数": "muted_time",
+            "主叫号码": "calling_num",
+            "被叫号码": "called_num",
+            "号码归属地": "attribution",
+            "用户名": "nickname",
+            "手机号码": "smartphone",
+            "ivr语音导航": "ivr",
+            "分流客服组": "group",
+            "接待客服": "servicer",
+            "重复咨询": "repeated_num",
+            "接听状态": "answer_status",
+            "挂机方": "on_hook",
+            "满意度": "satisfaction",
+            "服务录音": "call_recording",
+            "一级分类": "primary_classification",
+            "二级分类": "secondary_classification",
+            "三级分类": "three_level_classification",
+            "四级分类": "four_level_classification",
+            "五级分类": "five_level_classification",
+            "咨询备注": "remark",
+            "问题解决状态": "problem_status",
+            "购买日期": "purchase_time",
+            "购买店铺": "shop",
+            "产品型号": "goods_type",
+            "出厂序列号": "m_sn",
+            "是否建配件工单": "is_order",
+            "补寄原因": "order_category",
+            "配件信息": "goods_details",
+            "损坏部位": "broken_part",
+            "损坏描述": "description",
+            "收件人姓名": "receiver",
+            "建单手机": "mobile",
+            "省市区": "area",
+            "详细地址": "address"
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
+                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
+                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
+                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
+                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
+                             "是否建配件工单", "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
+                             "建单手机", "省市区", "详细地址"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = Maintenance.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+
+        for row in resource:
+            _q_calllog = Maintenance.objects.filter(call_id=row["call_id"])
+            if _q_calllog.exists():
+                report_dic["discard"] += 1
+                report_dic["error"].append("%s提交重复" % row["call_id"])
+                continue
+            order = Maintenance()
+            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
+                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
+                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
+                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
+                            "call_recording", "primary_classification", "secondary_classification",
+                            "three_level_classification", "four_level_classification", "five_level_classification",
+                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn", "is_order",
+                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
+                            "area", "address"]
+            for field in order_fields:
+                setattr(order, field, row[field])
+
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["call_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
+
+class MaintenanceSummaryViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MaintenanceSummarySerializer
+    filter_class = MaintenanceSummaryFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return MaintenanceSummary.objects.none()
+        queryset = MaintenanceSummary.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = MaintenanceSummaryFilter(params)
+        serializer = MaintenanceSummarySerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = MaintenanceSummaryFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = MaintenanceSummary.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                                '白沙黎族自治县', '中山市', '东莞市']
+                if obj.erp_order_id:
+                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                    if _q_repeat_order.exists():
+                        order = _q_repeat_order[0]
+                        if order.order_status == 0:
+                            order.order_status = 1
+                        elif order.order_status == 1:
+                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
+                            if _q_goods_name.exists():
+                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 4
+                                obj.save()
+                                continue
+                        else:
+                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 4
+                            obj.save()
+                            continue
+                    else:
+                        order = ManualOrder()
+                else:
+                    order =  ManualOrder()
+                    _prefix = "BO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                order.order_category = 3
+                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
+                seg_list = jieba.lcut(address)
+                num = 0
+                for words in seg_list:
+                    num += 1
+                    if not order.province:
+                        _q_province = Province.objects.filter(name__contains=words)
+                        if len(_q_province) == 1:
+                            if not _q_province.exists():
+                                _q_province_again = Province.objects.filter(name__contains=words[:2])
+                                if _q_province_again.exists():
+                                    order.province = _q_province_again[0]
+                            else:
+                                order.province = _q_province[0]
+                    if not order.city:
+                        _q_city = City.objects.filter(name__contains=words)
+                        if len(_q_city) == 1:
+                            if not _q_city.exists():
+                                _q_city_again = City.objects.filter(name__contains=words[:2])
+                                if _q_city_again.exists():
+                                    order.city = _q_city_again[0]
+                                    if num < 3 and not order.province:
+                                        order.province = order.city.province
+                            else:
+                                order.city = _q_city[0]
+                                if num < 3 and not order.province:
+                                    order.province = order.city.province
+                    if not order.district:
+                        if not order.city:
+                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
+                            if len(_q_district_direct) == 1:
+                                if _q_district_direct.exists():
+                                    order.district = _q_district_direct[0]
+                                    order.city = order.district.city
+                                    break
+                        else:
+                            if order.city.name in special_city:
+                                break
+                            _q_district = District.objects.filter(city=order.city, name__contains=words)
+                            if not _q_district:
+                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                                if len(_q_district_again) == 1:
+                                    if _q_district_again.exists():
+                                        order.district = _q_district_again[0]
+                                        order.city = order.district.city
+                                        break
+                            else:
+                                order.district = _q_district[0]
+                                break
+                if not order.city:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+
+                if order.province != order.city.province:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                if order.city.name not in special_city and not order.district:
+                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                    data["error"].append("%s 手机错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                if '集运' in str(obj.address):
+                    data["error"].append("%s地址是集运仓" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                for field in order_fields:
+                    setattr(order, field, getattr(obj, field, None))
+
+                try:
+                    order.department = request.user.department
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                order_detail = MOGoods()
+                detail_fields = ["goods_name", "goods_id", "quantity"]
+                for detail_field in detail_fields:
+                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
+                try:
+                    order_detail.memorandum = obj.buyer_remark
+                    order_detail.manual_order = order
+                    order_detail.creator = request.user.username
+                    order_detail.save()
+                except Exception as e:
+                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                obj.submit_user = request.user.username
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["success"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "success": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["success"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        print(request)
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "通话ID": "call_id",
+            "类型": "category",
+            "开启服务时间": "start_time",
+            "结束服务时间": "end_time",
+            "服务时长": "total_duration",
+            "通话时长": "call_duration",
+            "排队时长": "queue_time",
+            "振铃时长": "ring_time",
+            "静音时长": "muted_duration",
+            "静音次数": "muted_time",
+            "主叫号码": "calling_num",
+            "被叫号码": "called_num",
+            "号码归属地": "attribution",
+            "用户名": "nickname",
+            "手机号码": "smartphone",
+            "ivr语音导航": "ivr",
+            "分流客服组": "group",
+            "接待客服": "servicer",
+            "重复咨询": "repeated_num",
+            "接听状态": "answer_status",
+            "挂机方": "on_hook",
+            "满意度": "satisfaction",
+            "服务录音": "call_recording",
+            "一级分类": "primary_classification",
+            "二级分类": "secondary_classification",
+            "三级分类": "three_level_classification",
+            "四级分类": "four_level_classification",
+            "五级分类": "five_level_classification",
+            "咨询备注": "remark",
+            "问题解决状态": "problem_status",
+            "购买日期": "purchase_time",
+            "购买店铺": "shop",
+            "产品型号": "goods_type",
+            "出厂序列号": "m_sn",
+            "是否建配件工单": "is_order",
+            "补寄原因": "order_category",
+            "配件信息": "goods_details",
+            "损坏部位": "broken_part",
+            "损坏描述": "description",
+            "收件人姓名": "receiver",
+            "建单手机": "mobile",
+            "省市区": "area",
+            "详细地址": "address"
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
+                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
+                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
+                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
+                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
+                             "是否建配件工单", "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
+                             "建单手机", "省市区", "详细地址"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = MaintenanceSummary.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+
+        for row in resource:
+            _q_calllog = MaintenanceSummary.objects.filter(call_id=row["call_id"])
+            if _q_calllog.exists():
+                report_dic["discard"] += 1
+                report_dic["error"].append("%s提交重复" % row["call_id"])
+                continue
+            order = MaintenanceSummary()
+            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
+                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
+                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
+                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
+                            "call_recording", "primary_classification", "secondary_classification",
+                            "three_level_classification", "four_level_classification", "five_level_classification",
+                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn", "is_order",
+                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
+                            "area", "address"]
+            for field in order_fields:
+                setattr(order, field, row[field])
+
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["call_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
+

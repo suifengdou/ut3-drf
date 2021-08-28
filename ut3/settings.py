@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     'apps.crm.order.apps.OrderConfig',
     'apps.crm.customers.apps.CustomersConfig',
     'apps.crm.dialog.apps.DialogConfig',
+    'apps.crm.callcenter.apps.CallcenterConfig',
+    'apps.crm.service.apps.ServiceConfig',
     'apps.dfc.manualorder.apps.ManualorderConfig',
     'apps.dfc.batchtable.apps.BatchtableConfig',
     'apps.psi.inventory.apps.InventoryConfig',

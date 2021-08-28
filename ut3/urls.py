@@ -38,6 +38,8 @@ from apps.sales.tailgoods.router import tailgoods_router
 from apps.crm.order.router import order_router
 from apps.crm.customers.router import customer_router
 from apps.crm.dialog.router import dialgo_router
+from apps.crm.callcenter.router import callcenter_router
+from apps.crm.service.router import service_router
 from apps.dfc.manualorder.router import manualorder_router
 from apps.dfc.batchtable.router import batchdata_router
 from apps.psi.inventory.router import inventory_router
@@ -61,6 +63,8 @@ route.registry.extend(advance_router.registry)
 route.registry.extend(tailgoods_router.registry)
 route.registry.extend(order_router.registry)
 route.registry.extend(dialgo_router.registry)
+route.registry.extend(callcenter_router.registry)
+route.registry.extend(service_router.registry)
 route.registry.extend(customer_router.registry)
 route.registry.extend(manualorder_router.registry)
 route.registry.extend(batchdata_router.registry)

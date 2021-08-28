@@ -262,17 +262,46 @@ class DialogJDWords(models.Model):
 
 
 class DialogOW(models.Model):
+
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '正常'),
     )
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺')
-    customer = models.CharField(max_length=150, verbose_name='客户', db_index=True)
-    start_time = models.DateTimeField(verbose_name='开始时间')
-    end_time = models.DateTimeField(verbose_name='结束时间')
-    min = models.IntegerField(verbose_name='总人次')
-    dialog_tag = models.ForeignKey(DialogTag, on_delete=models.CASCADE, null=True, blank=True, verbose_name='对话标签')
+    call_id = models.CharField(max_length=60, unique=True, verbose_name='会话ID', help_text='会话ID')
+    guest_entry_time = models.CharField(max_length=60, verbose_name='访客进入时间', help_text='访客进入时间')
+    call_start_time = models.CharField(max_length=60, verbose_name='会话开始时间', help_text='会话开始时间')
+    first_response_time = models.CharField(max_length=60, verbose_name='客服首次响应时长', help_text='客服首次响应时长')
+    average_response_time = models.CharField(max_length=60, verbose_name='客服平均响应时长', help_text='客服平均响应时长')
+    queue_time = models.CharField(max_length=60, verbose_name='访客排队时长', help_text='访客排队时长')
+    call_duration = models.CharField(max_length=60, verbose_name='会话时长', help_text='会话时长')
+    ender = models.CharField(max_length=60, verbose_name='会话终止方', help_text='会话终止方')
+    call_status = models.CharField(max_length=60, verbose_name='客服解决状态', help_text='客服解决状态')
+    primary_classification = models.CharField(max_length=60, verbose_name='一级分类', help_text='一级分类')
+    secondary_classification = models.CharField(max_length=60, verbose_name='二级分类', help_text='二级分类')
+    three_level_classification = models.CharField(max_length=60, verbose_name='三级分类', help_text='三级分类')
+    four_level_classification = models.CharField(null=True, blank=True, max_length=60, verbose_name='四级分类', help_text='四级分类')
+    five_level_classification = models.CharField(null=True, blank=True, max_length=60, verbose_name='五级分类', help_text='五级分类')
+    servicer = models.CharField(max_length=60, verbose_name='接待客服', help_text='接待客服')
+    customer = models.CharField(max_length=60, verbose_name='访客用户名', help_text='访客用户名')
+    satisfaction = models.CharField(max_length=60, verbose_name='满意度', help_text='满意度')
+    rounds = models.CharField(max_length=60, verbose_name='对话回合数', help_text='对话回合数')
+    source = models.CharField(max_length=60, verbose_name='来源终端', help_text='来源终端')
+    goods_type = models.CharField(max_length=60, verbose_name='产品型号', help_text='产品型号')
+    purchase_time = models.CharField(max_length=60, verbose_name='购买日期', help_text='购买日期')
+    is_order = models.CharField(max_length=60, verbose_name='是否建配件工单', help_text='是否建配件工单')
+    shop = models.CharField(max_length=60, verbose_name='购买店铺', help_text='购买店铺')
+    area = models.CharField(max_length=60, verbose_name='省市区', help_text='省市区')
+    m_sn = models.CharField(max_length=60, verbose_name='出厂序列号', help_text='出厂序列号')
+    address = models.CharField(max_length=60, verbose_name='详细地址', help_text='详细地址')
+    order_category = models.CharField(max_length=60, verbose_name='补寄原因', help_text='补寄原因')
+    goods_details = models.CharField(max_length=200, verbose_name='配件信息', help_text='配件信息')
+    broken_part = models.CharField(max_length=50, verbose_name='损坏部位', help_text='损坏部位')
+    description = models.CharField(max_length=200, verbose_name='损坏描述', help_text='损坏描述')
+    mobile = models.CharField(max_length=60, verbose_name='建单手机', help_text='建单手机')
+    receiver = models.CharField(max_length=60, verbose_name='收件人姓名', help_text='收件人姓名')
+
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态', db_index=True)
+
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
@@ -280,7 +309,6 @@ class DialogOW(models.Model):
 
     class Meta:
         verbose_name = 'CRM-官网对话-客户'
-        unique_together = ('shop', 'customer')
         verbose_name_plural = verbose_name
         db_table = 'crm_dialog_official'
 
@@ -289,7 +317,13 @@ class DialogOW(models.Model):
 
     @classmethod
     def verify_mandatory(cls, columns_key):
-        VERIFY_FIELD = ['customer', 'start_time', 'content', 'dialog_id']
+        VERIFY_FIELD = ["call_id", "guest_entry_time", "call_start_time", "first_response_time",
+                        "average_response_time", "queue_time", "call_duration", "ender", "call_status",
+                        "primary_classification", "secondary_classification", "three_level_classification",
+                        "four_level_classification", "five_level_classification", "servicer", "customer",
+                        "satisfaction", "rounds", "source", "content", "goods_type", "purchase_time", "is_order",
+                        "shop", "area", "m_sn", "address", "order_category", "goods_details", "broken_part",
+                        "description", "mobile", "receiver"]
 
         for i in VERIFY_FIELD:
             if i not in columns_key:
@@ -359,16 +393,3 @@ class DialogOWWords(models.Model):
 
     def __str__(self):
         return self.words
-
-
-
-
-
-
-
-
-
-
-
-
-
