@@ -62,9 +62,30 @@ class CitySerializer(serializers.ModelSerializer):
         model = City
         fields = "__all__"
 
+    def get_nationality(self, instance):
+        try:
+            ret = {
+                "id": instance.nationality.id,
+                "name": instance.nationality.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_province(self, instance):
+        try:
+            ret = {
+                "id": instance.province.id,
+                "name": instance.province.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
 
     def to_representation(self, instance):
         ret = super(CitySerializer, self).to_representation(instance)
+        ret["nationality"] = self.get_nationality(instance)
+        ret["province"] = self.get_province(instance)
         return ret
 
     def create(self, validated_data):
@@ -86,9 +107,42 @@ class DistrictSerializer(serializers.ModelSerializer):
         model = District
         fields = "__all__"
 
+    def get_nationality(self, instance):
+        try:
+            ret = {
+                "id": instance.nationality.id,
+                "name": instance.nationality.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_province(self, instance):
+        try:
+            ret = {
+                "id": instance.province.id,
+                "name": instance.province.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_city(self, instance):
+        try:
+            ret = {
+                "id": instance.city.id,
+                "name": instance.city.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
 
     def to_representation(self, instance):
         ret = super(DistrictSerializer, self).to_representation(instance)
+        ret["nationality"] = self.get_nationality(instance)
+        ret["province"] = self.get_province(instance)
+        ret["city"] = self.get_city(instance)
         return ret
 
     def create(self, validated_data):

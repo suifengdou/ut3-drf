@@ -18,6 +18,7 @@ class NationalityFilter(django_filters.FilterSet):
 
 class ProvinceFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
+    nationality = django_filters.ModelChoiceFilter(to_field_name="id", queryset=Nationality.objects.all())
 
     class Meta:
         model = Province
@@ -26,6 +27,8 @@ class ProvinceFilter(django_filters.FilterSet):
 
 class CityFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
+    nationality = django_filters.ModelChoiceFilter(to_field_name="id", queryset=Nationality.objects.all())
+    province = django_filters.ModelChoiceFilter(to_field_name="id", queryset=Province.objects.all())
 
     class Meta:
         model = City
@@ -34,6 +37,9 @@ class CityFilter(django_filters.FilterSet):
 
 class DistrictFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
+    nationality = django_filters.ModelChoiceFilter(to_field_name="id", queryset=Nationality.objects.all())
+    province = django_filters.ModelChoiceFilter(to_field_name="id", queryset=Province.objects.all())
+    city = django_filters.ModelChoiceFilter(to_field_name="id", queryset=City.objects.all())
 
     class Meta:
         model = District

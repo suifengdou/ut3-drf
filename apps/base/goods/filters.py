@@ -10,7 +10,7 @@ from .models import Goods, GoodsCategory
 
 class GoodsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    goods_id = django_filters.CharFilter(field_name="name", lookup_expr='exact')
+    goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='exact')
     create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:

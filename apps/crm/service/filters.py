@@ -8,7 +8,7 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
-from .models import OriMaintenance, Maintenance, MaintenanceSummary
+from .models import OriMaintenance, Maintenance, FindAndFound, MaintenanceSummary
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
@@ -17,8 +17,12 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 class OriMaintenanceFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
+    purchase_time = django_filters.DateTimeFromToRangeFilter()
+    handle_time = django_filters.DateTimeFromToRangeFilter()
+    ori_create_time = django_filters.DateTimeFromToRangeFilter()
+    finish_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
+    towork_status__in = NumberInFilter(field_name="towork_status", lookup_expr="in")
 
     class Meta:
         model = OriMaintenance
@@ -34,6 +38,14 @@ class MaintenanceFilter(django_filters.FilterSet):
 
     class Meta:
         model = Maintenance
+        fields = "__all__"
+
+
+class FindAndFoundFilter(django_filters.FilterSet):
+    create_time = django_filters.DateTimeFromToRangeFilter()
+
+    class Meta:
+        model = FindAndFound
         fields = "__all__"
 
 

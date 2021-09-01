@@ -2,11 +2,14 @@ import datetime
 from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import OriMaintenance, Maintenance, MaintenanceSummary
+from .models import OriMaintenance, Maintenance, FindAndFound, MaintenanceSummary
 
 
 class OriMaintenanceSerializer(serializers.ModelSerializer):
-
+    purchase_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="购买时间", help_text="购买时间")
+    handle_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="审核时间", help_text="审核时间")
+    ori_create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="原始创建时间", help_text="原始创建时间")
+    finish_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="完成时间", help_text="完成时间")
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
@@ -32,8 +35,11 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
     def get_process_tag(self, instance):
         process_list = {
             0: "未处理",
-            1: "已处理",
-            2: "驳回",
+            1: "未更新到",
+            2: "取件超时",
+            3: "到库超时",
+            4: "维修超时",
+            5: "特殊订单"
         }
         try:
             ret = {
@@ -44,10 +50,30 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "尝试修复数据",
+            2: "二级市错误",
+            3: "寄件地区出错",
+            4: "UT无此店铺",
+            5: "UT此型号整机未创建",
+            6: "UT系统无此店铺",
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(OriMaintenanceSerializer, self).to_representation(instance)
         ret["towork_status"] = self.get_towork_status(instance)
         ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
         return ret
 
     def create(self, validated_data):
@@ -199,6 +225,51 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         ret["order_category"] = self.get_repeat_tag(instance)
         ret["repeat_tag"] = self.get_order_status(instance)
         ret["process_tag"] = self.get_process_tag(instance)
+        return ret
+
+    def create(self, validated_data):
+        validated_data["creator"] = self.context["request"].user.username
+        return self.Meta.model.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
+
+
+class FindAndFoundSerializer(serializers.ModelSerializer):
+
+    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = FindAndFound
+        fields = "__all__"
+
+    def get_find(self, instance):
+        try:
+            ret = {
+                "id": instance.shop.id,
+                "name": instance.shop.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_found(self, instance):
+        try:
+            ret = {
+                "id": instance.province.id,
+                "name": instance.province.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def to_representation(self, instance):
+        ret = super(FindAndFoundSerializer, self).to_representation(instance)
+        ret["find"] = self.get_find(instance)
+        ret["found"] = self.get_found(instance)
         return ret
 
     def create(self, validated_data):

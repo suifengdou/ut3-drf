@@ -28,9 +28,7 @@ class GoodsViewset(viewsets.ModelViewSet):
     queryset = Goods.objects.all().order_by("id")
     serializer_class = GoodsSerializer
     filter_class = GoodsFilter
-    filter_fields = ("goods_id", "name", "category", "goods_attribute", "goods_number",
-                     "size", "width", "height", "depth", "weight", "catalog_num", "create_time",
-                     "update_time", "is_delete", "creator")
+    filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
         "GET": ['goods.view_goods']
@@ -55,7 +53,7 @@ class GoodsCategoryViewset(viewsets.ModelViewSet):
     queryset = GoodsCategory.objects.all().order_by("id")
     serializer_class = GoodsCategorySerializer
     filter_class = GoodsCategoryFilter
-    filter_fields = ("name", "code", "create_time", "update_time", "is_delete", "creator")
+    filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
         "GET": ['goods.view_goods']
