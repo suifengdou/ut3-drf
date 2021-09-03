@@ -198,21 +198,6 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_process_tag(self, instance):
-        process_list = {
-            0: "未处理",
-            1: "已处理",
-            2: "驳回",
-        }
-        try:
-            ret = {
-                "id": instance.process_tag,
-                "name": process_list.get(instance.process_tag, None)
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
     def to_representation(self, instance):
         ret = super(MaintenanceSerializer, self).to_representation(instance)
         ret["shop"] = self.get_shop(instance)
@@ -222,9 +207,8 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         ret["maintenance"] = self.get_maintenance(instance)
         ret["goods_name"] = self.get_goods_name(instance)
         ret["customer"] = self.get_customer(instance)
-        ret["order_category"] = self.get_repeat_tag(instance)
-        ret["repeat_tag"] = self.get_order_status(instance)
-        ret["process_tag"] = self.get_process_tag(instance)
+        ret["repeat_tag"] = self.get_repeat_tag(instance)
+        ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):

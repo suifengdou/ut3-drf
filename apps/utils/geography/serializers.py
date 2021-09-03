@@ -38,8 +38,19 @@ class ProvinceSerializer(serializers.ModelSerializer):
         model = Province
         fields = "__all__"
 
+    def get_nationality(self, instance):
+        try:
+            ret = {
+                "id": instance.nationality.id,
+                "name": instance.nationality.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(ProvinceSerializer, self).to_representation(instance)
+        ret["nationality"] = self.get_nationality(instance)
         return ret
 
     def create(self, validated_data):
