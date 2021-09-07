@@ -54,8 +54,8 @@ class SWOReverseCreateViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         params["wo_category"] = 1
-        f = ExpressWorkOrderFilter(params)
-        serializer = ExpressWorkOrderSerializer(f.qs, many=True)
+        f = StorageWorkOrderFilter(params)
+        serializer = StorageWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):

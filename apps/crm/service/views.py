@@ -3,7 +3,7 @@ import re
 import pandas as pd
 from decimal import Decimal
 import numpy as np
-
+from django.db.models import Q, Count, Sum, Max, Min, Avg
 import jieba
 import jieba.posseg as pseg
 import jieba.analyse
@@ -1792,12 +1792,11 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Maintenance.objects.none()
-        queryset = Maintenance.objects.all().order_by("-id")
+        queryset = Maintenance.objects.filter(order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
@@ -1810,7 +1809,6 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 1
-        params["company"] = self.request.user.company
         if all_select_tag:
             handle_list = MaintenanceFilter(params).qs
         else:
@@ -1828,161 +1826,117 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
+            "tag_successful": 0,
             "error": []
         }
         if n:
-            for obj in check_list:
-                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                                '白沙黎族自治县', '中山市', '东莞市']
-                if obj.erp_order_id:
-                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
-                    if _q_repeat_order.exists():
-                        order = _q_repeat_order[0]
-                        if order.order_status == 0:
-                            order.order_status = 1
-                        elif order.order_status == 1:
-                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
-                            if _q_goods_name.exists():
-                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 4
-                                obj.save()
-                                continue
-                        else:
-                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
-                            n -= 1
-                            obj.mistake_tag = 4
-                            obj.save()
-                            continue
+            days_list_ori = list(check_list.order_by("finish_date").values_list("finish_date", flat=True).distinct())
+
+            if days_list_ori:
+                min_date = min(days_list_ori)
+                max_date = max(days_list_ori) + datetime.timedelta(days=1)
+                current_date = min_date
+
+                max_date_exists = MaintenanceSummary.objects.all().aggregate(Max("finish_date"))["finish_date__max"]
+                if max_date_exists:
+                    if min_date <= max_date_exists:
+                        if max_date < max_date_exists:
+                            max_date = max_date_exists
+
+            while current_date < max_date:
+                    repeat_dic = {"successful": 0, "tag_successful": 0, "false": 0, "error": []}
+
+                    # 当前天减去一天，作为前一天，作为前三十天的基准时间。
+                    end_date = current_date - datetime.timedelta(days=1)
+                    start_date = current_date - datetime.timedelta(days=31)
+                    # 查询近三十天到所有单据，准备进行匹配查询。
+                    maintenance_checked = Maintenance.objects.filter(finish_date__gte=start_date,
+                                                                                 finish_date__lte=end_date)
+
+                    # 创建二次维修率的表单对象，
+                    verify_condition = MaintenanceSummary.objects.filter(finish_date=current_date)
+                    current_update_orders = check_list.filter(finish_date=current_date)
+                    if verify_condition.exists():
+                        current_summary = verify_condition[0]
+                        current_summary.order_count += current_update_orders.count()
+                        try:
+                            current_summary.save()
+                            repeat_dic['error'].append("%s 更新了这个日期的当日保修单数量，之前保修单导入时有遗漏！" % current_date)
+                        except Exception as e:
+                            repeat_dic['error'].append(e)
                     else:
-                        order = ManualOrder()
-                else:
-                    order =  ManualOrder()
-                    _prefix = "BO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                order.order_category = 3
-                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
-                seg_list = jieba.lcut(address)
-                num = 0
-                for words in seg_list:
-                    num += 1
-                    if not order.province:
-                        _q_province = Province.objects.filter(name__contains=words)
-                        if len(_q_province) == 1:
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                            else:
-                                order.province = _q_province[0]
-                    if not order.city:
-                        _q_city = City.objects.filter(name__contains=words)
-                        if len(_q_city) == 1:
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if num < 3 and not order.province:
-                                        order.province = order.city.province
-                            else:
-                                order.city = _q_city[0]
-                                if num < 3 and not order.province:
-                                    order.province = order.city.province
-                    if not order.district:
-                        if not order.city:
-                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if len(_q_district_direct) == 1:
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
+                        current_summary = MaintenanceSummary()
+                        current_summary.finish_date = current_date
+                        current_summary.order_count = current_update_orders.count()
+                        current_summary.creator = request.user.username
+                        try:
+                            current_summary.save()
+                        except Exception as e:
+                            repeat_dic['error'].append(e)
+
+                    # 首先生成统计表，然后更新累加统计表在每个循环。然后查询出二次维修，则检索二次维修当天统计表，进而更新二次维修数量。
+                    # 当天的二次维修检查数量，是发现二次维修数量，而不是当天的二次维修数量，是客户在当天的不满意数量。
+                    # 循环当前天的订单数据，根据当前天的sn查询出前三十天的二次维修问题。
+                    for order in current_update_orders:
+                        if not order.machine_sn or not re.match("^[0-9].+", str(order.machine_sn)):
+                            try:
+                                order.order_status = 3
+                                order.save()
+                                repeat_dic['successful'] += 1
+                                continue
+                            except Exception as e:
+                                repeat_dic['error'].append(e)
+                                repeat_dic['false'] += 1
+                                continue
+                        result_checked = maintenance_checked.filter(machine_sn=order.machine_sn, repeat_tag=0)
+                        if result_checked.exists():
+
+                            order.found_tag = True
+                            order.order_status = 2
+                            found_order = result_checked[0]
+                            found_order.repeat_tag = 1
+                            found_order.order_status = 2
+                            find_found = FindAndFound()
+                            find_found.find = order
+                            find_found.found = found_order
+                            find_found.creator = request.user.username
+                            found_history_summary = MaintenanceSummary.objects.filter(finish_date=found_order.finish_date)[0]
+                            found_history_summary.repeat_today += 1
+                            current_summary.repeat_found += 1
+
+                            try:
+                                order.save()
+                                found_order.save()
+                                find_found.save()
+                                current_summary.save()
+                                found_history_summary.save()
+                                repeat_dic['successful'] += 1
+                                repeat_dic['tag_successful'] += 1
+                            except Exception as e:
+                                repeat_dic['error'].append(e)
+                                repeat_dic['false'] += 1
+
                         else:
-                            if order.city.name in special_city:
-                                break
-                            _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district:
-                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                if len(_q_district_again) == 1:
-                                    if _q_district_again.exists():
-                                        order.district = _q_district_again[0]
-                                        order.city = order.district.city
-                                        break
-                            else:
-                                order.district = _q_district[0]
-                                break
-                if not order.city:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
+                            try:
+                                order.order_status = 3
+                                order.save()
+                                repeat_dic['successful'] += 1
+                            except Exception as e:
+                                repeat_dic['error'].append(e)
+                                repeat_dic['false'] += 1
 
-                if order.province != order.city.province:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if order.city.name not in special_city and not order.district:
-                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
-                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 2
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
+                    # 对数据进行汇总，累加到repeat_dic_total的字典里面
+                    data['successful'] += repeat_dic['successful']
+                    data['false'] += repeat_dic['false']
+                    data['tag_successful'] = repeat_dic['tag_successful']
+                    if repeat_dic['error']:
+                        data['error'].append(repeat_dic['error'])
 
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
-                for field in order_fields:
-                    setattr(order, field, getattr(obj, field, None))
+                    current_date = current_date + datetime.timedelta(days=1)
 
-                try:
-                    order.department = request.user.department
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                order_detail = MOGoods()
-                detail_fields = ["goods_name", "goods_id", "quantity"]
-                for detail_field in detail_fields:
-                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
-                try:
-                    order_detail.memorandum = obj.buyer_remark
-                    order_detail.manual_order = order
-                    order_detail.creator = request.user.username
-                    order_detail.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                obj.submit_user = request.user.username
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.process_tag = 1
-                obj.save()
+
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["success"] = n
@@ -2188,16 +2142,15 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Maintenance.objects.none()
-        queryset = Maintenance.objects.all().order_by("-id")
+        queryset = Maintenance.objects.filter(order_status=2).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 1
+        params["order_status"] = 2
         f = MaintenanceFilter(params)
         serializer = MaintenanceSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2205,14 +2158,14 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
+        params["order_status"] = 2
         params["company"] = self.request.user.company
         if all_select_tag:
             handle_list = MaintenanceFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = Maintenance.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = Maintenance.objects.filter(id__in=order_ids, order_status=2)
             else:
                 handle_list = []
         return handle_list
@@ -2230,155 +2183,19 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                                '白沙黎族自治县', '中山市', '东莞市']
-                if obj.erp_order_id:
-                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
-                    if _q_repeat_order.exists():
-                        order = _q_repeat_order[0]
-                        if order.order_status == 0:
-                            order.order_status = 1
-                        elif order.order_status == 1:
-                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
-                            if _q_goods_name.exists():
-                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 4
-                                obj.save()
-                                continue
-                        else:
-                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
-                            n -= 1
-                            obj.mistake_tag = 4
-                            obj.save()
-                            continue
-                    else:
-                        order = ManualOrder()
-                else:
-                    order =  ManualOrder()
-                    _prefix = "BO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                order.order_category = 3
-                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
-                seg_list = jieba.lcut(address)
-                num = 0
-                for words in seg_list:
-                    num += 1
-                    if not order.province:
-                        _q_province = Province.objects.filter(name__contains=words)
-                        if len(_q_province) == 1:
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                            else:
-                                order.province = _q_province[0]
-                    if not order.city:
-                        _q_city = City.objects.filter(name__contains=words)
-                        if len(_q_city) == 1:
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if num < 3 and not order.province:
-                                        order.province = order.city.province
-                            else:
-                                order.city = _q_city[0]
-                                if num < 3 and not order.province:
-                                    order.province = order.city.province
-                    if not order.district:
-                        if not order.city:
-                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if len(_q_district_direct) == 1:
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
-                        else:
-                            if order.city.name in special_city:
-                                break
-                            _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district:
-                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                if len(_q_district_again) == 1:
-                                    if _q_district_again.exists():
-                                        order.district = _q_district_again[0]
-                                        order.city = order.district.city
-                                        break
-                            else:
-                                order.district = _q_district[0]
-                                break
-                if not order.city:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-
-                if order.province != order.city.province:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if order.city.name not in special_city and not order.district:
-                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
-                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 2
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
-
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
-                for field in order_fields:
-                    setattr(order, field, getattr(obj, field, None))
-
+                if not obj.found_tag:
+                    if obj.repeat_tag == 1:
+                        data["error"].append("%s二次维修未操作不可以审核" % obj.id)
+                        n -= 1
+                        continue
                 try:
-                    order.department = request.user.department
-                    order.creator = request.user.username
-                    order.save()
+                    obj.order_status = 3
+                    obj.save()
                 except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
+                    data["error"].append("%s保修单保存出错: %s" % (obj.id, e))
                     n -= 1
-                    obj.mistake_tag = 5
                     obj.save()
                     continue
-                order_detail = MOGoods()
-                detail_fields = ["goods_name", "goods_id", "quantity"]
-                for detail_field in detail_fields:
-                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
-                try:
-                    order_detail.memorandum = obj.buyer_remark
-                    order_detail.manual_order = order
-                    order_detail.creator = request.user.username
-                    order_detail.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                obj.submit_user = request.user.username
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.process_tag = 1
-                obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["success"] = n
@@ -3026,11 +2843,9 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 1
         f = MaintenanceSummaryFilter(params)
         serializer = MaintenanceSummarySerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -3038,14 +2853,12 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
-        params["company"] = self.request.user.company
         if all_select_tag:
             handle_list = MaintenanceSummaryFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = MaintenanceSummary.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = MaintenanceSummary.objects.filter(id__in=order_ids)
             else:
                 handle_list = []
         return handle_list
@@ -3057,165 +2870,20 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
         if n:
             for obj in check_list:
-                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                                '白沙黎族自治县', '中山市', '东莞市']
-                if obj.erp_order_id:
-                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
-                    if _q_repeat_order.exists():
-                        order = _q_repeat_order[0]
-                        if order.order_status == 0:
-                            order.order_status = 1
-                        elif order.order_status == 1:
-                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
-                            if _q_goods_name.exists():
-                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 4
-                                obj.save()
-                                continue
-                        else:
-                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
-                            n -= 1
-                            obj.mistake_tag = 4
-                            obj.save()
-                            continue
-                    else:
-                        order = ManualOrder()
-                else:
-                    order =  ManualOrder()
-                    _prefix = "BO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                order.order_category = 3
-                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
-                seg_list = jieba.lcut(address)
-                num = 0
-                for words in seg_list:
-                    num += 1
-                    if not order.province:
-                        _q_province = Province.objects.filter(name__contains=words)
-                        if len(_q_province) == 1:
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                            else:
-                                order.province = _q_province[0]
-                    if not order.city:
-                        _q_city = City.objects.filter(name__contains=words)
-                        if len(_q_city) == 1:
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if num < 3 and not order.province:
-                                        order.province = order.city.province
-                            else:
-                                order.city = _q_city[0]
-                                if num < 3 and not order.province:
-                                    order.province = order.city.province
-                    if not order.district:
-                        if not order.city:
-                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if len(_q_district_direct) == 1:
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
-                        else:
-                            if order.city.name in special_city:
-                                break
-                            _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district:
-                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                if len(_q_district_again) == 1:
-                                    if _q_district_again.exists():
-                                        order.district = _q_district_again[0]
-                                        order.city = order.district.city
-                                        break
-                            else:
-                                order.district = _q_district[0]
-                                break
-                if not order.city:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-
-                if order.province != order.city.province:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if order.city.name not in special_city and not order.district:
-                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
-                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 2
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
-
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
-                for field in order_fields:
-                    setattr(order, field, getattr(obj, field, None))
-
-                try:
-                    order.department = request.user.department
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                order_detail = MOGoods()
-                detail_fields = ["goods_name", "goods_id", "quantity"]
-                for detail_field in detail_fields:
-                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
-                try:
-                    order_detail.memorandum = obj.buyer_remark
-                    order_detail.manual_order = order
-                    order_detail.creator = request.user.username
-                    order_detail.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                obj.submit_user = request.user.username
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.process_tag = 1
+                current_data = Maintenance.objects.filter(finish_date=obj.finish_date)
+                obj.repeat_found = current_data.filter(found_tag=True).count()
+                obj.repeat_today = current_data.filter(repeat_tag__in=[1, 2, 3, 4]).count()
+                obj.creator = request.user.username
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
-        data["false"] = len(check_list) - n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)

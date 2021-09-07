@@ -87,9 +87,12 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
 
 
 class MaintenanceSerializer(serializers.ModelSerializer):
-
+    handle_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="审核时间", help_text="审核时间")
+    ori_create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="原始创建时间",
+                                                help_text="原始创建时间")
+    finish_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="完成时间", help_text="完成时间")
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    update_timdate_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = Maintenance

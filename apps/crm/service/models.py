@@ -70,15 +70,15 @@ class OriMaintenance(models.Model):
     sender_name = models.CharField(max_length=100, null=True, blank=True, verbose_name='寄件客户姓名', help_text='寄件客户姓名')
     sender_mobile = models.CharField(max_length=50, null=True, blank=True, verbose_name='寄件客户手机', help_text='寄件客户手机')
     sender_area = models.CharField(max_length=50, null=True, blank=True, verbose_name='寄件客户省市县', help_text='寄件客户省市县')
-    sender_address = models.CharField(max_length=200, verbose_name='寄件客户地址', help_text='寄件客户地址')
+    sender_address = models.CharField(max_length=200, null=True, blank=True, verbose_name='寄件客户地址', help_text='寄件客户地址')
     send_logistics_company = models.CharField(max_length=50, null=True, blank=True, verbose_name='收件物流公司', help_text='收件物流公司')
-    send_logistics_no = models.CharField(max_length=50, verbose_name='收件物流单号', help_text='收件物流单号')
+    send_logistics_no = models.CharField(max_length=50, null=True, blank=True, verbose_name='收件物流单号', help_text='收件物流单号')
     send_memory = models.CharField(max_length=200, null=True, blank=True, verbose_name='收件备注', help_text='收件备注')
     return_name = models.CharField(max_length=50, null=True, blank=True, verbose_name='寄回客户姓名', help_text='寄回客户姓名')
     return_mobile = models.CharField(max_length=50, null=True, blank=True, verbose_name='寄回客户手机', help_text='寄回客户手机')
     return_area = models.CharField(max_length=50, null=True, blank=True, verbose_name='寄回省市区', help_text='寄回省市区')
     return_address = models.CharField(max_length=200, null=True, blank=True, verbose_name='寄回地址', help_text='寄回地址')
-    return_logistics_company = models.CharField(max_length=50, verbose_name='寄件指定物流公司', help_text='寄件指定物流公司')
+    return_logistics_company = models.CharField(max_length=50, null=True, blank=True, verbose_name='寄件指定物流公司', help_text='寄件指定物流公司')
     return_logistics_no = models.CharField(max_length=50, null=True, blank=True, verbose_name='寄件物流单号', help_text='寄件物流单号')
     return_memory = models.CharField(max_length=200, null=True, blank=True, verbose_name='寄件备注', help_text='寄件备注')
     goods_id = models.CharField(max_length=60, verbose_name='保修货品商家编码', help_text='保修货品商家编码')
@@ -144,7 +144,7 @@ class Maintenance(models.Model):
     warehouse = models.CharField(max_length=50, verbose_name='收发仓库', help_text='收发仓库')
     maintenance_type = models.CharField(max_length=50, verbose_name='保修类型', help_text='保修类型')
     fault_type = models.CharField(max_length=50, verbose_name='故障类型', help_text='故障类型')
-    machine_sn = models.CharField(null=True, blank=True, max_length=50, verbose_name='序列号', help_text='序列号')
+    machine_sn = models.CharField(null=True, blank=True, db_index=True, max_length=50, verbose_name='序列号', help_text='序列号')
     appraisal = models.CharField(max_length=200, verbose_name='保修结束语', help_text='保修结束语')
     description = models.CharField(max_length=500, verbose_name='故障描述', help_text='故障描述')
 
@@ -164,12 +164,14 @@ class Maintenance(models.Model):
     completer = models.CharField(null=True, blank=True, max_length=50, verbose_name='处理登记人', help_text='处理登记人')
     finish_time = models.DateTimeField(verbose_name='保修完成时间', help_text='保修完成时间')
 
-    finish_date = models.DateField(verbose_name='保修完成日期', help_text='保修完成日期')
+    finish_date = models.DateField(db_index=True, verbose_name='保修完成日期', help_text='保修完成日期')
     finish_month = models.CharField(max_length=50, verbose_name='保修完成月度', help_text='保修完成月度')
     finish_year = models.CharField(max_length=50, verbose_name='保修完成年度', help_text='保修完成年度')
 
-    repeat_tag = models.SmallIntegerField(choices=REPEAT_TAG_STATUS, default=0, verbose_name='重复维修标记', help_text='重复维修标记')
-    order_status = models.SmallIntegerField(default=1, choices=ODER_STATUS, verbose_name='单据状态', help_text='单据状态')
+    memo = models.CharField(null=True, blank=True, max_length=230, verbose_name='判责说明', help_text='判责说明')
+
+    repeat_tag = models.SmallIntegerField(choices=REPEAT_TAG_STATUS, default=0, db_index=True, verbose_name='重复维修标记', help_text='重复维修标记')
+    order_status = models.SmallIntegerField(default=1, choices=ODER_STATUS, db_index=True, verbose_name='单据状态', help_text='单据状态')
     found_tag = models.BooleanField(default=False, verbose_name="发现二次维修", help_text="发现二次维修")
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -207,7 +209,7 @@ class FindAndFound(models.Model):
 
 
 class MaintenanceSummary(models.Model):
-    finish_time = models.DateField(verbose_name='保修完成日期', help_text='保修完成日期')
+    finish_date = models.DateField(db_index=True, verbose_name='保修完成日期', help_text='保修完成日期')
     order_count = models.IntegerField(default=0, verbose_name='完成保修数量', help_text='完成保修数量')
     repeat_found = models.IntegerField(default=0, verbose_name='当天发现30天二次维修量', help_text='当天发现30天二次维修量')
     repeat_today = models.IntegerField(default=0, verbose_name='当天二次维修量', help_text='当天二次维修量')
@@ -223,7 +225,7 @@ class MaintenanceSummary(models.Model):
         db_table = 'crm_maintenance_summary'
 
     def __str__(self):
-        return str(self.finish_time)
+        return str(self.finish_date)
 
 
 

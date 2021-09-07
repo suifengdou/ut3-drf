@@ -31,6 +31,9 @@ class OriMaintenanceFilter(django_filters.FilterSet):
 
 class MaintenanceFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
+    handle_time = django_filters.DateTimeFromToRangeFilter()
+    ori_create_time = django_filters.DateTimeFromToRangeFilter()
+    finish_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
     repeat_tag__in = NumberInFilter(field_name="repeat_tag", lookup_expr="in")
