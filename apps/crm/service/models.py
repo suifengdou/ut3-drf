@@ -43,6 +43,15 @@ class OriMaintenance(models.Model):
         (4, 'UT无此店铺'),
         (5, 'UT此型号整机未创建'),
         (6, 'UT系统无此店铺'),
+        (7, '递交到保修单错乱'),
+    )
+    MARK_LIST = (
+        (0, '正常'),
+        (1, '配件缺货'),
+        (2, '快递异常'),
+        (3, '客户沟通'),
+        (4, '特殊情况'),
+        (5, '其他情况'),
     )
 
     order_id = models.CharField(max_length=50, db_index=True, unique=True, verbose_name='保修单号', help_text='保修单号')
@@ -92,6 +101,8 @@ class OriMaintenance(models.Model):
     process_tag = models.SmallIntegerField(choices=PROCESS_LIST, default=0, db_index=True, verbose_name='处理标签', help_text='处理标签')
     towork_status = models.SmallIntegerField(choices=ODER_STATUS, default=1, db_index=True, verbose_name='递交状态', help_text='递交状态')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, db_index=True, verbose_name='错误标签', help_text='错误标签')
+    mark_name = models.SmallIntegerField(choices=MARK_LIST, default=0, db_index=True, verbose_name="标记名称", help_text="标记名称")
+    mark_memo = models.CharField(null=True, blank=True, max_length=230, verbose_name='异常备注', help_text='异常备注')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')

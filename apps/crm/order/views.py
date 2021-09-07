@@ -90,7 +90,7 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -125,7 +125,7 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -135,7 +135,7 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -207,7 +207,7 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -217,7 +217,7 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -225,7 +225,7 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -449,7 +449,7 @@ class BMSOrderSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -467,7 +467,7 @@ class BMSOrderSubmitViewset(viewsets.ModelViewSet):
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -477,7 +477,7 @@ class BMSOrderSubmitViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -485,7 +485,7 @@ class BMSOrderSubmitViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -690,7 +690,7 @@ class OrderSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -730,7 +730,7 @@ class OrderSubmitViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -740,7 +740,7 @@ class OrderSubmitViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -748,7 +748,7 @@ class OrderSubmitViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)

@@ -204,7 +204,7 @@ class PrestoreSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -221,7 +221,7 @@ class PrestoreSubmitViewset(viewsets.ModelViewSet):
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -231,7 +231,7 @@ class PrestoreSubmitViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -239,7 +239,7 @@ class PrestoreSubmitViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -307,7 +307,7 @@ class PrestoreCheckViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -358,7 +358,7 @@ class PrestoreCheckViewset(viewsets.ModelViewSet):
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -368,7 +368,7 @@ class PrestoreCheckViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -385,7 +385,7 @@ class PrestoreCheckViewset(viewsets.ModelViewSet):
                     order.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(reject_list) - n
         return Response(data)
 

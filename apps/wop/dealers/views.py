@@ -79,7 +79,7 @@ class DWOSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -97,7 +97,7 @@ class DWOSubmitViewset(viewsets.ModelViewSet):
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -107,7 +107,7 @@ class DWOSubmitViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -115,7 +115,7 @@ class DWOSubmitViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -179,7 +179,7 @@ class DWOHandleViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -214,7 +214,7 @@ class DWOHandleViewset(viewsets.ModelViewSet):
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -224,7 +224,7 @@ class DWOHandleViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -232,7 +232,7 @@ class DWOHandleViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=1)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -303,7 +303,7 @@ class DWOCheckViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -331,7 +331,7 @@ class DWOCheckViewset(viewsets.ModelViewSet):
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -342,7 +342,7 @@ class DWOCheckViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -351,7 +351,7 @@ class DWOCheckViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=1, memo=confirm_content)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -360,7 +360,7 @@ class DWOCheckViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -368,7 +368,7 @@ class DWOCheckViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -435,7 +435,7 @@ class DWOConfirmViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -452,7 +452,7 @@ class DWOConfirmViewset(viewsets.ModelViewSet):
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -464,7 +464,7 @@ class DWOConfirmViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -472,7 +472,7 @@ class DWOConfirmViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=1)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -481,7 +481,7 @@ class DWOConfirmViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -489,7 +489,7 @@ class DWOConfirmViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=3)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 

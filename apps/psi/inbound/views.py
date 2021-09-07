@@ -84,7 +84,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -215,7 +215,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -226,7 +226,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -234,7 +234,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=8)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -244,7 +244,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -252,7 +252,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=9)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -262,7 +262,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -270,7 +270,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=10)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -280,7 +280,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -288,7 +288,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -297,7 +297,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -305,7 +305,7 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -481,7 +481,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -575,7 +575,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -586,7 +586,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -594,7 +594,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=8)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -604,7 +604,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -612,7 +612,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=9)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -622,7 +622,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -630,7 +630,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=10)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -640,7 +640,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -648,7 +648,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -657,7 +657,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -665,7 +665,7 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -732,7 +732,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -760,7 +760,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -771,7 +771,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -779,7 +779,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=8)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -789,7 +789,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -797,7 +797,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=9)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -807,7 +807,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -815,7 +815,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=10)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -825,7 +825,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -833,7 +833,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -842,7 +842,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -850,7 +850,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -917,7 +917,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1011,7 +1011,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -1022,7 +1022,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1030,7 +1030,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=8)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1040,7 +1040,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1048,7 +1048,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=9)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1058,7 +1058,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1066,7 +1066,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=10)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1076,7 +1076,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1084,7 +1084,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1093,7 +1093,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1101,7 +1101,7 @@ class InboundManageViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -1168,7 +1168,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1262,7 +1262,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -1273,7 +1273,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1281,7 +1281,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=8)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1291,7 +1291,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1299,7 +1299,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=9)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1309,7 +1309,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1317,7 +1317,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=10)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1327,7 +1327,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1335,7 +1335,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1344,7 +1344,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1352,7 +1352,7 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -1419,7 +1419,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1513,7 +1513,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -1524,7 +1524,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1532,7 +1532,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=8)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1542,7 +1542,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1550,7 +1550,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=9)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1560,7 +1560,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1568,7 +1568,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=10)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1578,7 +1578,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1586,7 +1586,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1595,7 +1595,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1603,7 +1603,7 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 
@@ -1670,7 +1670,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1764,7 +1764,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
 
@@ -1775,7 +1775,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1783,7 +1783,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=8)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1793,7 +1793,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1801,7 +1801,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=9)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1811,7 +1811,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1819,7 +1819,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=10)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1829,7 +1829,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1837,7 +1837,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
             check_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1846,7 +1846,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
         data = {
-            "success": 0,
+            "successful": 0,
             "false": 0,
             "error": []
         }
@@ -1854,7 +1854,7 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
             reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["success"] = n
+        data["successful"] = n
         return Response(data)
 
 

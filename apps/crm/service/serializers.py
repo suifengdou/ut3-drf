@@ -236,8 +236,15 @@ class FindAndFoundSerializer(serializers.ModelSerializer):
     def get_find(self, instance):
         try:
             ret = {
-                "id": instance.shop.id,
-                "name": instance.shop.name,
+                "finish_date": instance.find.finish_date,
+                "id": instance.find.id,
+                "shop": instance.find.shop.name,
+                "goods_name": instance.find.goods_name.name,
+                "name": instance.find.order_id,
+                "warehouse": instance.find.warehouse,
+                "machine_sn": instance.find.machine_sn,
+                "appraisal": instance.find.appraisal,
+                "description": instance.find.description,
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -246,8 +253,30 @@ class FindAndFoundSerializer(serializers.ModelSerializer):
     def get_found(self, instance):
         try:
             ret = {
-                "id": instance.province.id,
-                "name": instance.province.name,
+                "finish_date": instance.find.finish_date,
+                "id": instance.found.id,
+                "name": instance.found.order_id,
+                "appraisal": instance.found.appraisal,
+                "description": instance.found.description,
+                "goods_name": instance.found.goods_name.name,
+                "memo": instance.found.memo
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_repeat_tag(self, instance):
+        repeat_list = {
+            0: "正常",
+            1: "未处理",
+            2: "产品",
+            3: "维修",
+            4: "其他",
+        }
+        try:
+            ret = {
+                "id": instance.found.repeat_tag,
+                "name": repeat_list.get(instance.found.repeat_tag, None)
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -257,6 +286,7 @@ class FindAndFoundSerializer(serializers.ModelSerializer):
         ret = super(FindAndFoundSerializer, self).to_representation(instance)
         ret["find"] = self.get_find(instance)
         ret["found"] = self.get_found(instance)
+        ret["repeat_tag"] = self.get_repeat_tag(instance)
         return ret
 
     def create(self, validated_data):
