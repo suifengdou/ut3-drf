@@ -50,8 +50,10 @@ class OriMaintenance(models.Model):
         (1, '配件缺货'),
         (2, '快递异常'),
         (3, '客户沟通'),
-        (4, '特殊情况'),
-        (5, '其他情况'),
+        (4, '检测无故'),
+        (5, 'OA拆机'),
+        (6, '无效保修'),
+        (7, '其他情况'),
     )
 
     order_id = models.CharField(max_length=50, db_index=True, unique=True, verbose_name='保修单号', help_text='保修单号')

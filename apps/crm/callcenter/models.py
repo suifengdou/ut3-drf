@@ -41,7 +41,7 @@ class OriCallLog(models.Model):
     ring_time = models.CharField(max_length=60, verbose_name='振铃时长', help_text='振铃时长')
     muted_duration = models.CharField(max_length=60, verbose_name='静音时长', help_text='静音时长')
     muted_time = models.CharField(max_length=60, verbose_name='静音次数', help_text='静音次数')
-    calling_num = models.CharField(max_length=60, verbose_name='主叫号码', help_text='主叫号码')
+    calling_num = models.CharField(max_length=60, db_index=True, verbose_name='主叫号码', help_text='主叫号码')
     called_num = models.CharField(max_length=60, verbose_name='被叫号码', help_text='被叫号码')
     attribution = models.CharField(max_length=60, verbose_name='号码归属地', help_text='号码归属地')
     nickname = models.CharField(max_length=60, verbose_name='用户名', help_text='用户名')
@@ -65,7 +65,7 @@ class OriCallLog(models.Model):
     shop = models.CharField(max_length=60, verbose_name='购买店铺', help_text='购买店铺')
     goods_type = models.CharField(max_length=60, verbose_name='产品型号', help_text='产品型号')
     m_sn = models.CharField(max_length=60, verbose_name='出厂序列号', help_text='出厂序列号')
-    is_order = models.CharField(max_length=60, verbose_name='是否建配件工单', help_text='是否建配件工单')
+    is_order = models.CharField(max_length=60, db_index=True, verbose_name='是否建配件工单', help_text='是否建配件工单')
     order_category = models.CharField(max_length=60, verbose_name='补寄原因', help_text='补寄原因')
     goods_details = models.CharField(max_length=200, verbose_name='配件信息', help_text='配件信息')
     broken_part = models.CharField(max_length=50, verbose_name='损坏部位', help_text='损坏部位')
@@ -75,7 +75,7 @@ class OriCallLog(models.Model):
     area = models.CharField(max_length=60, verbose_name='省市区', help_text='省市区')
     address = models.CharField(max_length=60, verbose_name='详细地址', help_text='详细地址')
 
-    order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='单据状态')
+    order_status = models.IntegerField(choices=ORDERSTATUS, default=1, db_index=True, verbose_name='单据状态')
     process_tag = models.IntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表')
 
@@ -89,7 +89,7 @@ class OriCallLog(models.Model):
         db_table = 'crm_call_calllog_ori'
 
     def __str__(self):
-        return self.mobile
+        return self.calling_num
 
     @classmethod
     def verify_mandatory(cls, columns_key):
@@ -180,7 +180,7 @@ class CallLog(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='关联客户', help_text='关联客户' )
     servicer = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='接待客服', help_text='接待客服')
 
-    order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='单据状态')
+    order_status = models.IntegerField(choices=ORDERSTATUS, default=1, db_index=True, verbose_name='单据状态')
     process_tag = models.IntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表')
 
@@ -195,24 +195,9 @@ class CallLog(models.Model):
         db_table = 'crm_call_calllog'
 
     def __str__(self):
-        return self.mobile
+        return self.calling_num
 
-    @classmethod
-    def verify_mandatory(cls, columns_key):
-        VERIFY_FIELD = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
-                        "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num", "called_num",
-                        "attribution", "nickname", "smartphone", "ivr", "group", "servicer", "repeated_num",
-                        "answer_status", "on_hook", "satisfaction", "call_recording", "primary_classification",
-                        "secondary_classification", "three_level_classification", "four_level_classification",
-                        "five_level_classification", "remark", "problem_status", "purchase_time", "shop",
-                        "goods_type", "m_sn", "is_order", "order_category", "goods_details", "broken_part",
-                        "description", "receiver", "mobile", "area", "address"]
 
-        for i in VERIFY_FIELD:
-            if i not in columns_key:
-                return 'verify_field error, must have mandatory field: "{}""'.format(i)
-        else:
-            return None
 
 
 

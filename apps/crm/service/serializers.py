@@ -34,7 +34,7 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
 
     def get_process_tag(self, instance):
         process_list = {
-            0: "未处理",
+            0: "无异常",
             1: "未更新到",
             2: "取件超时",
             3: "到库超时",
@@ -50,6 +50,26 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_mark_name(self, instance):
+        mark_list = {
+            0: "正常",
+            1: "配件缺货",
+            2: "快递异常",
+            3: "客户沟通",
+            4: "检测无故",
+            5: "OA拆机",
+            6: "无效保修",
+            7: "其他情况"
+        }
+        try:
+            ret = {
+                "id": instance.mark_name,
+                "name": mark_list.get(instance.mark_name, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
@@ -59,6 +79,7 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
             4: "UT无此店铺",
             5: "UT此型号整机未创建",
             6: "UT系统无此店铺",
+            7: "递交到保修单错乱",
         }
         try:
             ret = {
@@ -74,6 +95,7 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
         ret["towork_status"] = self.get_towork_status(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["mark_name"] = self.get_mark_name(instance)
         return ret
 
     def create(self, validated_data):
