@@ -3,7 +3,7 @@ import re
 import pandas as pd
 from decimal import Decimal
 import numpy as np
-
+from collections import defaultdict
 import jieba
 import jieba.posseg as pseg
 import jieba.analyse
@@ -2925,7 +2925,7 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return DialogOW.objects.none()
-        queryset = DialogOW.objects.filter(is_order="是", order_status=1).order_by("-id")
+        queryset = DialogOW.objects.filter(is_order=True, order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -3178,7 +3178,6 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
             "会话内容": "content",
             "产品型号": "goods_type",
             "购买日期": "purchase_time",
-            "是否建配件工单": "is_order",
             "购买店铺": "shop",
             "省市区": "area",
             "出厂序列号": "m_sn",
@@ -3198,7 +3197,7 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
             FILTER_FIELDS = ["会话ID", "访客进入时间", "会话开始时间", "客服首次响应时长", "客服平均响应时长", "访客排队时长",
                              "会话时长", "会话终止方", "客服解决状态", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
                              "接待客服", "访客用户名", "满意度", "对话回合数", "来源终端", "会话内容", "产品型号", "购买日期",
-                             "是否建配件工单", "购买店铺", "省市区", "出厂序列号", "详细地址", "补寄原因", "配件信息", "损坏部位",
+                             "购买店铺", "省市区", "出厂序列号", "详细地址", "补寄原因", "配件信息", "损坏部位",
                              "损坏描述", "建单手机", "收件人姓名"]
 
             try:
@@ -3266,11 +3265,20 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
                             "primary_classification", "secondary_classification", "three_level_classification",
                             "four_level_classification", "five_level_classification", "servicer", "customer",
                             "satisfaction", "rounds", "source", "goods_type", "purchase_time",
-                            "is_order", "shop", "area", "m_sn", "address", "order_category", "broken_part",
+                            "shop", "area", "m_sn", "address", "order_category", "broken_part", "goods_details",
                             "description", "mobile", "receiver"]
             for field in order_fields:
                 setattr(order, field, row[field])
-
+            judgment_dic = defaultdict(list)
+            judgment_fields = ["address", "mobile", "receiver", "goods_details"]
+            for key_words in judgment_fields:
+                if str(row[key_words]) == "nan":
+                    row[key_words] = "--"
+            _pre_dic = dict([(key, row[key]) for key in judgment_fields])
+            for (key, value) in _pre_dic.items():
+                judgment_dic[value].append(key)
+            if len(judgment_dic.get("--", [])) < 2:
+                order.is_order = True
             try:
                 order.creator = request.user.username
                 order.save()
@@ -3281,6 +3289,7 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
             dialog_content = []
             dialog_contents = []
             start_tag = 0
+
             if row["content"] and row["content"] != "--":
                 contents = str(row["content"]).split("\n")
                 contents_length = len(contents)-1
@@ -3314,8 +3323,11 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
                 for dialog_content in dialog_contents:
                     dialog_detial = DialogOWDetail()
                     dialog_detial.dialog = order
-                    dialog_detial.sayer = dialog_content[0]
-                    dialog_detial.time = datetime.datetime.strptime(str(dialog_content[1]), '%Y-%m-%d %H:%M:%S')
+                    dialog_detial.sayer = dialog_content[0].strip()
+                    try:
+                        dialog_detial.time = datetime.datetime.strptime(str(dialog_content[1].strip()), '%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass
                     dialog_detial.content = dialog_content[2]
                     d_value = (dialog_detial.time - previous_time).seconds
                     dialog_detial.interval = d_value
@@ -3573,198 +3585,6 @@ class DialogOWViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def excel_import(self, request, *args, **kwargs):
-        print(request)
-        file = request.FILES.get('file', None)
-        if file:
-            data = self.handle_upload_file(request, file)
-        else:
-            data = {
-                "error": "上传文件未找到！"
-            }
-
-        return Response(data)
-
-    def handle_upload_file(self, request, _file):
-        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
-        INIT_FIELDS_DIC = {
-            "会话ID": "call_id",
-            "访客进入时间": "guest_entry_time",
-            "会话开始时间": "call_start_time",
-            "客服首次响应时长": "first_response_time",
-            "客服平均响应时长": "average_response_time",
-            "访客排队时长": "queue_time",
-            "会话时长": "call_duration",
-            "会话终止方": "ender",
-            "客服解决状态": "call_status",
-            "一级分类": "primary_classification",
-            "二级分类": "secondary_classification",
-            "三级分类": "three_level_classification",
-            "四级分类": "four_level_classification",
-            "五级分类": "five_level_classification",
-            "接待客服": "servicer",
-            "访客用户名": "customer",
-            "满意度": "satisfaction",
-            "对话回合数": "rounds",
-            "来源终端": "source",
-            "会话内容": "content",
-            "产品型号": "goods_type",
-            "购买日期": "purchase_time",
-            "是否建配件工单": "is_order",
-            "购买店铺": "shop",
-            "省市区": "area",
-            "出厂序列号": "m_sn",
-            "详细地址": "address",
-            "补寄原因": "order_category",
-            "配件信息": "goods_details",
-            "损坏部位": "broken_part",
-            "损坏描述": "description",
-            "建单手机": "mobile",
-            "收件人姓名": "receiver"
-        }
-
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
-        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
-            df = pd.read_excel(_file, sheet_name=0, dtype=str)
-
-            FILTER_FIELDS = ["会话ID", "访客进入时间", "会话开始时间", "客服首次响应时长", "客服平均响应时长", "访客排队时长",
-                             "会话时长", "会话终止方", "客服解决状态", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
-                             "接待客服", "访客用户名", "满意度", "对话回合数", "来源终端", "会话内容", "产品型号", "购买日期",
-                             "是否建配件工单", "购买店铺", "省市区", "出厂序列号", "详细地址", "补寄原因", "配件信息", "损坏部位",
-                             "损坏描述", "建单手机", "收件人姓名"]
-
-            try:
-                df = df[FILTER_FIELDS]
-            except Exception as e:
-                report_dic["error"].append("必要字段不全或者错误")
-                return report_dic
-
-            # 获取表头，对表头进行转换成数据库字段名
-            columns_key = df.columns.values.tolist()
-            for i in range(len(columns_key)):
-                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
-                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
-
-            # 验证一下必要的核心字段是否存在
-            _ret_verify_field = DialogOW.verify_mandatory(columns_key)
-            if _ret_verify_field is not None:
-                return _ret_verify_field
-
-            # 更改一下DataFrame的表名称
-            columns_key_ori = df.columns.values.tolist()
-            ret_columns_key = dict(zip(columns_key_ori, columns_key))
-            df.rename(columns=ret_columns_key, inplace=True)
-
-            # 更改一下DataFrame的表名称
-            num_end = 0
-            step = 300
-            step_num = int(len(df) / step) + 2
-            i = 1
-            while i < step_num:
-                num_start = num_end
-                num_end = step * i
-                intermediate_df = df.iloc[num_start: num_end]
-
-                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
-                _ret_list = intermediate_df.to_dict(orient='records')
-                intermediate_report_dic = self.save_resources(request, _ret_list)
-                for k, v in intermediate_report_dic.items():
-                    if k == "error":
-                        if intermediate_report_dic["error"]:
-                            report_dic[k].append(v)
-                    else:
-                        report_dic[k] += v
-                i += 1
-            return report_dic
-
-        else:
-            report_dic["error"].append('只支持excel文件格式！')
-            return report_dic
-
-    @staticmethod
-    def save_resources(request, resource):
-        # 设置初始报告
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
-
-        for row in resource:
-            _q_dialog = DialogOW.objects.filter(call_id=row["call_id"])
-            if _q_dialog.exists():
-                report_dic["discard"] += 1
-                report_dic["error"].append("%s提交重复" % row["call_id"])
-                continue
-            order = DialogOW()
-            order_fields = ["call_id", "guest_entry_time", "call_start_time", "first_response_time",
-                            "average_response_time", "queue_time", "call_duration", "ender", "call_status",
-                            "primary_classification", "secondary_classification", "three_level_classification",
-                            "four_level_classification", "five_level_classification", "servicer", "customer",
-                            "satisfaction", "rounds", "source", "goods_type", "purchase_time",
-                            "is_order", "shop", "area", "m_sn", "address", "order_category", "broken_part",
-                            "description", "mobile", "receiver"]
-            for field in order_fields:
-                setattr(order, field, row[field])
-
-            try:
-                order.creator = request.user.username
-                order.save()
-                report_dic["successful"] += 1
-            except Exception as e:
-                report_dic['error'].append("%s 保存出错" % row["call_id"])
-                report_dic["false"] += 1
-            dialog_content = []
-            dialog_contents = []
-            start_tag = 0
-            if row["content"] and row["content"] != "--":
-                contents = str(row["content"]).split("\n")
-                contents_length = len(contents)-1
-                i = 0
-                for content in contents:
-                    i += 1
-                    if order.servicer[:3] in content[:3] or order.customer[:3] in content[:3]:
-                        if len(dialog_content) == 3:
-                            dialog_contents.append(dialog_content)
-                            dialog_content = []
-                        else:
-                            dialog_content = []
-                        start_tag = 0
-                        content = content.split("    ")
-                        if len(content) == 2:
-                            dialog_content.append(content[0])
-                            dialog_content.append(re.sub("[年月]", "-", content[1]).replace("日", ""))
-                            start_tag = 1
-                            continue
-                    if start_tag:
-                        if dialog_content:
-                            dialog_content.append(content)
-                    if i == contents_length:
-                        if len(dialog_content) == 3:
-                            dialog_contents.append(dialog_content)
-                            dialog_content = []
-                        else:
-                            dialog_content = []
-                previous_time = datetime.datetime.strptime(str(dialog_contents[0][1]), '%Y-%m-%d %H:%M:%S')
-
-                for dialog_content in dialog_contents:
-                    dialog_detial = DialogOWDetail()
-                    dialog_detial.dialog = order
-                    dialog_detial.sayer = dialog_content[0]
-                    dialog_detial.time = datetime.datetime.strptime(str(dialog_content[1]), '%Y-%m-%d %H:%M:%S')
-                    dialog_detial.content = dialog_content[2]
-                    d_value = (dialog_detial.time - previous_time).seconds
-                    dialog_detial.interval = d_value
-                    previous_time = datetime.datetime.strptime(str(dialog_content[1]), '%Y-%m-%d %H:%M:%S')
-                    if dialog_content[0] == order.customer:
-                        dialog_detial.d_status = 1
-                    else:
-                        dialog_detial.d_status = 0
-                    try:
-                        dialog_detial.creator = request.user.username
-                        dialog_detial.save()
-                    except Exception as e:
-                        report_dic['error'].append(e)
-
-        return report_dic
 
 
 class DialogOWDetailSubmitViewset(viewsets.ModelViewSet):

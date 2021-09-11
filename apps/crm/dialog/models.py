@@ -131,6 +131,9 @@ class DialogTBDetail(models.Model):
 
     index_num = models.IntegerField(default=0, verbose_name='对话负面指数')
 
+    erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='原始单号',
+                                    help_text='原始单号')
+
     category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='内容类型')
     extract_tag = models.BooleanField(default=False, verbose_name='是否提取订单', db_index=True)
     sensitive_tag = models.BooleanField(default=False, verbose_name='是否过滤')
@@ -228,6 +231,8 @@ class DialogJDDetail(models.Model):
     index_num = models.IntegerField(default=0, verbose_name='对话负面指数')
 
     category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='内容类型')
+    erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='原始单号',
+                                    help_text='原始单号')
 
     extract_tag = models.SmallIntegerField(choices=LOGICAL_DECISION, default=0, verbose_name='是否提取订单', db_index=True)
     sensitive_tag = models.SmallIntegerField(choices=LOGICAL_DECISION, default=0, verbose_name='是否过滤')
@@ -276,31 +281,35 @@ class DialogOW(models.Model):
     call_duration = models.CharField(max_length=60, verbose_name='会话时长', help_text='会话时长')
     ender = models.CharField(max_length=60, verbose_name='会话终止方', help_text='会话终止方')
     call_status = models.CharField(max_length=60, verbose_name='客服解决状态', help_text='客服解决状态')
-    primary_classification = models.CharField(max_length=60, verbose_name='一级分类', help_text='一级分类')
-    secondary_classification = models.CharField(max_length=60, verbose_name='二级分类', help_text='二级分类')
-    three_level_classification = models.CharField(max_length=60, verbose_name='三级分类', help_text='三级分类')
+    primary_classification = models.CharField(max_length=60, null=True, blank=True, verbose_name='一级分类', help_text='一级分类')
+    secondary_classification = models.CharField(max_length=60, null=True, blank=True, verbose_name='二级分类', help_text='二级分类')
+    three_level_classification = models.CharField(max_length=60, null=True, blank=True, verbose_name='三级分类', help_text='三级分类')
     four_level_classification = models.CharField(null=True, blank=True, max_length=60, verbose_name='四级分类', help_text='四级分类')
     five_level_classification = models.CharField(null=True, blank=True, max_length=60, verbose_name='五级分类', help_text='五级分类')
-    servicer = models.CharField(max_length=60, verbose_name='接待客服', help_text='接待客服')
-    customer = models.CharField(max_length=60, verbose_name='访客用户名', help_text='访客用户名')
-    satisfaction = models.CharField(max_length=60, verbose_name='满意度', help_text='满意度')
-    rounds = models.CharField(max_length=60, verbose_name='对话回合数', help_text='对话回合数')
-    source = models.CharField(max_length=60, verbose_name='来源终端', help_text='来源终端')
-    goods_type = models.CharField(max_length=60, verbose_name='产品型号', help_text='产品型号')
-    purchase_time = models.CharField(max_length=60, verbose_name='购买日期', help_text='购买日期')
-    is_order = models.CharField(max_length=60, verbose_name='是否建配件工单', help_text='是否建配件工单')
-    shop = models.CharField(max_length=60, verbose_name='购买店铺', help_text='购买店铺')
-    area = models.CharField(max_length=60, verbose_name='省市区', help_text='省市区')
-    m_sn = models.CharField(max_length=60, verbose_name='出厂序列号', help_text='出厂序列号')
-    address = models.CharField(max_length=60, verbose_name='详细地址', help_text='详细地址')
-    order_category = models.CharField(max_length=60, verbose_name='补寄原因', help_text='补寄原因')
-    goods_details = models.CharField(max_length=200, verbose_name='配件信息', help_text='配件信息')
-    broken_part = models.CharField(max_length=50, verbose_name='损坏部位', help_text='损坏部位')
-    description = models.CharField(max_length=200, verbose_name='损坏描述', help_text='损坏描述')
-    mobile = models.CharField(max_length=60, verbose_name='建单手机', help_text='建单手机')
-    receiver = models.CharField(max_length=60, verbose_name='收件人姓名', help_text='收件人姓名')
+    servicer = models.CharField(max_length=60, null=True, blank=True, verbose_name='接待客服', help_text='接待客服')
+    customer = models.CharField(max_length=60, null=True, blank=True, verbose_name='访客用户名', help_text='访客用户名')
+    satisfaction = models.CharField(max_length=60, null=True, blank=True, verbose_name='满意度', help_text='满意度')
+    rounds = models.CharField(max_length=60, null=True, blank=True, verbose_name='对话回合数', help_text='对话回合数')
+    source = models.CharField(max_length=60, null=True, blank=True, verbose_name='来源终端', help_text='来源终端')
+    goods_type = models.CharField(max_length=60, null=True, blank=True, verbose_name='产品型号', help_text='产品型号')
+    purchase_time = models.CharField(max_length=60, null=True, blank=True, verbose_name='购买日期', help_text='购买日期')
 
+    shop = models.CharField(max_length=60, null=True, blank=True, verbose_name='购买店铺', help_text='购买店铺')
+    area = models.CharField(max_length=60, null=True, blank=True, verbose_name='省市区', help_text='省市区')
+    m_sn = models.CharField(max_length=60, null=True, blank=True, verbose_name='出厂序列号', help_text='出厂序列号')
+    address = models.CharField(max_length=60, null=True, blank=True, verbose_name='详细地址', help_text='详细地址')
+    order_category = models.CharField(max_length=60, null=True, blank=True, verbose_name='补寄原因', help_text='补寄原因')
+    goods_details = models.CharField(max_length=200, null=True, blank=True, verbose_name='配件信息', help_text='配件信息')
+    broken_part = models.CharField(max_length=50, null=True, blank=True, verbose_name='损坏部位', help_text='损坏部位')
+    description = models.CharField(max_length=200, null=True, blank=True, verbose_name='损坏描述', help_text='损坏描述')
+    mobile = models.CharField(max_length=60, null=True, blank=True, verbose_name='建单手机', help_text='建单手机')
+    receiver = models.CharField(max_length=60, null=True, blank=True, verbose_name='收件人姓名', help_text='收件人姓名')
+
+    is_order = models.BooleanField(default=False, db_index=True, verbose_name='是否建配件工单', help_text='是否建配件工单')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态', db_index=True)
+
+    erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='原始单号',
+                                    help_text='原始单号')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -321,7 +330,7 @@ class DialogOW(models.Model):
                         "average_response_time", "queue_time", "call_duration", "ender", "call_status",
                         "primary_classification", "secondary_classification", "three_level_classification",
                         "four_level_classification", "five_level_classification", "servicer", "customer",
-                        "satisfaction", "rounds", "source", "content", "goods_type", "purchase_time", "is_order",
+                        "satisfaction", "rounds", "source", "content", "goods_type", "purchase_time",
                         "shop", "area", "m_sn", "address", "order_category", "goods_details", "broken_part",
                         "description", "mobile", "receiver"]
 
