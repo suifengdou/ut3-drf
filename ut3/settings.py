@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'apps.crm.service.apps.ServiceConfig',
     'apps.dfc.manualorder.apps.ManualorderConfig',
     'apps.dfc.batchtable.apps.BatchtableConfig',
+    'apps.dfc.compensation.apps.CompensationConfig',
     'apps.psi.inventory.apps.InventoryConfig',
     'apps.psi.outbound.apps.OutboundConfig',
     'apps.psi.inbound.apps.InboundConfig'

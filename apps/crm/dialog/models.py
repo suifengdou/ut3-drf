@@ -94,7 +94,8 @@ class DialogTB(models.Model):
 class DialogTBDetail(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
-        (1, '正常'),
+        (1, '未过滤'),
+        (2, '未质检'),
     )
 
     STATUS = (
@@ -104,16 +105,16 @@ class DialogTBDetail(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '对话格式错误'),
-        (2, '重复导入'),
-        (3, '差价货品名称错误'),
-        (4, '差价金额填写错误'),
-        (5, '差价收款人姓名错误'),
-        (6, '差价支付宝名称错误'),
-        (7, '差价订单号错误'),
-        (8, '差价核算公式格式错误'),
-        (9, '差价核算公式计算错误'),
-        (10, '差价核算结果与上报差价不等'),
+        (1, '重复递交，已存在输出单据'),
+        (2, '对话的格式错误'),
+        (3, '对话的客户信息格式错误'),
+        (4, '地址无法提取省市区'),
+        (5, '地址是集运仓'),
+        (6, '输出单保存出错'),
+        (7, 'UT中不存在此货品'),
+        (8, '货品错误（无乘号）'),
+        (9, '明细中货品重复'),
+        (10, '货品输出单保存出错'),
         (11, '差价类型只能是1或者3'),
     )
     CATEGORY = (
@@ -134,10 +135,10 @@ class DialogTBDetail(models.Model):
     erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='原始单号',
                                     help_text='原始单号')
 
-    category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='内容类型')
+    category = models.SmallIntegerField(choices=CATEGORY, default=0, db_index=True, verbose_name='内容类型')
     extract_tag = models.BooleanField(default=False, verbose_name='是否提取订单', db_index=True)
     sensitive_tag = models.BooleanField(default=False, verbose_name='是否过滤')
-    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态', db_index=True)
+    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, db_index=True, verbose_name='单据状态')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -213,8 +214,17 @@ class DialogJDDetail(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '对话格式错误'),
-        (2, '重复导入'),
+        (1, '重复建单'),
+        (2, '无补寄原因'),
+        (3, '非赠品必填项错误'),
+        (4, '店铺错误'),
+        (5, '手机错误'),
+        (6, '地址无法提取省市区'),
+        (7, '地址是集运仓'),
+        (8, '输出单保存出错'),
+        (9, '货品错误'),
+        (10, '明细中货品重复'),
+        (11, '输出单保存出错'),
     )
     CATEGORY = (
         (0, '常规'),
@@ -230,7 +240,7 @@ class DialogJDDetail(models.Model):
 
     index_num = models.IntegerField(default=0, verbose_name='对话负面指数')
 
-    category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='内容类型')
+    category = models.SmallIntegerField(choices=CATEGORY, default=0, db_index=True, verbose_name='内容类型')
     erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='原始单号',
                                     help_text='原始单号')
 
@@ -267,6 +277,20 @@ class DialogJDWords(models.Model):
 
 
 class DialogOW(models.Model):
+    MISTAKE_LIST = (
+        (0, '正常'),
+        (1, '重复建单'),
+        (2, '无补寄原因'),
+        (3, '非赠品必填项错误'),
+        (4, '店铺错误'),
+        (5, '手机错误'),
+        (6, '地址无法提取省市区'),
+        (7, '地址是集运仓'),
+        (8, '输出单保存出错'),
+        (9, '货品错误'),
+        (10, '明细中货品重复'),
+        (11, '输出单保存出错'),
+    )
 
     ORDER_STATUS = (
         (0, '被取消'),
@@ -307,7 +331,7 @@ class DialogOW(models.Model):
 
     is_order = models.BooleanField(default=False, db_index=True, verbose_name='是否建配件工单', help_text='是否建配件工单')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态', db_index=True)
-
+    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表')
     erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='原始单号',
                                     help_text='原始单号')
 

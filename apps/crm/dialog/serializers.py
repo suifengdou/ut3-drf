@@ -9,7 +9,7 @@ from .models import Servicer, DialogTB, DialogTBDetail, DialogTBWords, DialogJD,
 class ServicerSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", label="更新时间", help_text="更新时间")
+    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = Servicer
@@ -112,8 +112,9 @@ class DialogTBDetailSerializer(serializers.ModelSerializer):
 
     def get_d_status(self, instance):
         status_list = {
-            0: "客服",
-            1: "顾客"
+            0: "顾客",
+            1: "客服",
+            2: "机器人"
         }
         try:
             ret = {
@@ -236,8 +237,9 @@ class DialogJDDetailSerializer(serializers.ModelSerializer):
 
     def get_d_status(self, instance):
         status_list = {
-            0: "客服",
-            1: "顾客"
+            0: "顾客",
+            1: "客服",
+            2: "机器人"
         }
         try:
             ret = {
@@ -263,11 +265,52 @@ class DialogJDDetailSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "重复建单",
+            2: "无补寄原因",
+            3: "非赠品必填项错误",
+            4: "店铺错误",
+            5: "手机错误",
+            6: "地址无法提取省市区",
+            7: "地址是集运仓",
+            8: "输出单保存出错",
+            9: "货品错误",
+            10: "明细中货品重复",
+            11: "输出单保存出错"
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_order_status(self, instance):
+        status_list = {
+            0: "被取消",
+            1: "未过滤",
+            2: "未质检"
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": status_list.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(DialogJDDetailSerializer, self).to_representation(instance)
         ret["dialog"] = self.get_dialog(instance)
         ret["d_status"] = self.get_d_status(instance)
         ret["category"] = self.get_category(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):
@@ -323,8 +366,33 @@ class DialogOWSerializer(serializers.ModelSerializer):
         model = DialogOW
         fields = "__all__"
 
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "重复建单",
+            2: "无补寄原因",
+            3: "非赠品必填项错误",
+            4: "店铺错误",
+            5: "手机错误",
+            6: "地址无法提取省市区",
+            7: "地址是集运仓",
+            8: "输出单保存出错",
+            9: "货品错误",
+            10: "明细中货品重复、部件和描述",
+            11: "输出单保存出错"
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(DialogOWSerializer, self).to_representation(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
         return ret
 
     def create(self, validated_data):

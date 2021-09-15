@@ -42,6 +42,7 @@ from apps.crm.callcenter.router import callcenter_router
 from apps.crm.service.router import service_router
 from apps.dfc.manualorder.router import manualorder_router
 from apps.dfc.batchtable.router import batchdata_router
+from apps.dfc.compensation.router import compensation_router
 from apps.psi.inventory.router import inventory_router
 from apps.psi.outbound.router import outbound_router
 from apps.psi.inbound.router import inbound_router
@@ -67,6 +68,7 @@ route.registry.extend(callcenter_router.registry)
 route.registry.extend(service_router.registry)
 route.registry.extend(customer_router.registry)
 route.registry.extend(manualorder_router.registry)
+route.registry.extend(compensation_router.registry)
 route.registry.extend(batchdata_router.registry)
 route.registry.extend(inbound_router.registry)
 route.registry.extend(inventory_router.registry)

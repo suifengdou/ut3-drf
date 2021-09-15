@@ -62,7 +62,7 @@ class ManualOrder(models.Model):
     broken_part = models.CharField(null=True, blank=True, max_length=50, verbose_name='故障部位')
     description = models.CharField(null=True, blank=True, max_length=200, verbose_name='故障描述')
     department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, verbose_name='部门')
-
+    servicer = models.CharField(null=True, blank=True, max_length=50, verbose_name='客服')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误标签')
     process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
 
@@ -78,17 +78,6 @@ class ManualOrder(models.Model):
 
     def __str__(self):
         return self.order_id
-
-    @classmethod
-    def verify_mandatory(cls, columns_key):
-        VERIFY_FIELD = ["shop", "nickname", "receiver", "address", "mobile", "goods_id", "quantity",
-                        "order_category", "m_sn", "broken_part", "description"]
-
-        for i in VERIFY_FIELD:
-            if i not in columns_key:
-                return 'verify_field error, must have mandatory field: "{}""'.format(i)
-        else:
-            return None
 
 
 class MOGoods(models.Model):

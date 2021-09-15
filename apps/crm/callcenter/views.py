@@ -125,6 +125,7 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                     serial_number = str(datetime.date.today()).replace("-", "")
                     obj.erp_order_id = serial_number + _prefix + str(obj.id)
                     order.erp_order_id = obj.erp_order_id
+                    obj.save()
                 order.order_category = category_list.get(obj.order_category, None)
                 if not order.order_category:
                     data["error"].append("%s 无补寄原因" % obj.id)
@@ -160,44 +161,50 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                 address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", order.address)
                 seg_list = jieba.lcut(address)
                 num = 0
+                address_index = 0
                 for words in seg_list:
-                    num += 1
                     if not order.province:
                         _q_province = Province.objects.filter(name__contains=words)
-                        if len(_q_province) == 1:
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                            else:
-                                order.province = _q_province[0]
+                        if not _q_province.exists():
+                            _q_province_again = Province.objects.filter(name__contains=words[:2])
+                            if _q_province_again.exists():
+                                order.province = _q_province_again[0]
+                                if not address_index:
+                                    address_index = num
+                        else:
+                            order.province = _q_province[0]
+                            if not address_index:
+                                address_index = num
                     if not order.city:
                         _q_city = City.objects.filter(name__contains=words)
-                        if len(_q_city) == 1:
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if num < 3 and not order.province:
-                                        order.province = order.city.province
-                            else:
-                                order.city = _q_city[0]
-                                if num < 3 and not order.province:
+                        if not _q_city.exists():
+                            _q_city_again = City.objects.filter(name__contains=words[:2])
+                            if _q_city_again.exists():
+                                order.city = _q_city_again[0]
+                                if not address_index:
+                                    address_index = num
+                                if not order.province:
                                     order.province = order.city.province
+                        elif len(_q_city) == 1:
+                            order.city = _q_city[0]
+                            if not address_index:
+                                address_index = num
+                            if not order.province:
+                                order.province = order.city.province
                     if not order.district:
                         if not order.city:
                             _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if len(_q_district_direct) == 1:
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
+                            if _q_district_direct.exists():
+                                order.district = _q_district_direct[0]
+                                order.city = order.district.city
+                                break
                         else:
                             if order.city.name in special_city:
                                 break
                             _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district:
-                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
+                            if not _q_district.exists():
+                                _q_district_again = District.objects.filter(province=order.province,
+                                                                            name__contains=words)
                                 if len(_q_district_again) == 1:
                                     if _q_district_again.exists():
                                         order.district = _q_district_again[0]
@@ -206,6 +213,7 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                             else:
                                 order.district = _q_district[0]
                                 break
+                    num += 1
                 if not order.city:
                     data["error"].append("%s 地址无法提取省市区" % obj.id)
                     n -= 1
