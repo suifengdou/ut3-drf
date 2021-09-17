@@ -140,11 +140,40 @@ class DialogTBDetailSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "重复递交，已存在输出单据",
+            2: "对话的格式错误",
+            3: "对话的客户信息格式错误",
+            4: "地址无法提取省市区",
+            5: "地址是集运仓",
+            6: "输出单保存出错",
+            7: "UT中不存在此货品",
+            8: "货品错误",
+            9: "明细中货品重复",
+            10: "货品输出单保存出错",
+            11: "差价必要信息缺失",
+            12: "差价类型只能填1或3",
+            13: "差价验算公式错误",
+            14: "差价验算结果和差价不等",
+            15: "保存差价申请单出错"
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(DialogTBDetailSerializer, self).to_representation(instance)
         ret["dialog"] = self.get_dialog(instance)
         ret["d_status"] = self.get_d_status(instance)
         ret["category"] = self.get_category(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
         return ret
 
     def create(self, validated_data):

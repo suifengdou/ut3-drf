@@ -9,6 +9,7 @@ from django.db import models
 from django.db.models import Sum, Avg, Min, Max, F
 import django.utils.timezone as timezone
 from apps.base.shop.models import Shop
+from apps.base.goods.models import Goods
 from apps.crm.dialog.models import DialogTBDetail
 
 
@@ -41,9 +42,9 @@ class Compensation(models.Model):
         (2, '特殊订单'),
         (3, '重置订单'),
     )
-    servicer = models.CharField(max_length=50, verbose_name='客服', help_text='创建时间')
-
-    goods_name = models.CharField(max_length=50, verbose_name='货品名称', help_text='货品名称')
+    servicer = models.CharField(max_length=50, verbose_name='客服', help_text='客服')
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺', help_text='店铺')
+    goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品', help_text='货品')
     nickname = models.CharField(max_length=50, db_index=True, verbose_name='用户网名', help_text='用户网名')
     order_id = models.CharField(max_length=60, db_index=True, verbose_name='订单号', help_text='订单号')
     order_category = models.SmallIntegerField(choices=ORDER_CATEGORY, default=1, verbose_name='单据类型', help_text='单据类型')
@@ -55,7 +56,7 @@ class Compensation(models.Model):
     checking = models.FloatField(verbose_name='验算结果', help_text='验算结果')
     memorandum = models.TextField(blank=True, null=True, verbose_name='备注', help_text='备注')
 
-    erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='订单号', help_text='订单号')
+    erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='UT订单号', help_text='UT订单号')
     order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='单据状态', help_text='单据状态')
     process_tag = models.IntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签', help_text='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表', help_text='错误列表')
@@ -121,7 +122,7 @@ class BatchCompensation(models.Model):
     class Meta:
         verbose_name = 'DFC-补偿汇总单'
         verbose_name_plural = verbose_name
-        db_table = 'dfc_batchcompensation'
+        db_table = 'dfc_compensation_batch'
 
     def __str__(self):
         return str(self.order_id)
@@ -153,7 +154,7 @@ class BCDetail(models.Model):
     batch_order = models.ForeignKey(BatchCompensation, on_delete=models.CASCADE, verbose_name='批次单')
     compensation_order = models.OneToOneField(Compensation, on_delete=models.CASCADE, verbose_name='补偿单')
     servicer = models.CharField(max_length=50, verbose_name='客服')
-    goods_name = models.TextField(verbose_name='货品名称')
+    goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='店铺', help_text='店铺')
     nickname = models.CharField(max_length=50, verbose_name='用户网名', db_index=True)
     order_id = models.TextField(verbose_name='订单号')
     compensation = models.FloatField(verbose_name='补偿金额')
@@ -180,7 +181,7 @@ class BCDetail(models.Model):
     class Meta:
         verbose_name = 'DFC-补偿汇总明细单'
         verbose_name_plural = verbose_name
-        db_table = 'dfc_batchcompensation_detail'
+        db_table = 'dfc_compensation_batch_detail'
 
     def __str__(self):
         return str(self.batch_order)

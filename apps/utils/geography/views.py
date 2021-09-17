@@ -8,7 +8,11 @@ from .serializers import NationalitySerializer, ProvinceSerializer, CitySerializ
 from .filters import NationalityFilter, ProvinceFilter, CityFilter, DistrictFilter
 from .models import Nationality, Province, City, District
 from ut3.permissions import Permissions
-
+import jieba
+import jieba.posseg as pseg
+import jieba.analyse
+from collections import defaultdict
+from functools import reduce
 
 class NationalityViewset(viewsets.ModelViewSet):
     """
@@ -59,6 +63,7 @@ class ProvinceViewset(viewsets.ModelViewSet):
         "GET": ['geography.view_nationality']
     }
 
+
 class CityViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -107,3 +112,6 @@ class DistrictViewset(viewsets.ModelViewSet):
     extra_perm_map = {
         "GET": ['geography.view_district']
     }
+
+
+

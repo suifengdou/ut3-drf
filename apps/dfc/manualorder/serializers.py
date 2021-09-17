@@ -98,18 +98,16 @@ class ManualOrderSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "货品名称错误",
-            2: "14天内重复订单",
-            3: "14天外重复订单",
+            1: "重复递交",
+            2: "售后配件需要补全sn、部件和描述",
+            3: "无部门",
             4: "省市区出错",
-            5: "输出单保存出错",
-            6: "同名订单",
-            7: "手机错误",
-            8: "集运仓地址",
-            9: "无店铺",
-            10: "售后配件需要补全sn、部件和描述",
-            11: "无部门",
-            12: "缺货",
+            5: "手机错误",
+            6: "无店铺",
+            7: "集运仓地址",
+            8: "14天内重复",
+            9: "14天外重复",
+            10: "输出单保存出错"
         }
         try:
             ret = {
@@ -125,6 +123,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             0: "未处理",
             1: "已处理",
             2: "驳回",
+            3: "特殊订单",
         }
         try:
             ret = {
@@ -262,6 +261,10 @@ class MOGoodsSerializer(serializers.ModelSerializer):
         ret["order_status"] = self.get_order_status(instance)
         ret["manual_order"] = self.get_manual_order(instance)
         return ret
+
+    def to_internal_value(self, data):
+        print("111")
+        return super(MOGoodsSerializer, self).to_internal_value(data)
 
     def create(self, validated_data):
         validated_data["creator"] = self.context["request"].user.username

@@ -30,6 +30,8 @@ from apps.utils.geography.models import Province, City, District
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
+from apps.dfc.compensation.models import Compensation
+from apps.utils.geography.tools import PickOutAdress
 
 
 class ServicerViewset(viewsets.ModelViewSet):
@@ -547,51 +549,48 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
-        _rt_talk_title_new = ['order_category', 'servicer', 'goods_details', 'order_id', 'cs_information']
-        _rt_talk_title_total = ['order_category', 'servicer', 'goods_details', 'order_id', 'cs_information',
+        _rt_talk_title_new = ['order_category', 'goods_details', 'order_id', 'cs_information']
+        _rt_talk_title_total = ['order_category', 'goods_details', 'order_id', 'cs_information',
                                 'm_sn', 'broken_part', 'description']
         shop_list = Shop.objects.filter(platform_id__in=[1, 2])
         rt_shop_list = {}
         for shop in shop_list:
             rt_shop_list[shop.name] = shop
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
+        jieba.load_userdict("apps/dfc/manualorder/addr_key_words.txt")
         if n:
             for obj in check_list:
-
-                if obj.erp_order_id:
-                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
-                    if _q_repeat_order.exists():
-                        order = _q_repeat_order[0]
-                        if order.order_status in [0, 1]:
-                            order.order_status = 1
-                        else:
-                            data["error"].append("%s 重复递交，已存在输出单据" % obj.id)
-                            n -= 1
-                            obj.mistake_tag = 1
-                            obj.save()
-                            continue
-                    else:
-                        order = ManualOrder()
-                        order.erp_order_id = obj.erp_order_id
-                else:
-                    order = ManualOrder()
-                    _prefix = "TBDO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                    order.erp_order_id = obj.erp_order_id
-                    obj.save()
-                order.shop = rt_shop_list.get(obj.dialog.shop, None)
-                order.nickname = obj.dialog.customer
                 _check_talk_data = re.match(r'·客服.*', str(obj.content), re.DOTALL)
                 if _check_talk_data:
+                    if obj.erp_order_id:
+                        _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                        if _q_repeat_order.exists():
+                            order = _q_repeat_order[0]
+                            if order.order_status in [0, 1]:
+                                order.order_status = 1
+                            else:
+                                data["error"].append("%s 重复递交，已存在输出单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 1
+                                obj.save()
+                                continue
+                        else:
+                            order = ManualOrder()
+                            order.erp_order_id = obj.erp_order_id
+                    else:
+                        order = ManualOrder()
+                        _prefix = "TBDO"
+                        serial_number = str(datetime.date.today()).replace("-", "")
+                        obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                        order.erp_order_id = obj.erp_order_id
+                        obj.save()
+                    order.shop = rt_shop_list.get(obj.dialog.shop, None)
+                    order.nickname = obj.dialog.customer
+                    order.servicer = obj.sayer
                     _rt_talk_data = re.findall(r'{((?:.|\n)*?)}', str(obj.content), re.DOTALL)
 
-                    if len(_rt_talk_data) == 5:
+                    if len(_rt_talk_data) == 4:
                         _rt_talk_dic = dict(zip(_rt_talk_title_new, _rt_talk_data))
-                    elif len(_rt_talk_data) == 8:
+                    elif len(_rt_talk_data) == 7:
                         _rt_talk_dic = dict(zip(_rt_talk_title_total, _rt_talk_data))
                     else:
                         n -= 1
@@ -600,7 +599,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 2
                         obj.save()
                         continue
-                    step_one_fields = ["order_category", "servicer", "order_id", "m_sn", "broken_part", "description"]
+                    step_one_fields = ["order_category", "order_id", "m_sn", "broken_part", "description"]
                     for key_word in step_one_fields:
                         setattr(order, key_word, _rt_talk_dic.get(key_word, None))
 
@@ -614,6 +613,13 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                         continue
                     elif len(all_info_element) == 3:
                         receiver, mobile, rt_address = all_info_element
+                        if len(rt_address) < 8:
+                            n -= 1
+                            data['false'] += 1
+                            data['error'].append("%s 对话的客户信息格式不对，导致无法提取" % obj.id)
+                            obj.mistake_tag = 3
+                            obj.save()
+                            continue
                     else:
                         receiver, mobile, *address = all_info_element
                         rt_address = reduce(lambda x, y: str(x) + str(y), address)
@@ -623,60 +629,13 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
 
                     rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", rt_address)
                     seg_list = jieba.lcut(rt_address)
-                    num = 0
-                    address_index = 0
-                    for words in seg_list:
-                        if not order.province:
-                            _q_province = Province.objects.filter(name__contains=words)
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                                    if not address_index:
-                                        address_index = num
-                            else:
-                                order.province = _q_province[0]
-                                if not address_index:
-                                    address_index = num
-                        if not order.city:
-                            _q_city = City.objects.filter(name__contains=words)
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if not address_index:
-                                        address_index = num
-                                    if not order.province:
-                                        order.province = order.city.province
-                            elif len(_q_city) == 1:
-                                order.city = _q_city[0]
-                                if not address_index:
-                                    address_index = num
-                                if not order.province:
-                                    order.province = order.city.province
-                        if not order.district:
-                            if not order.city:
-                                _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
-                            else:
-                                if order.city.name in special_city:
-                                    break
-                                _q_district = District.objects.filter(city=order.city, name__contains=words)
-                                if not _q_district.exists():
-                                    _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                    if len(_q_district_again) == 1:
-                                        if _q_district_again.exists():
-                                            order.district = _q_district_again[0]
-                                            order.city = order.district.city
-                                            break
-                                else:
-                                    order.district = _q_district[0]
-                                    break
-                        num += 1
-                    order.address = reduce(lambda x, y: str(x) + str(y), seg_list[address_index:])
+
+                    _spilt_addr = PickOutAdress(seg_list)
+                    _rt_addr = _spilt_addr.pickout_addr()
+                    cs_info_fields = ["province", "city", "district", "address"]
+                    for key_word in cs_info_fields:
+                        setattr(order, key_word, _rt_addr.get(key_word, None))
+
                     if not order.city:
                         data["error"].append("%s 地址无法提取省市区" % obj.id)
                         n -= 1
@@ -696,8 +655,6 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 4
                         obj.save()
                         continue
-                    if order.city.name not in special_city and not order.district:
-                        order.district = District.objects.filter(city=order.city, name="其他区")[0]
 
                     if '集运' in str(order.address):
                         data["error"].append("%s 地址是集运仓" % obj.id)
@@ -720,7 +677,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                     if len(goods_details) == 1:
                         if "*" in _rt_talk_dic["goods_details"]:
                             goods_details = _rt_talk_dic["goods_details"].split("*")
-                            _q_goods = Goods.objects.filter(name=goods_details[0])
+                            _q_goods = Goods.objects.filter(name=str(goods_details[0]).strip())
                             if _q_goods.exists():
                                 goods_list.append([_q_goods[0], str(goods_details[1]).strip()])
                             else:
@@ -783,6 +740,107 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             obj.mistake_tag = 10
                             obj.save()
                             continue
+
+                _check_talk_data = re.match(r'·您好.*', str(obj.content), re.DOTALL)
+                if _check_talk_data:
+                    compensation_data = re.findall(r'{((?:.|\n)*?)}', str(obj.content), re.DOTALL)
+                    if len(compensation_data) == 7:
+                        if obj.erp_order_id:
+                            _q_repeat_order = Compensation.objects.filter(erp_order_id=obj.erp_order_id)
+                            if _q_repeat_order.exists():
+                                order = _q_repeat_order[0]
+                                if order.order_status in [0, 1]:
+                                    order.order_status = 1
+                                else:
+                                    data["error"].append("%s 重复递交，已存在输出单据" % obj.id)
+                                    n -= 1
+                                    obj.mistake_tag = 1
+                                    obj.save()
+                                    continue
+                            else:
+                                order = Compensation()
+                                order.erp_order_id = obj.erp_order_id
+                        else:
+                            order = Compensation()
+                            _prefix = "TBDC"
+                            serial_number = str(datetime.date.today()).replace("-", "")
+                            obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                            order.erp_order_id = obj.erp_order_id
+                            obj.save()
+                        for i in range(len(compensation_data)):
+                            compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)', '', str(compensation_data[i]))
+                        compensation_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "formula", "order_category"]
+                        compensation_dic = dict(zip(compensation_fields, compensation_data))
+                        for key, value in compensation_dic.items():
+                            if not value:
+                                n -= 1
+                                data["false"] += 1
+                                data["error"].append("%s 缺失必须要信息 %s" % (obj.id, key))
+                                obj.mistake_tag = 11
+                                obj.save()
+                                continue
+                        _q_goods = Goods.objects.filter(name__icontains=compensation_dic["goods_name"])
+                        if _q_goods.exists():
+                            compensation_dic["goods_name"] = _q_goods[0]
+                        else:
+                            n -= 1
+                            data["false"] += 1
+                            obj.mistake_tag = 8
+                            obj.save()
+                            continue
+                        if compensation_dic["order_category"] not in ['1', '3']:
+                            n -= 1
+                            data["false"] += 1
+                            obj.mistake_tag = 8
+                            obj.save()
+                            continue
+                        try:
+                            elements = str(compensation_dic["formula"]).split("-", 1)
+                            order.actual_receipts = float(elements[0])
+                            transition = str(elements[1]).split("=")
+                            order.receivable = float(transition[0])
+                            order.checking = float(transition[1])
+                            check_result = round(order.actual_receipts - order.receivable, 2)
+                            if order.checking != check_result:
+                                n -= 1
+                                data["false"] += 1
+                                obj.mistake_tag = 13
+                                obj.save()
+                                continue
+                            if float(compensation_dic["compensation"]) != check_result:
+                                n -= 1
+                                data["false"] += 1
+                                obj.mistake_tag = 14
+                                obj.save()
+                                continue
+                        except Exception as e:
+                            n -= 1
+                            data["false"] += 1
+                            obj.mistake_tag = 13
+                            obj.save()
+                            continue
+                        order_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "order_category"]
+
+                        for key_word in order_fields:
+                            setattr(order, key_word, compensation_dic.get(key_word, None))
+                        order.servicer = obj.sayer
+                        order.shop = rt_shop_list.get(obj.dialog.shop, None)
+                        order.nickname = obj.dialog.customer
+                        try:
+                            order.create = request.user.username
+                            order.save()
+                        except Exception as e:
+                            data['false'] += 1
+                            data['error'].append("保存差价申请单出错")
+                            obj.mistake_tag = 15
+                            obj.save()
+                            continue
+                    else:
+                        data['false'] += 1
+                        data['error'].append("对话的格式不对，导致无法提取")
+                        obj.mistake_tag = 1
+                        obj.save()
+                        continue
 
                 obj.order_status = 2
                 obj.mistake_tag = 0
@@ -862,7 +920,7 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = DialogTBDetail.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = DialogTBDetail.objects.filter(id__in=order_ids, creator=self.request.user.username, order_status=1)
             else:
                 handle_list = []
         return handle_list
@@ -878,156 +936,305 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        _rt_talk_title_new = ['order_category', 'goods_details', 'order_id', 'cs_information']
+        _rt_talk_title_total = ['order_category', 'goods_details', 'order_id', 'cs_information',
+                                'm_sn', 'broken_part', 'description']
+        shop_list = Shop.objects.filter(platform_id__in=[1, 2])
+        rt_shop_list = {}
+        for shop in shop_list:
+            rt_shop_list[shop.name] = shop
+        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                        '白沙黎族自治县', '中山市', '东莞市']
         if n:
             for obj in check_list:
-                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                                '白沙黎族自治县', '中山市', '东莞市']
-                if obj.erp_order_id:
-                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
-                    if _q_repeat_order.exists():
-                        order = _q_repeat_order[0]
-                        if order.order_status == 0:
-                            order.order_status = 1
-                        elif order.order_status == 1:
-                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
-                            if _q_goods_name.exists():
-                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                _check_talk_data = re.match(r'·客服.*', str(obj.content), re.DOTALL)
+                if _check_talk_data:
+                    if obj.erp_order_id:
+                        _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                        if _q_repeat_order.exists():
+                            order = _q_repeat_order[0]
+                            if order.order_status in [0, 1]:
+                                order.order_status = 1
+                            else:
+                                data["error"].append("%s 重复递交，已存在输出单据" % obj.id)
                                 n -= 1
-                                obj.mistake_tag = 4
+                                obj.mistake_tag = 1
                                 obj.save()
                                 continue
                         else:
-                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                            order = ManualOrder()
+                            order.erp_order_id = obj.erp_order_id
+                    else:
+                        order = ManualOrder()
+                        _prefix = "TBDO"
+                        serial_number = str(datetime.date.today()).replace("-", "")
+                        obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                        order.erp_order_id = obj.erp_order_id
+                        obj.save()
+                    order.shop = rt_shop_list.get(obj.dialog.shop, None)
+                    order.nickname = obj.dialog.customer
+                    order.servicer = obj.sayer
+                    _rt_talk_data = re.findall(r'{((?:.|\n)*?)}', str(obj.content), re.DOTALL)
+
+                    if len(_rt_talk_data) == 4:
+                        _rt_talk_dic = dict(zip(_rt_talk_title_new, _rt_talk_data))
+                    elif len(_rt_talk_data) == 7:
+                        _rt_talk_dic = dict(zip(_rt_talk_title_total, _rt_talk_data))
+                    else:
+                        n -= 1
+                        data['false'] += 1
+                        data['error'].append("%s 对话的格式不对，导致无法提取" % obj.id)
+                        obj.mistake_tag = 2
+                        obj.save()
+                        continue
+                    step_one_fields = ["order_category", "servicer", "order_id", "m_sn", "broken_part", "description"]
+                    for key_word in step_one_fields:
+                        setattr(order, key_word, _rt_talk_dic.get(key_word, None))
+
+                    all_info_element = re.split(r'(\d{11})', str(_rt_talk_dic["cs_information"]))
+                    if len(all_info_element) < 3:
+                        n -= 1
+                        data['false'] += 1
+                        data['error'].append("%s 对话的客户信息格式不对，导致无法提取" % obj.id)
+                        obj.mistake_tag = 3
+                        obj.save()
+                        continue
+                    elif len(all_info_element) == 3:
+                        receiver, mobile, rt_address = all_info_element
+                        if len(rt_address) < 8:
                             n -= 1
-                            obj.mistake_tag = 4
+                            data['false'] += 1
+                            data['error'].append("%s 对话的客户信息格式不对，导致无法提取" % obj.id)
+                            obj.mistake_tag = 3
                             obj.save()
                             continue
                     else:
-                        order = ManualOrder()
-                else:
-                    order =  ManualOrder()
-                    _prefix = "BO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                order.order_category = 3
-                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
-                seg_list = jieba.lcut(address)
-                num = 0
-                for words in seg_list:
-                    num += 1
-                    if not order.province:
-                        _q_province = Province.objects.filter(name__contains=words)
-                        if len(_q_province) == 1:
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                            else:
-                                order.province = _q_province[0]
+                        receiver, mobile, *address = all_info_element
+                        rt_address = reduce(lambda x, y: str(x) + str(y), address)
+                    receiver = re.sub("(收件人)|(联系方式)|(手机)|:|：|(收货信息)|[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", receiver)
+                    order.receiver = receiver
+                    order.mobile = mobile
+
+                    rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", rt_address)
+                    seg_list = jieba.lcut(rt_address)
+
+                    _spilt_addr = PickOutAdress(seg_list)
+                    _rt_addr = _spilt_addr.pickout_addr()
+                    cs_info_fields = ["province", "city", "district", "address"]
+                    for key_word in cs_info_fields:
+                        setattr(order, key_word, _rt_addr.get(key_word, None))
                     if not order.city:
-                        _q_city = City.objects.filter(name__contains=words)
-                        if len(_q_city) == 1:
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if num < 3 and not order.province:
-                                        order.province = order.city.province
+                        data["error"].append("%s 地址无法提取省市区" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 4
+                        obj.save()
+                        continue
+
+                    if order.province != order.city.province:
+                        data["error"].append("%s 地址无法提取省市区" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 4
+                        obj.save()
+                        continue
+                    if rt_address.find(str(order.province.name)[:2]) == -1 and rt_address.find(str(order.city.name)[:2]) == -1:
+                        data["error"].append("%s 地址无法提取省市区" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 4
+                        obj.save()
+                        continue
+                    if order.city.name not in special_city and not order.district:
+                        order.district = District.objects.filter(city=order.city, name="其他区")[0]
+
+                    if '集运' in str(order.address):
+                        data["error"].append("%s 地址是集运仓" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 5
+                        obj.save()
+                        continue
+                    try:
+                        order.department = request.user.department
+                        order.creator = request.user.username
+                        order.save()
+                    except Exception as e:
+                        data["error"].append("%s 输出单保存出错: %s" % (obj.id, e))
+                        n -= 1
+                        obj.mistake_tag = 6
+                        obj.save()
+                        continue
+                    goods_details = str(_rt_talk_dic["goods_details"]).split("+")
+                    goods_list = []
+                    if len(goods_details) == 1:
+                        if "*" in _rt_talk_dic["goods_details"]:
+                            goods_details = _rt_talk_dic["goods_details"].split("*")
+                            _q_goods = Goods.objects.filter(name=str(goods_details[0]).strip())
+                            if _q_goods.exists():
+                                goods_list.append([_q_goods[0], str(goods_details[1]).strip()])
                             else:
-                                order.city = _q_city[0]
-                                if num < 3 and not order.province:
-                                    order.province = order.city.province
-                    if not order.district:
-                        if not order.city:
-                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if len(_q_district_direct) == 1:
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
+                                data["error"].append("%s UT中不存在货品" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 7
+                                obj.save()
+                                continue
                         else:
-                            if order.city.name in special_city:
-                                break
-                            _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district:
-                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                if len(_q_district_again) == 1:
-                                    if _q_district_again.exists():
-                                        order.district = _q_district_again[0]
-                                        order.city = order.district.city
-                                        break
+                            data["error"].append("%s 货品错误（无乘号）" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 8
+                            obj.save()
+                            continue
+                    elif len(goods_details) > 1:
+                        goods_details = list(map(lambda x: x.split("*"), goods_details))
+                        goods_names = set(list(map(lambda x: x[0], goods_details)))
+                        if len(goods_names) != len(goods_details):
+                            data["error"].append("%s 明细中货品重复" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 9
+                            obj.save()
+                            continue
+                        for goods in goods_details:
+                            if len(goods) == 2:
+                                _q_goods = Goods.objects.filter(name=goods[0])
+                                if _q_goods.exists():
+                                    goods_list.append([_q_goods[0], str(goods[1]).strip()])
+                                else:
+                                    data["error"].append("%s UT中不存在此货品" % obj.id)
+                                    n -= 1
+                                    obj.mistake_tag = 7
+                                    obj.save()
+                                    continue
                             else:
-                                order.district = _q_district[0]
-                                break
-                if not order.city:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
+                                data["error"].append("%s 货品错误" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 8
+                                obj.save()
+                                continue
+                    else:
+                        data["error"].append("%s 货品错误" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 8
+                        obj.save()
+                        continue
 
-                if order.province != order.city.province:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if order.city.name not in special_city and not order.district:
-                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
-                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 2
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
+                    for goods_info in goods_list:
+                        order_detail = MOGoods()
+                        order_detail.goods_name = goods_info[0]
+                        order_detail.quantity = goods_info[1]
+                        order_detail.goods_id = goods_info[0].goods_id
+                        try:
+                            order_detail.manual_order = order
+                            order_detail.creator = request.user.username
+                            order_detail.save()
+                        except Exception as e:
+                            data["error"].append("%s 货品输出单保存出错" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 10
+                            obj.save()
+                            continue
 
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
-                for field in order_fields:
-                    setattr(order, field, getattr(obj, field, None))
+                _check_talk_data = re.match(r'·您好.*', str(obj.content), re.DOTALL)
+                if _check_talk_data:
+                    compensation_data = re.findall(r'{((?:.|\n)*?)}', str(obj.content), re.DOTALL)
+                    if len(compensation_data) == 7:
+                        if obj.erp_order_id:
+                            _q_repeat_order = Compensation.objects.filter(erp_order_id=obj.erp_order_id)
+                            if _q_repeat_order.exists():
+                                order = _q_repeat_order[0]
+                                if order.order_status in [0, 1]:
+                                    order.order_status = 1
+                                else:
+                                    data["error"].append("%s 重复递交，已存在输出单据" % obj.id)
+                                    n -= 1
+                                    obj.mistake_tag = 1
+                                    obj.save()
+                                    continue
+                            else:
+                                order = Compensation()
+                                order.erp_order_id = obj.erp_order_id
+                        else:
+                            order = Compensation()
+                            _prefix = "TBDC"
+                            serial_number = str(datetime.date.today()).replace("-", "")
+                            obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                            order.erp_order_id = obj.erp_order_id
+                            obj.save()
+                        for i in range(len(compensation_data)):
+                            compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)', '', str(compensation_data[i]))
+                        compensation_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "formula", "order_category"]
+                        compensation_dic = dict(zip(compensation_fields, compensation_data))
+                        for key, value in compensation_dic.items():
+                            if not value:
+                                n -= 1
+                                data["false"] += 1
+                                data["error"].append("%s 缺失必须要信息 %s" % (obj.id, key))
+                                obj.mistake_tag = 11
+                                obj.save()
+                                continue
+                        _q_goods = Goods.objects.filter(name__icontains=compensation_dic["goods_name"])
+                        if _q_goods.exists():
+                            compensation_dic["goods_name"] = _q_goods[0]
+                        else:
+                            n -= 1
+                            data["false"] += 1
+                            obj.mistake_tag = 8
+                            obj.save()
+                            continue
+                        if compensation_dic["order_category"] not in ['1', '3']:
+                            n -= 1
+                            data["false"] += 1
+                            obj.mistake_tag = 8
+                            obj.save()
+                            continue
+                        try:
+                            elements = str(compensation_dic["formula"]).split("-", 1)
+                            order.actual_receipts = float(elements[0])
+                            transition = str(elements[1]).split("=")
+                            order.receivable = float(transition[0])
+                            order.checking = float(transition[1])
+                            check_result = round(order.actual_receipts - order.receivable, 2)
+                            if order.checking != check_result:
+                                n -= 1
+                                data["false"] += 1
+                                obj.mistake_tag = 13
+                                obj.save()
+                                continue
+                            if float(compensation_dic["compensation"]) != check_result:
+                                n -= 1
+                                data["false"] += 1
+                                obj.mistake_tag = 14
+                                obj.save()
+                                continue
+                        except Exception as e:
+                            n -= 1
+                            data["false"] += 1
+                            obj.mistake_tag = 13
+                            obj.save()
+                            continue
+                        order_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "order_category"]
 
-                try:
-                    order.department = request.user.department
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                order_detail = MOGoods()
-                detail_fields = ["goods_name", "goods_id", "quantity"]
-                for detail_field in detail_fields:
-                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
-                try:
-                    order_detail.memorandum = obj.buyer_remark
-                    order_detail.manual_order = order
-                    order_detail.creator = request.user.username
-                    order_detail.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                obj.submit_user = request.user.username
+                        for key_word in order_fields:
+                            setattr(order, key_word, compensation_dic.get(key_word, None))
+                        order.servicer = obj.sayer
+                        order.shop = rt_shop_list.get(obj.dialog.shop, None)
+                        order.nickname = obj.dialog.customer
+                        try:
+                            order.create = request.user.username
+                            order.save()
+                        except Exception as e:
+                            data['false'] += 1
+                            data['error'].append("保存差价申请单出错")
+                            obj.mistake_tag = 15
+                            obj.save()
+                            continue
+                    else:
+                        data['false'] += 1
+                        data['error'].append("对话的格式不对，导致无法提取")
+                        obj.mistake_tag = 1
+                        obj.save()
+                        continue
+
                 obj.order_status = 2
                 obj.mistake_tag = 0
-                obj.process_tag = 1
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
@@ -1155,53 +1362,11 @@ class DialogTBDetailViewset(viewsets.ModelViewSet):
                 order.order_category = 3
                 address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
                 seg_list = jieba.lcut(address)
-                num = 0
-                for words in seg_list:
-                    num += 1
-                    if not order.province:
-                        _q_province = Province.objects.filter(name__contains=words)
-                        if len(_q_province) == 1:
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                            else:
-                                order.province = _q_province[0]
-                    if not order.city:
-                        _q_city = City.objects.filter(name__contains=words)
-                        if len(_q_city) == 1:
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if num < 3 and not order.province:
-                                        order.province = order.city.province
-                            else:
-                                order.city = _q_city[0]
-                                if num < 3 and not order.province:
-                                    order.province = order.city.province
-                    if not order.district:
-                        if not order.city:
-                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if len(_q_district_direct) == 1:
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
-                        else:
-                            if order.city.name in special_city:
-                                break
-                            _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district:
-                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                if len(_q_district_again) == 1:
-                                    if _q_district_again.exists():
-                                        order.district = _q_district_again[0]
-                                        order.city = order.district.city
-                                        break
-                            else:
-                                order.district = _q_district[0]
-                                break
+                _spilt_addr = PickOutAdress(seg_list)
+                _rt_addr = _spilt_addr.pickout_addr()
+                cs_info_fields = ["province", "city", "district", "address"]
+                for key_word in cs_info_fields:
+                    setattr(order, key_word, _rt_addr.get(key_word, None))
                 if not order.city:
                     data["error"].append("%s 地址无法提取省市区" % obj.id)
                     n -= 1
@@ -2050,8 +2215,8 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
                         '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
                         '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
                         '白沙黎族自治县', '中山市', '东莞市']
-        _rt_talk_title_new = ['order_category', 'servicer', 'goods', 'order_id', 'cs_information']
-        _rt_talk_title_total = ['order_category', 'servicer', 'goods', 'order_id', 'cs_information',
+        _rt_talk_title_new = ['order_category', 'goods_details', 'order_id', 'cs_information']
+        _rt_talk_title_total = ['order_category', 'goods_details', 'order_id', 'cs_information',
                                 'm_sn', 'broken_part', 'description']
         if n:
             for obj in collect_list:
@@ -2079,13 +2244,14 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
                     obj.save()
                 order.shop = rt_shop_list.get(obj.dialog.shop, None)
                 order.nickname = obj.dialog.customer
+                order.servicer = obj.sayer
                 _check_talk_data = re.match(r'·客服.*', str(obj.content), re.DOTALL)
                 if _check_talk_data:
                     _rt_talk_data = re.findall(r'{((?:.|\n)*?)}', str(obj.content), re.DOTALL)
 
-                    if len(_rt_talk_data) == 5:
+                    if len(_rt_talk_data) == 4:
                         _rt_talk_dic = dict(zip(_rt_talk_title_new, _rt_talk_data))
-                    elif len(_rt_talk_data) == 8:
+                    elif len(_rt_talk_data) == 7:
                         _rt_talk_dic = dict(zip(_rt_talk_title_total, _rt_talk_data))
                     else:
                         n -= 1
@@ -2094,7 +2260,7 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 2
                         obj.save()
                         continue
-                    step_one_fields = ["order_category", "servicer", "order_id", "m_sn", "broken_part", "description"]
+                    step_one_fields = ["order_category", "order_id", "m_sn", "broken_part", "description"]
                     for key_word in step_one_fields:
                         setattr(order, key_word, _rt_talk_dic.get(key_word, None))
 
@@ -2117,60 +2283,13 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
 
                     rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", rt_address)
                     seg_list = jieba.lcut(rt_address)
-                    num = 0
-                    address_index = 0
-                    for words in seg_list:
-                        if not order.province:
-                            _q_province = Province.objects.filter(name__contains=words)
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                                    if not address_index:
-                                        address_index = num
-                            else:
-                                order.province = _q_province[0]
-                                if not address_index:
-                                    address_index = num
-                        if not order.city:
-                            _q_city = City.objects.filter(name__contains=words)
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if not address_index:
-                                        address_index = num
-                                    if not order.province:
-                                        order.province = order.city.province
-                            elif len(_q_city) == 1:
-                                order.city = _q_city[0]
-                                if not address_index:
-                                    address_index = num
-                                if not order.province:
-                                    order.province = order.city.province
-                        if not order.district:
-                            if not order.city:
-                                _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
-                            else:
-                                if order.city.name in special_city:
-                                    break
-                                _q_district = District.objects.filter(city=order.city, name__contains=words)
-                                if not _q_district.exists():
-                                    _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                    if len(_q_district_again) == 1:
-                                        if _q_district_again.exists():
-                                            order.district = _q_district_again[0]
-                                            order.city = order.district.city
-                                            break
-                                else:
-                                    order.district = _q_district[0]
-                                    break
-                        num += 1
-                    order.address = reduce(lambda x, y: str(x) + str(y), seg_list[address_index:])
+
+                    _spilt_addr = PickOutAdress(seg_list)
+                    _rt_addr = _spilt_addr.pickout_addr()
+                    cs_info_fields = ["province", "city", "district", "address"]
+                    for key_word in cs_info_fields:
+                        setattr(order, key_word, _rt_addr.get(key_word, None))
+
                     if not order.city:
                         data["error"].append("%s 地址无法提取省市区" % obj.id)
                         n -= 1
@@ -2921,53 +3040,13 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
                 order.address = str(obj.area) + str(obj.address)
                 address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", order.address)
                 seg_list = jieba.lcut(address)
-                num = 0
-                for words in seg_list:
-                    num += 1
-                    if not order.province:
-                        _q_province = Province.objects.filter(name__contains=words)
-                        if len(_q_province) == 1:
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                            else:
-                                order.province = _q_province[0]
-                    if not order.city:
-                        _q_city = City.objects.filter(name__contains=words)
-                        if len(_q_city) == 1:
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if num < 3 and not order.province:
-                                        order.province = order.city.province
-                            else:
-                                order.city = _q_city[0]
-                                if num < 3 and not order.province:
-                                    order.province = order.city.province
-                    if not order.district:
-                        if not order.city:
-                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if len(_q_district_direct) == 1:
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
-                        else:
-                            if order.city.name in special_city:
-                                break
-                            _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district:
-                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                if len(_q_district_again) == 1:
-                                    if _q_district_again.exists():
-                                        order.district = _q_district_again[0]
-                                        order.city = order.district.city
-                                        break
-                            else:
-                                order.district = _q_district[0]
-                                break
+
+                _spilt_addr = PickOutAdress(seg_list)
+                _rt_addr = _spilt_addr.pickout_addr()
+                cs_info_fields = ["province", "city", "district", "address"]
+                for key_word in cs_info_fields:
+                    setattr(order, key_word, _rt_addr.get(key_word, None))
+
                 if not order.city:
                     data["error"].append("%s 地址无法提取省市区" % obj.id)
                     n -= 1

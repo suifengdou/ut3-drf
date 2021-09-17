@@ -166,7 +166,8 @@ EMAIL_FROM = "keshen@moomv.com"
 STATIC_URL = '/static/'
 
 REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    # 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.openapi.AutoSchema',
     # 新版drf schema_class默认用的是rest_framework.schemas.openapi.AutoSchema
     "PAGE_SIZE": 30,
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",

@@ -26,6 +26,7 @@ from apps.utils.geography.models import Province, City, District
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
+from apps.utils.geography.tools import PickOutAdress
 
 
 
@@ -126,10 +127,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                                '白沙黎族自治县', '中山市', '东莞市']
+
                 if obj.erp_order_id:
                     _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
                     if _q_repeat_order.exists():
@@ -160,53 +158,13 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                 order.order_category = 3
                 address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
                 seg_list = jieba.lcut(address)
-                num = 0
-                for words in seg_list:
-                    num += 1
-                    if not order.province:
-                        _q_province = Province.objects.filter(name__contains=words)
-                        if len(_q_province) == 1:
-                            if not _q_province.exists():
-                                _q_province_again = Province.objects.filter(name__contains=words[:2])
-                                if _q_province_again.exists():
-                                    order.province = _q_province_again[0]
-                            else:
-                                order.province = _q_province[0]
-                    if not order.city:
-                        _q_city = City.objects.filter(name__contains=words)
-                        if len(_q_city) == 1:
-                            if not _q_city.exists():
-                                _q_city_again = City.objects.filter(name__contains=words[:2])
-                                if _q_city_again.exists():
-                                    order.city = _q_city_again[0]
-                                    if num < 3 and not order.province:
-                                        order.province = order.city.province
-                            else:
-                                order.city = _q_city[0]
-                                if num < 3 and not order.province:
-                                    order.province = order.city.province
-                    if not order.district:
-                        if not order.city:
-                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if len(_q_district_direct) == 1:
-                                if _q_district_direct.exists():
-                                    order.district = _q_district_direct[0]
-                                    order.city = order.district.city
-                                    break
-                        else:
-                            if order.city.name in special_city:
-                                break
-                            _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district:
-                                _q_district_again = District.objects.filter(province=order.province, name__contains=words)
-                                if len(_q_district_again) == 1:
-                                    if _q_district_again.exists():
-                                        order.district = _q_district_again[0]
-                                        order.city = order.district.city
-                                        break
-                            else:
-                                order.district = _q_district[0]
-                                break
+
+                _spilt_addr = PickOutAdress(seg_list)
+                _rt_addr = _spilt_addr.pickout_addr()
+                cs_info_fields = ["province", "city", "district", "address"]
+                for key_word in cs_info_fields:
+                    setattr(order, key_word, _rt_addr.get(key_word, None))
+
                 if not order.city:
                     data["error"].append("%s 地址无法提取省市区" % obj.id)
                     n -= 1
@@ -226,8 +184,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 1
                     obj.save()
                     continue
-                if order.city.name not in special_city and not order.district:
-                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
+
                 if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
                     data["error"].append("%s 手机错误" % obj.id)
                     n -= 1

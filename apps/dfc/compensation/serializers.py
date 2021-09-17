@@ -24,6 +24,16 @@ class CompensationSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_goods_name(self, instance):
+        try:
+            ret = {
+                "id": instance.goods_name.id,
+                "name": instance.goods_name.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_order_category(self, instance):
         category = {
             1: "差价补偿",
@@ -57,8 +67,8 @@ class CompensationSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "货品名称错误",
-            2: "14天内重复订单",
+            1: "重复建单",
+            2: "特殊订单才能追加",
             3: "14天外重复订单",
             4: "省市区出错",
             5: "输出单保存出错",
@@ -98,6 +108,7 @@ class CompensationSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(CompensationSerializer, self).to_representation(instance)
         ret["shop"] = self.get_shop(instance)
+        ret["goods_name"] = self.get_goods_name(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["order_category"] = self.get_order_category(instance)

@@ -26,6 +26,7 @@ from apps.utils.geography.models import Province, City, District
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
+from apps.utils.geography.tools import PickOutAdress
 
 
 class OriCallLogSubmitViewset(viewsets.ModelViewSet):
@@ -119,6 +120,7 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                             continue
                     else:
                         order = ManualOrder()
+                        order.erp_order_id = obj.erp_order_id
                 else:
                     order =  ManualOrder()
                     _prefix = "CO"
@@ -127,6 +129,11 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                     order.erp_order_id = obj.erp_order_id
                     obj.save()
                 order.order_category = category_list.get(obj.order_category, None)
+                order.nickname = obj.receiver
+                order_fields = ["receiver", "m_sn", "broken_part", "description"]
+                for key_word in order_fields:
+                    setattr(order, key_word, getattr(obj, key_word, None))
+
                 if not order.order_category:
                     data["error"].append("%s 无补寄原因" % obj.id)
                     n -= 1
@@ -160,60 +167,13 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                 order.address = str(obj.area) + str(obj.address)
                 address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", order.address)
                 seg_list = jieba.lcut(address)
-                num = 0
-                address_index = 0
-                for words in seg_list:
-                    if not order.province:
-                        _q_province = Province.objects.filter(name__contains=words)
-                        if not _q_province.exists():
-                            _q_province_again = Province.objects.filter(name__contains=words[:2])
-                            if _q_province_again.exists():
-                                order.province = _q_province_again[0]
-                                if not address_index:
-                                    address_index = num
-                        else:
-                            order.province = _q_province[0]
-                            if not address_index:
-                                address_index = num
-                    if not order.city:
-                        _q_city = City.objects.filter(name__contains=words)
-                        if not _q_city.exists():
-                            _q_city_again = City.objects.filter(name__contains=words[:2])
-                            if _q_city_again.exists():
-                                order.city = _q_city_again[0]
-                                if not address_index:
-                                    address_index = num
-                                if not order.province:
-                                    order.province = order.city.province
-                        elif len(_q_city) == 1:
-                            order.city = _q_city[0]
-                            if not address_index:
-                                address_index = num
-                            if not order.province:
-                                order.province = order.city.province
-                    if not order.district:
-                        if not order.city:
-                            _q_district_direct = District.objects.filter(province=order.province, name__contains=words)
-                            if _q_district_direct.exists():
-                                order.district = _q_district_direct[0]
-                                order.city = order.district.city
-                                break
-                        else:
-                            if order.city.name in special_city:
-                                break
-                            _q_district = District.objects.filter(city=order.city, name__contains=words)
-                            if not _q_district.exists():
-                                _q_district_again = District.objects.filter(province=order.province,
-                                                                            name__contains=words)
-                                if len(_q_district_again) == 1:
-                                    if _q_district_again.exists():
-                                        order.district = _q_district_again[0]
-                                        order.city = order.district.city
-                                        break
-                            else:
-                                order.district = _q_district[0]
-                                break
-                    num += 1
+
+                _spilt_addr = PickOutAdress(seg_list)
+                _rt_addr = _spilt_addr.pickout_addr()
+                cs_info_fields = ["province", "city", "district", "address"]
+                for key_word in cs_info_fields:
+                    setattr(order, key_word, _rt_addr.get(key_word, None))
+
                 if not order.city:
                     data["error"].append("%s 地址无法提取省市区" % obj.id)
                     n -= 1
@@ -243,7 +203,7 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                     obj.save()
                     continue
 
-                order.nickname = obj.receiver
+
 
                 try:
                     order.department = request.user.department
@@ -258,10 +218,12 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
 
                 goods_details = str(obj.goods_details).split("+")
                 goods_list = []
+
                 if len(goods_details) == 1:
                     if "*" in obj.goods_details:
                         goods_details = obj.goods_details.split("*")
-                        _q_goods = Goods.objects.filter(name=goods_details[0])
+                        goods_name = re.sub("(整机：)|(整机:)", "", str(goods_details[0]).strip())
+                        _q_goods = Goods.objects.filter(name=goods_name)
                         if _q_goods.exists():
                             goods_list.append([_q_goods[0], str(goods_details[1]).strip()])
                         else:
@@ -277,6 +239,7 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                         obj.save()
                         continue
                 elif len(goods_details) > 1:
+                    error_tag = 0
                     goods_details = list(map(lambda x: x.split("*"), goods_details))
                     goods_names = set(list(map(lambda x: x[0], goods_details)))
                     if len(goods_names) != len(goods_details):
@@ -287,21 +250,26 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                         continue
                     for goods in goods_details:
                         if len(goods) == 2:
-                            _q_goods = Goods.objects.filter(name=goods[0])
+                            goods_name = re.sub("(整机：)|(整机:)", "", str(goods[0]).strip())
+                            _q_goods = Goods.objects.filter(name=goods_name)
                             if _q_goods.exists():
                                 goods_list.append([_q_goods[0], str(goods[1]).strip()])
                             else:
                                 data["error"].append("%s 货品错误" % obj.id)
+                                error_tag = 1
                                 n -= 1
                                 obj.mistake_tag = 9
                                 obj.save()
-                                continue
+                                break
                         else:
                             data["error"].append("%s 货品错误" % obj.id)
+                            error_tag = 1
                             n -= 1
                             obj.mistake_tag = 9
                             obj.save()
-                            continue
+                            break
+                    if error_tag:
+                        continue
                 else:
                     data["error"].append("%s 货品错误" % obj.id)
                     n -= 1
