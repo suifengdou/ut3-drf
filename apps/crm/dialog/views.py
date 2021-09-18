@@ -701,6 +701,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             obj.mistake_tag = 9
                             obj.save()
                             continue
+                        mistake_tag = 0
                         for goods in goods_details:
                             if len(goods) == 2:
                                 _q_goods = Goods.objects.filter(name=goods[0])
@@ -711,13 +712,17 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                                     n -= 1
                                     obj.mistake_tag = 7
                                     obj.save()
-                                    continue
+                                    mistake_tag = 1
+                                    break
                             else:
                                 data["error"].append("%s 货品错误" % obj.id)
                                 n -= 1
                                 obj.mistake_tag = 8
                                 obj.save()
-                                continue
+                                mistake_tag = 1
+                                break
+                        if mistake_tag:
+                            continue
                     else:
                         data["error"].append("%s 货品错误" % obj.id)
                         n -= 1
@@ -1296,22 +1301,20 @@ class DialogTBDetailViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 1
         f = DialogTBDetailFilter(params)
-        serializer = DialogTBDetailSerializer(f.qs, many=True)
+        serializer = DialogTBDetailSerializer(f.qs[:3000], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
-        params["company"] = self.request.user.company
+        params["order_status"] = 2
         if all_select_tag:
             handle_list = DialogTBDetailFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = DialogTBDetail.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = DialogTBDetail.objects.filter(id__in=order_ids, order_status=2)
             else:
                 handle_list = []
         return handle_list
@@ -1328,114 +1331,7 @@ class DialogTBDetailViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            for obj in check_list:
-                special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                                '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                                '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                                '白沙黎族自治县', '中山市', '东莞市']
-                if obj.erp_order_id:
-                    _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
-                    if _q_repeat_order.exists():
-                        order = _q_repeat_order[0]
-                        if order.order_status == 0:
-                            order.order_status = 1
-                        elif order.order_status == 1:
-                            _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
-                            if _q_goods_name.exists():
-                                data["error"].append("%s重复递交，已存在输出单据" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 4
-                                obj.save()
-                                continue
-                        else:
-                            data["error"].append("%s重复递交，已存在输出单据" % obj.id)
-                            n -= 1
-                            obj.mistake_tag = 4
-                            obj.save()
-                            continue
-                    else:
-                        order = ManualOrder()
-                else:
-                    order =  ManualOrder()
-                    _prefix = "BO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                order.order_category = 3
-                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
-                seg_list = jieba.lcut(address)
-                _spilt_addr = PickOutAdress(seg_list)
-                _rt_addr = _spilt_addr.pickout_addr()
-                cs_info_fields = ["province", "city", "district", "address"]
-                for key_word in cs_info_fields:
-                    setattr(order, key_word, _rt_addr.get(key_word, None))
-                if not order.city:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-
-                if order.province != order.city.province:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if order.city.name not in special_city and not order.district:
-                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
-                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 2
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
-
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
-                for field in order_fields:
-                    setattr(order, field, getattr(obj, field, None))
-
-                try:
-                    order.department = request.user.department
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                order_detail = MOGoods()
-                detail_fields = ["goods_name", "goods_id", "quantity"]
-                for detail_field in detail_fields:
-                    setattr(order_detail, detail_field, getattr(obj, detail_field, None))
-                try:
-                    order_detail.memorandum = obj.buyer_remark
-                    order_detail.manual_order = order
-                    order_detail.creator = request.user.username
-                    order_detail.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                obj.submit_user = request.user.username
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.process_tag = 1
-                obj.save()
+            pass
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1453,7 +1349,7 @@ class DialogTBDetailViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            reject_list.update(order_status=1)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n

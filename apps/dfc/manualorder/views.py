@@ -767,7 +767,7 @@ class ManualOrderExportManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ManualOrderExport.objects.none()
-        queryset = ManualOrderExport.objects.filter(order_status=1).order_by("id")
+        queryset = ManualOrderExport.objects.all().order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -776,8 +776,6 @@ class ManualOrderExportManageViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["company"] = user.company
-        params["order_status"] = 1
         f = ManualOrderExportFilter(params)
         serializer = ManualOrderExportSerializer(f.qs, many=True)
         return Response(serializer.data)

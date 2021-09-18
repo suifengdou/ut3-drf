@@ -36,6 +36,7 @@ class DialogTBFilter(django_filters.FilterSet):
 class DialogTBDetailFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     sayer = django_filters.CharFilter(field_name="sayer", lookup_expr='icontains')
+    dialog = django_filters.ModelChoiceFilter(to_field_name="customer", queryset=DialogTB.objects.all())
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
@@ -65,6 +66,7 @@ class DialogJDFilter(django_filters.FilterSet):
 class DialogJDDetailFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     sayer = django_filters.CharFilter(field_name="sayer", lookup_expr='icontains')
+    dialog = django_filters.ModelChoiceFilter(to_field_name="customer", queryset=DialogJD.objects.all())
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
@@ -94,6 +96,7 @@ class DialogOWFilter(django_filters.FilterSet):
 class DialogOWDetailFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     sayer = django_filters.CharFilter(field_name="sayer", lookup_expr='icontains')
+    dialog = django_filters.ModelChoiceFilter(to_field_name="customer", queryset=DialogOW.objects.all())
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:

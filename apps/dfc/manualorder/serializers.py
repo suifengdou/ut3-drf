@@ -3,13 +3,14 @@ from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import ManualOrder, MOGoods, ManualOrderExport
+from apps.base.goods.models import Goods
 
 
 class ManualOrderSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-    goods_detail = serializers.JSONField(required=False)
+    goods_details = serializers.JSONField(required=False)
 
     class Meta:
         model = ManualOrder
@@ -134,11 +135,22 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_goods_detail(self, instance):
+    def get_goods_details(self, instance):
+        goods_details = instance.mogoods_set.all()
         ret = []
-        all_goods = instance.mogoods_set.all()
-        for goods in all_goods:
-            ret.append("%s*%s" % (goods.goods_name, goods.quantity))
+        for goods_detail in goods_details:
+            data = {
+                "id": goods_detail.id,
+                "goods_id": goods_detail.goods_id,
+                "name": {
+                    "id": goods_detail.goods_name.id,
+                    "name": goods_detail.goods_name.name
+                },
+                "quantity": goods_detail.quantity,
+                "price": goods_detail.price,
+                "memorandum": goods_detail.memorandum
+            }
+            ret.append(data)
         return ret
 
     def to_representation(self, instance):
@@ -152,12 +164,12 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         ret["process_tag"] = self.get_process_tag(instance)
         ret["order_category"] = self.get_order_category(instance)
         ret["order_status"] = self.get_order_status(instance)
-        ret["goods_detail"] = self.get_goods_detail(instance)
+        ret["goods_details"] = self.get_goods_details(instance)
         return ret
 
     def check_goods_details(self, goods_details):
         for goods in goods_details:
-            if not all([goods.get("goods_name", None), goods.get("price", None), goods.get("quantity", None)]):
+            if not all([goods.get("goods_name", None), goods.get("quantity", None)]):
                 raise serializers.ValidationError("明细中货品名称、数量和价格为必填项！")
         goods_list = list(map(lambda x: x["goods_name"], goods_details))
         goods_check = set(goods_list)
@@ -170,6 +182,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             data.pop("id", None)
             goods_detail = MOGoods.objects.create(**data)
         else:
+            data.pop("name", None)
             goods_detail = MOGoods.objects.filter(id=data["id"]).update(**data)
         return goods_detail
 
@@ -193,8 +206,9 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         for goods_detail in goods_details:
             goods_detail['manual_order'] = instance
-            goods_detail["goods_name"] = goods_detail.goods_name
-            goods_detail["goods_id"] = goods_detail.goods_name.goods_id
+            _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
+            goods_detail["goods_name"] = _q_goods
+            goods_detail["goods_id"] = _q_goods.goods_id
             goods_detail.pop("xh")
             self.create_goods_detail(goods_detail)
         return instance
