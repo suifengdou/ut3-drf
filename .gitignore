@@ -6,3 +6,4 @@ __pycache__
 *$py.class
 /apps/**/migrations
 /.idea
+/ut3/settings.py
