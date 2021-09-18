@@ -8,7 +8,7 @@ import jieba
 import jieba.posseg as pseg
 import jieba.analyse
 from collections import defaultdict
-
+from django.db.models import Count, Max, Min, Avg
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework.authentication import SessionAuthentication
@@ -94,8 +94,22 @@ class CompensationSubmitViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        shop_list = set(list(check_list.values_list("shop", flat=True)))
+        check_category = list(check_list.values("shop", "order_status").annotate(Count("id")))
+        print(check_category)
+        if len(check_category) > 1:
+            raise serializers.ValidationError("只能选择单一店铺单一类型！")
+        print(shop_list)
         if n:
             for obj in check_list:
+                if not obj.erp_order_id:
+                    _prefix = "MO"
+                    serial_number = str(datetime.date.today()).replace("-", "")
+                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                    obj.save()
+
+
+
                 if obj.order_category in [1, 2]:
                     if not all([obj.m_sn, obj.broken_part, obj.description]):
                         data["error"].append("%s售后配件需要补全sn、部件和描述" % obj.id)

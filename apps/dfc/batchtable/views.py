@@ -632,7 +632,6 @@ class BatchTableSubmitViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-
 class BatchTableManageViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -659,16 +658,14 @@ class BatchTableManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BatchTable.objects.none()
-        queryset = BatchTable.objects.filter(order_status=1).order_by("id")
+        queryset = BatchTable.objects.all().order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 1
         f = BatchTableFilter(params)
         serializer = BatchTableSerializer(f.qs, many=True)
         return Response(serializer.data)

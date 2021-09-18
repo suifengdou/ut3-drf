@@ -71,7 +71,7 @@ class UserViewset(viewsets.ModelViewSet):
         data = {
             "name": user.username,
             "roles": roles,
-            "avatar": 'https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif',
+            "avatar": 'http://qy9qcmykj.hb-bkt.clouddn.com/avatar-male.png',
             "introduction": "UT3用户",
             "company": company,
             "department": department

@@ -115,6 +115,13 @@ class CompensationSerializer(serializers.ModelSerializer):
         ret["order_status"] = self.get_order_status(instance)
         return ret
 
+    def validate(self, attrs):
+        if float(attrs["checking"]) != float(attrs["actual_receipts"]) - float(attrs["receivable"]):
+            raise serializers.ValidationError("验算公式错误！")
+        if float(attrs["checking"]) != float(attrs["compensation"]):
+            raise serializers.ValidationError("验算结果与补偿金额不同！")
+        return attrs
+
     def create(self, validated_data):
         validated_data["creator"] = self.context["request"].user.username
         return self.Meta.model.objects.create(**validated_data)

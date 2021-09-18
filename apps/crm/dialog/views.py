@@ -767,6 +767,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             obj.erp_order_id = serial_number + _prefix + str(obj.id)
                             order.erp_order_id = obj.erp_order_id
                             obj.save()
+                        order.nickname = obj.dialog.customer
                         for i in range(len(compensation_data)):
                             compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)', '', str(compensation_data[i]))
                         compensation_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "formula", "order_category"]
@@ -827,7 +828,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                         order.shop = rt_shop_list.get(obj.dialog.shop, None)
                         order.nickname = obj.dialog.customer
                         try:
-                            order.create = request.user.username
+                            order.creator = request.user.username
                             order.save()
                         except Exception as e:
                             data['false'] += 1
