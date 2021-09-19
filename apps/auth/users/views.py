@@ -5,14 +5,16 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .serializers import UserSerializer, UserPasswordSerializer
+from .serializers import UserSerializer
 from .filters import UserFilter
 from ut3.permissions import Permissions
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.decorators import action
+from django.contrib.auth.hashers import make_password
+from rest_framework import serializers
+from django.contrib.auth import authenticate
 
 User = get_user_model()
 
@@ -47,7 +49,6 @@ class UserViewset(viewsets.ModelViewSet):
     @action(methods=["get"], detail=False)
     def get_user_info(self, request, *args, **kwargs):
         user = request.user
-        print(user.get_all_permissions())
         error = {"id": -1, "name": "错误"}
         try:
             company = {
@@ -61,12 +62,13 @@ class UserViewset(viewsets.ModelViewSet):
                 "id": user.department.id,
                 "name": user.department.name
             }
+
         except:
             department = error
         if user.is_superuser:
             roles = ["AllPrivileges"]
         else:
-            result_permissions = filter(lambda x: "view" in x, user.get_all_permissions())
+            result_permissions = filter(lambda x: "view" in x, user.get_group_permissions())
             roles = list(result_permissions)
         data = {
             "name": user.username,
@@ -78,10 +80,21 @@ class UserViewset(viewsets.ModelViewSet):
         }
         return response.Response(data)
 
-class UserPasswordViewset(viewsets.GenericViewSet,
-                          mixins.UpdateModelMixin):
-    queryset = User.objects.all()
-    serializer_class = UserPasswordSerializer
+    @action(methods=["patch"], detail=False)
+    def reset_password(self, request, *args, **kwargs):
+        user = request.user
+        data = request.data
+        if data["new_password"] != data["pwd_repeat"]:
+            raise serializers.ValidationError("新密码和确认密码不一致！")
+        if len(data["new_password"]) < 5 or len(data["new_password"]) > 15:
+            raise serializers.ValidationError("新密码最少5位，最大14位！")
+        check_user = authenticate(username=user.username, password=data["password"])
+        if user == check_user:
+            user.set_password(data["new_password"])
+            user.save()
+            return Response(status=status.HTTP_200_OK)
+        else:
+            raise serializers.ValidationError("原密码错误！")
 
 
 class DashboardViewset(viewsets.ViewSet, mixins.ListModelMixin):

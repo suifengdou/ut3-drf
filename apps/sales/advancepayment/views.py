@@ -49,7 +49,7 @@ class AccountViewset(viewsets.ModelViewSet):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -119,7 +119,7 @@ class StatementsViewset(viewsets.ModelViewSet):
         if not self.request:
             return Statements.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = Statements.objects.all().order_by("id")
         else:
             queryset = Statements.objects.filter(creator=user.username).order_by("id")
@@ -129,7 +129,7 @@ class StatementsViewset(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -174,7 +174,7 @@ class PrestoreSubmitViewset(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -276,7 +276,7 @@ class PrestoreCheckViewset(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -417,7 +417,7 @@ class PrestoreManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return Prestore.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = Prestore.objects.all().order_by("id")
         else:
             queryset = Prestore.objects.filter(creator=user.username).order_by("id")
@@ -427,7 +427,7 @@ class PrestoreManageViewset(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -464,7 +464,7 @@ class ExpenseViewset(viewsets.ModelViewSet):
         if not self.request:
             return Expense.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = Expense.objects.all().order_by("id")
         else:
             queryset = Expense.objects.filter(creator=user.username).order_by("id")
@@ -474,7 +474,7 @@ class ExpenseViewset(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -511,7 +511,7 @@ class VerificationPrestoreViewset(viewsets.ModelViewSet):
         if not self.request:
             return VerificationPrestore.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = VerificationPrestore.objects.all().order_by("id")
         else:
             queryset = VerificationPrestore.objects.filter(creator=user.username).order_by("id")
@@ -521,7 +521,7 @@ class VerificationPrestoreViewset(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -558,7 +558,7 @@ class VerificationExpensesViewset(viewsets.ModelViewSet):
         if not self.request:
             return VerificationExpenses.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = VerificationExpenses.objects.all().order_by("id")
         else:
             queryset = VerificationExpenses.objects.filter(creator=user.username).order_by("id")
@@ -568,7 +568,7 @@ class VerificationExpensesViewset(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -605,7 +605,7 @@ class ExpendListViewset(viewsets.ModelViewSet):
         if not self.request:
             return ExpendList.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = ExpendList.objects.all().order_by("id")
         else:
             queryset = ExpendList.objects.filter(creator=user.username).order_by("id")
@@ -615,7 +615,7 @@ class ExpendListViewset(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)

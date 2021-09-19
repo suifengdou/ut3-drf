@@ -48,7 +48,7 @@ class EWOReverseCreateViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -159,7 +159,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -262,7 +262,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -424,7 +424,7 @@ class EWOSupplierHandleViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -555,7 +555,7 @@ class EWOCheckViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -654,7 +654,7 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -723,7 +723,7 @@ class EWOManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return ExpressWorkOrder.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = ExpressWorkOrder.objects.all().order_by("id")
         else:
             queryset = ExpressWorkOrder.objects.filter(company=user.company).order_by("id")
@@ -732,7 +732,7 @@ class EWOManageViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)

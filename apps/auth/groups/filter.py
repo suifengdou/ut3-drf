@@ -16,7 +16,6 @@ class GroupFilter(django_filters.FilterSet):
     Group 搜索类
     """
     name = django_filters.CharFilter(field_name="name", lookup_expr="icontains")
-    create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Group
@@ -25,7 +24,6 @@ class GroupFilter(django_filters.FilterSet):
 
 class PermissionFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr="icontains")
-    create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Permission

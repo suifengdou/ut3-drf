@@ -102,17 +102,46 @@ class UserPasswordSerializer(serializers.Serializer):
                                          "blank": "不可以为空",
                                          "required": "必填项"}
                                      )
-    def validate_password(self, value):
+    new_password = serializers.CharField(required=True, max_length=128, label="密码", help_text="密码",
+                                     error_messages={
+                                         "blank": "不可以为空",
+                                         "required": "必填项"}
+                                     )
+    pwd_repeat = serializers.CharField(required=True, max_length=128, label="密码", help_text="密码",
+                                     error_messages={
+                                         "blank": "不可以为空",
+                                         "required": "必填项"}
+                                     )
+    def validate_new_password(self, value):
         validations = []
-        password = value
-        if len(password) < 5 or len(password) > 15:
+        new_password = value
+        if len(new_password) < 5 or len(new_password) > 15:
             validations.append('密码必须大于5个字符，小于15个字符')
-        if password.isalnum():
-            validations.append('密码必须至少包含一个特殊字符')
         if validations:
             raise ValidationError(validations)
         else:
-            return password
+            return new_password
+
+    def validate_pwd_repeat(self, value):
+        validations = []
+        pwd_repeat = value
+        if len(pwd_repeat) < 5 or len(pwd_repeat) > 15:
+            validations.append('密码必须大于5个字符，小于15个字符')
+        if validations:
+            raise ValidationError(validations)
+        else:
+            return pwd_repeat
+
+
+    def to_internal_value(self, data):
+        validations = []
+        if data["new_password"] != data["pwd_repeat"]:
+            validations.append('两次输入的密码不一致')
+            raise serializers.ValidationError("两次输入的密码不一致！")
+        if validations:
+            raise ValidationError(validations)
+        else:
+            return super(UserPasswordSerializer, self).to_internal_value(data)
 
     def to_representation(self, instance):
             ret = super(UserPasswordSerializer, self).to_representation(instance)
@@ -120,7 +149,11 @@ class UserPasswordSerializer(serializers.Serializer):
             return ret
 
     def update(self, instance, validated_data):
-        password = make_password(validated_data["password"])
-        instance.password = password
-        instance.save()
+        check_password = make_password(validated_data["password"])
+        if check_password == instance.password:
+            password = make_password(validated_data["new_password"])
+            instance.password = password
+            instance.save()
+        else:
+            raise serializers.ValidationError("原密码错误！")
         return instance

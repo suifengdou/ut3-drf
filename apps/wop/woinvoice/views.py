@@ -1511,7 +1511,7 @@ class OriInvoiceManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return OriInvoice.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = OriInvoice.objects.all().order_by("id")
         else:
             queryset = OriInvoice.objects.filter(creator=user.username).order_by("id")
@@ -1524,7 +1524,7 @@ class OriInvoiceManageViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -1772,7 +1772,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return Invoice.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = Invoice.objects.all().order_by("id")
         else:
             queryset = Invoice.objects.filter(creator=user.username).order_by("id")
@@ -1783,7 +1783,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
         # raise serializers.ValidationError("看下失败啥样！")
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username

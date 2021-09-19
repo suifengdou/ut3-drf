@@ -17,7 +17,7 @@ class GroupViewset(viewsets.ModelViewSet):
     filter_fields = ("name",)
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['users.view_userprofile']
+        "GET": ['auth.view_group']
     }
 
 

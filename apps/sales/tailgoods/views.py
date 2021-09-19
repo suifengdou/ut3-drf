@@ -354,7 +354,7 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -739,7 +739,7 @@ class OriTailOrderViewset(viewsets.ModelViewSet):
         if not self.request:
             return OriTailOrder.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = OriTailOrder.objects.all().order_by("id")
         else:
             queryset = OriTailOrder.objects.filter(creator=user.username).order_by("id")
@@ -752,7 +752,7 @@ class OriTailOrderViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -789,7 +789,7 @@ class OTOGoodsViewset(viewsets.ModelViewSet):
         if not self.request:
             return OTOGoods.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = OTOGoods.objects.all().order_by("id")
         else:
             queryset = OTOGoods.objects.filter(creator=user.username).order_by("id")
@@ -802,7 +802,7 @@ class OTOGoodsViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -1145,7 +1145,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -1708,7 +1708,7 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -1978,7 +1978,7 @@ class TailOrderViewset(viewsets.ModelViewSet):
         if not self.request:
             return TailOrder.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = TailOrder.objects.all().order_by("id")
         else:
             queryset = TailOrder.objects.filter(creator=user.username).order_by("id")
@@ -1991,7 +1991,7 @@ class TailOrderViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -2028,7 +2028,7 @@ class TOGoodsViewset(viewsets.ModelViewSet):
         if not self.request:
             return TOGoods.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = TOGoods.objects.all().order_by("id")
         else:
             queryset = TOGoods.objects.filter(creator=user.username).order_by("id")
@@ -2041,7 +2041,7 @@ class TOGoodsViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -2088,7 +2088,7 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -2294,7 +2294,7 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -2546,7 +2546,7 @@ class RefundOrderManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return RefundOrder.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = RefundOrder.objects.all().order_by("id")
         else:
             queryset = RefundOrder.objects.filter(creator=user.username).order_by("id")
@@ -2559,7 +2559,7 @@ class RefundOrderManageViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -2605,7 +2605,7 @@ class ROGoodsReceivalViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -2741,7 +2741,7 @@ class ROGoodsManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return ROGoods.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = ROGoods.objects.all().order_by("id")
         else:
             queryset = ROGoods.objects.filter(creator=user.username).order_by("id")
@@ -2754,7 +2754,7 @@ class ROGoodsManageViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -2791,7 +2791,7 @@ class AccountInfoViewset(viewsets.ModelViewSet):
         if not self.request:
             return AccountInfo.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = AccountInfo.objects.all().order_by("id")
         else:
             queryset = AccountInfo.objects.filter(creator=user.username).order_by("id")
@@ -2804,7 +2804,7 @@ class AccountInfoViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username
@@ -2841,7 +2841,7 @@ class TailPartsOrderViewset(viewsets.ModelViewSet):
         if not self.request:
             return TailPartsOrder.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = TailPartsOrder.objects.all().order_by("id")
         else:
             queryset = TailPartsOrder.objects.filter(creator=user.username).order_by("id")
@@ -2854,7 +2854,7 @@ class TailPartsOrderViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
-            if user.category:
+            if user.is_our:
                 request.data["sign_department"] = user.department
             else:
                 request.data["creator"] = user.username

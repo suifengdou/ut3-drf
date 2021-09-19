@@ -1,3 +1,4 @@
+import datetime
 from rest_framework import serializers
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
@@ -6,6 +7,7 @@ class GroupSerializer(serializers.ModelSerializer):
     """
     用户组 序列化类
     """
+    permission = serializers.CharField(required=False)
     class Meta:
         model = Group
         fields = "__all__"
@@ -26,6 +28,10 @@ class GroupSerializer(serializers.ModelSerializer):
         ret["users"] = instance.user_set.count()
         ret["permissions"] = self.get_permissions(instance)
         return ret
+
+    def to_internal_value(self, data):
+        print(data)
+        return super(GroupSerializer, self).to_internal_value(data)
 
 
     def create(self, validated_data):

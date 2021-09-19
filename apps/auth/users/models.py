@@ -20,7 +20,7 @@ class UserProfile(AbstractUser):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, verbose_name='公司', help_text='公司')
     department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, verbose_name='部门', help_text='部门')
     platform = models.ForeignKey(Platform, on_delete=models.CASCADE, null=True, blank=True, verbose_name='平台', help_text='平台')
-    category = models.BooleanField(default=False, verbose_name='是否本埠')
+    is_our = models.BooleanField(default=False, verbose_name='是否本埠')
 
     class Meta:
         verbose_name = 'USR-用户信息'

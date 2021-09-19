@@ -269,7 +269,7 @@ class DWOCheckViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -404,7 +404,7 @@ class DWOConfirmViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
@@ -520,7 +520,7 @@ class DWOManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return DealerWorkOrder.objects.none()
         user = self.request.user
-        if user.category:
+        if user.is_our:
             queryset = DealerWorkOrder.objects.all().order_by("id")
         else:
             queryset = DealerWorkOrder.objects.filter(company=user.company).order_by("id")
@@ -529,7 +529,7 @@ class DWOManageViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.category:
+        if not user.is_our:
             request.data["company"] = user.company
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
