@@ -33,9 +33,9 @@ class GoodsSerializer(serializers.ModelSerializer):
 
     def get_goods_attribute(self, instance):
         goods_attribute = {
-            0: "整机",
-            1: "配件",
-            2: "礼品",
+            1: "整机",
+            2: "配件",
+            3: "礼品",
         }
         try:
             ret = {

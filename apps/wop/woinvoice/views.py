@@ -143,7 +143,6 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        # raise serializers.ValidationError("看下失败啥样！")
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
@@ -419,7 +418,7 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
 
         return report_dic
 
-    @action(methods=['post'], detail=False)
+    @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
         params = request.data
         reject_list = self.get_handle_list(params)
@@ -1549,7 +1548,6 @@ class OriInvoiceGoodsViewset(viewsets.ModelViewSet):
     partial_update:
         更新部分货品明细
     """
-    queryset = OriInvoiceGoods.objects.all().order_by("id")
     serializer_class = OriInvoiceGoodsSerializer
     filter_class = OriInvoiceGoodsFilter
     filter_fields = "__all__"
@@ -1557,6 +1555,31 @@ class OriInvoiceGoodsViewset(viewsets.ModelViewSet):
     extra_perm_map = {
         "GET": ['woinvoice.view_oriinvoice']
     }
+
+    def get_queryset(self):
+        if not self.request:
+            return OriInvoiceGoods.objects.none()
+        user = self.request.user
+        if user.is_our:
+            queryset = OriInvoiceGoods.objects.all().order_by("id")
+        else:
+            queryset = OriInvoiceGoods.objects.filter(creator=user.username).order_by("id")
+        return queryset
+
+    @action(methods=['get'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        user = self.request.user
+        if not user.is_superuser:
+            if user.is_our:
+                request.data["sign_department"] = user.department
+            else:
+                request.data["creator"] = user.username
+        params = request.query_params
+        f = OriInvoiceGoodsFilter(params)
+        serializer = OriInvoiceGoodsSerializer(f.qs, many=True)
+        return Response(serializer.data)
 
 
 class InvoiceHandleViewset(viewsets.ModelViewSet):

@@ -168,12 +168,29 @@ class DialogTBDetailSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_order_status(self, instance):
+        status_list = {
+            0: "被取消",
+            1: "未过滤",
+            2: "未分词",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": status_list.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+        pass
+
     def to_representation(self, instance):
         ret = super(DialogTBDetailSerializer, self).to_representation(instance)
         ret["dialog"] = self.get_dialog(instance)
         ret["d_status"] = self.get_d_status(instance)
         ret["category"] = self.get_category(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):
@@ -322,7 +339,7 @@ class DialogJDDetailSerializer(serializers.ModelSerializer):
         status_list = {
             0: "被取消",
             1: "未过滤",
-            2: "未质检"
+            2: "未分词",
         }
         try:
             ret = {
@@ -332,6 +349,7 @@ class DialogJDDetailSerializer(serializers.ModelSerializer):
         except:
             ret = {"id": -1, "name": "显示错误"}
         return ret
+        pass
 
     def to_representation(self, instance):
         ret = super(DialogJDDetailSerializer, self).to_representation(instance)
@@ -419,9 +437,27 @@ class DialogOWSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_order_status(self, instance):
+        status_list = {
+            0: "被取消",
+            1: "未过滤",
+            2: "未分词",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": status_list.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+        pass
+
+
     def to_representation(self, instance):
         ret = super(DialogOWSerializer, self).to_representation(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):

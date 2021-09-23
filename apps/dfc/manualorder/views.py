@@ -26,7 +26,7 @@ from apps.utils.geography.models import City, District
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.utils.geography.tools import PickOutAdress
-
+from ut3.settings import EXPORT_TOPLIMIT
 
 
 class ManualOrderSubmitViewset(viewsets.ModelViewSet):
@@ -55,7 +55,8 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ManualOrder.objects.none()
-        queryset = ManualOrder.objects.filter(order_status=1).order_by("id")
+        department = self.request.user.department
+        queryset = ManualOrder.objects.filter(order_status=1, department=department).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -64,23 +65,24 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["company"] = user.company
+        params["department"] = user.department
         params["order_status"] = 1
         f = ManualOrderFilter(params)
-        serializer = ManualOrderSerializer(f.qs, many=True)
+        serializer = ManualOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 1
-        params["company"] = self.request.user.company
+        department = self.request.user.department
+        params["department"] = department
         if all_select_tag:
             handle_list = ManualOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ManualOrder.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = ManualOrder.objects.filter(id__in=order_ids, order_status=1, department=department)
             else:
                 handle_list = []
         return handle_list
@@ -107,11 +109,13 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                     serial_number = str(datetime.date.today()).replace("-", "")
                     obj.erp_order_id = serial_number + _prefix + str(obj.id)
                     obj.save()
-                _q_mo_exp_repeat = ManualOrderExport.objects.filter(erp_order_id=obj.erp_order_id)
+                _q_mo_exp_repeat = ManualOrderExport.objects.filter(ori_order=obj)
                 if _q_mo_exp_repeat.exists():
                     order = _q_mo_exp_repeat[0]
                     if order.order_status in [0, 1]:
                         order.order_status = 1
+                        order.buyer_remark = ""
+                        order.cs_memoranda = ""
                     else:
                         data["error"].append("%s重复递交" % obj.id)
                         n -= 1
@@ -120,6 +124,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                         continue
                 else:
                     order =  ManualOrderExport()
+                    order.erp_order_id = obj.erp_order_id
                 if obj.order_category in [1, 2]:
                     if not all([obj.m_sn, obj.broken_part, obj.description]):
                         data["error"].append("%s售后配件需要补全sn、部件和描述" % obj.id)
@@ -192,7 +197,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                                 obj.save()
                                 break
                     if not export_goods_details:
-                        export_goods_details = [goods_detail.goods_name, goods_detail.goods_id, goods_detail.quantity]
+                        export_goods_details = [goods_detail.goods_name.name, goods_detail.goods_id, goods_detail.quantity]
                     goods_info = "+ %sx%s" % (goods_detail.goods_name.name, goods_detail.quantity)
                     goods_id_info = "+ %sx%s" % (goods_detail.goods_id, goods_detail.quantity)
                     order.buyer_remark = str(order.buyer_remark) + goods_info
@@ -206,6 +211,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
 
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
+                order.ori_order = obj
                 try:
                     order.creator = request.user.username
                     order.save()
@@ -239,6 +245,40 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
             for obj in reject_list:
                 obj.mogoods_set.all().delete()
             reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_special(self, request, *args, **kwargs):
+        params = request.data
+        set_list = self.get_handle_list(params)
+        n = len(set_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            set_list.update(process_tag=3)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reset_tag(self, request, *args, **kwargs):
+        params = request.data
+        set_list = self.get_handle_list(params)
+        n = len(set_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            set_list.update(process_tag=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -415,197 +455,48 @@ class ManualOrderManageViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         params["company"] = user.company
-        params["order_status"] = 1
         f = ManualOrderFilter(params)
-        serializer = ManualOrderSerializer(f.qs, many=True)
+        serializer = ManualOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
-    def get_handle_list(self, params):
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
-        params["company"] = self.request.user.company
-        if all_select_tag:
-            handle_list = ManualOrderFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = ManualOrder.objects.filter(id__in=order_ids, order_status=1)
-            else:
-                handle_list = []
-        return handle_list
+
+class MOGoodsTrackViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MOGoodsSerializer
+    filter_class = MOGoodsFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_invoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return MOGoods.objects.none()
+        queryset = MOGoods.objects.filter(order_status__in=[1, 2]).order_by("id")
+        return queryset
 
     @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        print(request)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
         params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for order in check_list:
-                if order.is_customer_post:
-                    if not all([order.return_express_company, order.return_express_id]):
-                        order.mistake_tag = 1
-                        data["error"].append("%s 返回单号或快递为空" % order.order_id)
-                        order.save()
-                        n -= 1
-                        continue
-                order.order_status = 2
-                order.mistake_tag = 0
-                order.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def excel_import(self, request, *args, **kwargs):
-        print(request)
-        file = request.FILES.get('file', None)
-        if file:
-            data = self.handle_upload_file(request, file)
-        else:
-            data = {
-                "error": "上传文件未找到！"
-            }
-
-        return Response(data)
-
-    def handle_upload_file(self, request, _file):
-        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
-        INIT_FIELDS_DIC = {
-            '客户网名': 'buyer_nick',
-            '订单编号': 'trade_no',
-            '收件人': 'receiver_name',
-            '收货地址': 'receiver_address',
-            '收件人手机': 'receiver_mobile',
-            '发货时间': 'deliver_time',
-            '付款时间': 'pay_time',
-            '收货地区': 'receiver_area',
-            '物流单号': 'logistics_no',
-            '买家留言': 'buyer_message',
-            '客服备注': 'cs_remark',
-            '原始单号': 'src_tids',
-            '货品数量': 'num',
-            '货品成交价': 'price',
-            '货品成交总价': 'share_amount',
-            '货品名称': 'goods_name',
-            '商家编码': 'spec_code',
-            '店铺': 'shop_name',
-            '物流公司': 'logistics_name',
-            '仓库': 'warehouse_name',
-            '订单类型': 'order_category',
-        }
-
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
-        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
-            df = pd.read_excel(_file, sheet_name=0, dtype=str)
-
-            FILTER_FIELDS = ['客户网名', '订单编号', '收件人', '收货地址', '收件人手机', '发货时间', '付款时间', '收货地区',
-                             '物流单号', '买家留言', '客服备注', '原始单号', '货品数量', '货品成交价', '货品成交总价', '货品名称',
-                             '商家编码', '店铺', '物流公司', '仓库', '订单类型']
-
-            try:
-                df = df[FILTER_FIELDS]
-            except Exception as e:
-                report_dic["error"].append("必要字段不全或者错误")
-                return report_dic
-
-            # 获取表头，对表头进行转换成数据库字段名
-            columns_key = df.columns.values.tolist()
-            for i in range(len(columns_key)):
-                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
-                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
-
-            # 验证一下必要的核心字段是否存在
-            _ret_verify_field = ManualOrder.verify_mandatory(columns_key)
-            if _ret_verify_field is not None:
-                return _ret_verify_field
-
-            # 更改一下DataFrame的表名称
-            columns_key_ori = df.columns.values.tolist()
-            ret_columns_key = dict(zip(columns_key_ori, columns_key))
-            df.rename(columns=ret_columns_key, inplace=True)
-
-            # 更改一下DataFrame的表名称
-            num_end = 0
-            step = 300
-            step_num = int(len(df) / step) + 2
-            i = 1
-            while i < step_num:
-                num_start = num_end
-                num_end = step * i
-                intermediate_df = df.iloc[num_start: num_end]
-
-                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
-                _ret_list = intermediate_df.to_dict(orient='records')
-                intermediate_report_dic = self.save_resources(request, _ret_list)
-                for k, v in intermediate_report_dic.items():
-                    if k == "error":
-                        if intermediate_report_dic["error"]:
-                            report_dic[k].append(v)
-                    else:
-                        report_dic[k] += v
-                i += 1
-            return report_dic
-
-        else:
-            report_dic["error"].append('只支持excel文件格式！')
-            return report_dic
-
-    @staticmethod
-    def save_resources(request, resource):
-        # 设置初始报告
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
-
-        for row in resource:
-            if row['trade_no'] == '合计:':
-                continue
-            if "0000-00-00" in str(row['pay_time']):
-                row['pay_time'] = row['deliver_time']
-            order_fields = ['buyer_nick', 'trade_no', 'receiver_name', 'receiver_address', 'receiver_mobile',
-                            'deliver_time', 'pay_time', 'receiver_area', 'logistics_no', 'buyer_message', 'cs_remark',
-                            'src_tids', 'num', 'price', 'share_amount', 'goods_name', 'spec_code', 'order_category',
-                            'shop_name', 'logistics_name', 'warehouse_name']
-            order = ManualOrder()
-            for field in order_fields:
-                setattr(order, field, row[field])
-            if not order.src_tids:
-                order.src_tids = order.trade_no
-            if len(str(order.src_tids)) > 100:
-                order.src_tids = str(order.src_tids)[:100]
-            try:
-                order.creator = request.user.username
-                order.save()
-                report_dic["successful"] += 1
-            except Exception as e:
-                report_dic['error'].append("%s 保存出错" % row["trade_no"])
-                report_dic["false"] += 1
-
-        return report_dic
+        f = MOGoodsFilter(params)
+        serializer = MOGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
 
 
 class MOGoodsManageViewset(viewsets.ModelViewSet):
@@ -634,19 +525,16 @@ class MOGoodsManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return MOGoods.objects.none()
-        queryset = MOGoods.objects.filter(order_status=1).order_by("id")
+        queryset = MOGoods.objects.all().order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["company"] = user.company
-        params["order_status"] = 1
         f = MOGoodsFilter(params)
-        serializer = MOGoodsSerializer(f.qs, many=True)
+        serializer = MOGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
 
@@ -686,7 +574,7 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = ManualOrderExportFilter(params)
-        serializer = ManualOrderExportSerializer(f.qs, many=True)
+        serializer = ManualOrderExportSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -716,7 +604,10 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            check_list.update(order_status=2)
+            for obj in check_list:
+                obj.ori_order.mogoods_set.all().update(order_status=2)
+                obj.order_status = 2
+                obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -734,7 +625,11 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            for obj in reject_list:
+                obj.ori_order.order_status = 1
+                obj.ori_order.save()
+                obj.order_status = 0
+                obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -772,12 +667,11 @@ class ManualOrderExportManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
         f = ManualOrderExportFilter(params)
-        serializer = ManualOrderExportSerializer(f.qs, many=True)
+        serializer = ManualOrderExportSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
 

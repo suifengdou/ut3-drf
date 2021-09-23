@@ -81,7 +81,7 @@ class UserViewset(viewsets.ModelViewSet):
         return response.Response(data)
 
     @action(methods=["patch"], detail=False)
-    def reset_password(self, request, *args, **kwargs):
+    def change_password(self, request, *args, **kwargs):
         user = request.user
         data = request.data
         if data["new_password"] != data["pwd_repeat"]:
@@ -95,6 +95,19 @@ class UserViewset(viewsets.ModelViewSet):
             return Response(status=status.HTTP_200_OK)
         else:
             raise serializers.ValidationError("原密码错误！")
+
+    @action(methods=["patch"], detail=True)
+    def reset_password(self, request, *args, **kwargs):
+        id = kwargs["pk"]
+        data = request.data
+        if data["new_password"] != data["pwd_repeat"]:
+            raise serializers.ValidationError("新密码和确认密码不一致！")
+        if len(data["new_password"]) < 5 or len(data["new_password"]) > 15:
+            raise serializers.ValidationError("新密码最少5位，最大14位！")
+        user = User.objects.filter(pk=id)[0]
+        user.set_password(data["new_password"])
+        user.save()
+        return Response(status=status.HTTP_200_OK)
 
 
 class DashboardViewset(viewsets.ViewSet, mixins.ListModelMixin):

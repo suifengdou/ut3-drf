@@ -73,6 +73,7 @@ class OriOrderInfo(models.Model):
         verbose_name_plural = verbose_name
         db_table = 'crm_order_ori'
 
+
     def __str__(self):
         return str(self.id)
 
@@ -152,6 +153,11 @@ class OrderInfo(models.Model):
         verbose_name = 'CRM-UT订单-查询'
         verbose_name_plural = verbose_name
         db_table = 'crm_order'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_orderinfo', 'Can view user CRM-UT订单-用户'),
+            ('view_handler_orderinfo', 'Can view handler CRM-UT订单-处理'),
+        )
 
     def __str__(self):
         return str(self.id)
@@ -233,6 +239,11 @@ class BMSOrderInfo(models.Model):
         verbose_name = 'CRM-原始BMS订单-查询'
         verbose_name_plural = verbose_name
         db_table = 'crm_order_bms'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_bmsorderinfo', 'Can view user CRM-原始BMS订单-用户'),
+            ('view_handler_bmsorderinfo', 'Can view handler CRM-原始BMS订单-处理'),
+        )
 
     def __str__(self):
         return str(self.id)

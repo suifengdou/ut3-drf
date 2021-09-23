@@ -15,12 +15,13 @@ class CompanySerializer(serializers.ModelSerializer):
 
     def get_category(self, instance):
         order_category = {
-            0: "小狗体系",
+            0: "本埠公司",
             1: "物流快递",
             2: "仓库存储",
             3: "生产制造",
             4: "经销代理",
-            5: "其他类型",
+            5: "小狗体系",
+            6: "其他类型",
         }
         try:
             ret = {

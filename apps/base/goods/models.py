@@ -23,9 +23,9 @@ class GoodsCategory(models.Model):
 class Goods(models.Model):
 
     CATEGORY = (
-        (0, "整机"),
-        (1, "配件"),
-        (2, "礼品"),
+        (1, "整机"),
+        (2, "配件"),
+        (3, "礼品"),
     )
 
     goods_id = models.CharField(unique=True, max_length=30, verbose_name='货品编码', db_index=True, help_text='货品编码')
@@ -45,9 +45,24 @@ class Goods(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'BASE-货品信息表'
+        verbose_name = 'BASE-货品信息'
         verbose_name_plural = verbose_name
         db_table = 'base_goodsinfo'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_goods', 'Can view goods BASE-货品信息-查询'),
+        )
 
     def __str__(self):
         return self.name
+
+    @classmethod
+    def verify_mandatory(cls, columns_key):
+        VERIFY_FIELD = ["goods_id", "name", "category", "goods_attribute", "goods_number", "size", "width",
+                        "height", "depth", "weight", "catalog_num"]
+
+        for i in VERIFY_FIELD:
+            if i not in columns_key:
+                return 'verify_field error, must have mandatory field: "{}""'.format(i)
+        else:
+            return None

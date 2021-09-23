@@ -269,45 +269,55 @@ class OriInvoiceGoodsSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def get_goods_name(self, instance):
-        ret = {
-            "id": instance.goods_name.id,
-            "name": instance.goods_name.name
-        }
+        try:
+            ret = {
+                "id": instance.goods_name.id,
+                "name": instance.goods_name.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def get_invoice(self, instance):
-        ret = {
-            "id": instance.invoice.id,
-            "name": instance.invoice.title,
-            "order_id": instance.invoice.order_id
+        category_dic = {
+            1: '专票',
+            2: '普票'
         }
+        try:
+            ret = {
+                "id": instance.invoice.id,
+                "name": instance.invoice.title,
+                "company": instance.invoice.company,
+                "order_id": instance.invoice.order_id,
+                "order_category": category_dic.get(instance.invoice.order_category, None),
+                "title": instance.invoice.title,
+                "tax_id": instance.invoice.tax_id,
+                "phone": instance.invoice.phone,
+                "bank": instance.invoice.bank,
+                "account": instance.invoice.account,
+                "address": instance.invoice.address,
+                "sent_consignee": instance.invoice.sent_consignee,
+                "sent_smartphone": instance.invoice.sent_smartphone,
+                "sent_address": instance.invoice.sent_address
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
         return ret
 
     def to_representation(self, instance):
         ret = super(OriInvoiceGoodsSerializer, self).to_representation(instance)
-        try:
-            ret["goods_name"] = self.get_goods_name(instance)
-            ret["invoice"] = self.get_invoice(instance)
-        except:
-            error = { "id": -1, "name": "显示错误"}
-            ret["goods_name"] = error
-            ret["invoice"] = error
-        # ret["department"] = self.get_department(instance)
-        # ret["platform"] = self.get_platform(instance)
-        # ret["user_permissions"] = self.get_user_permissions(instance)
+        ret["goods_name"] = self.get_goods_name(instance)
+        ret["invoice"] = self.get_invoice(instance)
         return ret
 
     def create(self, validated_data):
         validated_data["creator"] = self.context["request"].user.username
         ori_invoice = self.Meta.model.objects.create(**validated_data)
-        # user.groups.set(groups_list)
-        # user.user_permissions.set(user_permissions)
         return ori_invoice
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
-        update_tim = validated_data.pop("update_tim", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 

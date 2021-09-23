@@ -9,12 +9,13 @@ class Company(models.Model):
         (1, '正常'),
     )
     CATEGORY = (
-        (0, '小狗体系'),
+        (0, '本埠公司'),
         (1, '物流快递'),
         (2, '仓库存储'),
         (3, '生产制造'),
         (4, '经销代理'),
-        (5, '其他类型'),
+        (5, '小狗体系'),
+        (6, '其他类型'),
     )
 
     name = models.CharField(unique=True, max_length=30, verbose_name='公司简称', db_index=True, help_text='公司简称')

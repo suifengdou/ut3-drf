@@ -80,6 +80,12 @@ class DealerWorkOrder(models.Model):
         verbose_name = 'WOP-经销商工单'
         verbose_name_plural = verbose_name
         db_table = 'wop_dealer'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_storageworkorder', 'Can view user WOP-经销商工单-用户'),
+            ('view_handler_storageworkorder', 'Can view handler WOP-经销商工单-处理'),
+            ('view_check_storageworkorder', 'Can view handler WOP-经销商工单-审核'),
+        )
 
     def __str__(self):
         return self.order_id

@@ -87,6 +87,7 @@ class DialogTB(models.Model):
         verbose_name_plural = verbose_name
         db_table = 'crm_dialog_taobao'
 
+
     def __str__(self):
         return self.customer
 
@@ -95,7 +96,7 @@ class DialogTBDetail(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '未过滤'),
-        (2, '未质检'),
+        (2, '未分词'),
     )
 
     STATUS = (
@@ -153,6 +154,11 @@ class DialogTBDetail(models.Model):
         verbose_name = 'CRM-淘系对话-信息'
         verbose_name_plural = verbose_name
         db_table = 'crm_dialog_taobao_detail'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_dialogtbdetail', 'Can view user CRM-淘系对话-信息-用户'),
+            ('view_handler_dialogtbdetail', 'Can view handler WOP-淘系对话-信息-处理'),
+        )
 
     def __str__(self):
         return self.sayer
@@ -197,6 +203,7 @@ class DialogJD(models.Model):
         verbose_name_plural = verbose_name
         db_table = 'crm_dialog_jd'
 
+
     def __str__(self):
         return self.customer
 
@@ -205,7 +212,7 @@ class DialogJDDetail(models.Model):
     ORDER_STATUS = (
         (0, '被取消'),
         (1, '未过滤'),
-        (2, '未质检'),
+        (2, '未分词'),
     )
     STATUS = (
         (0, '顾客'),
@@ -261,6 +268,11 @@ class DialogJDDetail(models.Model):
         verbose_name = 'CRM-京东对话-信息'
         verbose_name_plural = verbose_name
         db_table = 'crm_dialog_jd_detail'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_dialogjddetail', 'Can view user CRM-京东对话-信息-用户'),
+            ('view_handler_dialogjddetail', 'Can view handler WOP-京东对话-信息-处理'),
+        )
 
     def __str__(self):
         return self.sayer
@@ -298,8 +310,10 @@ class DialogOW(models.Model):
 
     ORDER_STATUS = (
         (0, '被取消'),
-        (1, '正常'),
+        (1, '未过滤'),
+        (2, '未分词'),
     )
+
     call_id = models.CharField(max_length=60, unique=True, verbose_name='会话ID', help_text='会话ID')
     guest_entry_time = models.CharField(max_length=60, verbose_name='访客进入时间', help_text='访客进入时间')
     call_start_time = models.CharField(max_length=60, verbose_name='会话开始时间', help_text='会话开始时间')
@@ -348,6 +362,11 @@ class DialogOW(models.Model):
         verbose_name = 'CRM-官网对话-客户'
         verbose_name_plural = verbose_name
         db_table = 'crm_dialog_official'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_dialogow', 'Can view user CRM-官网对话-用户'),
+            ('view_handler_dialogow', 'Can view handler WOP-官网对话-处理'),
+        )
 
     def __str__(self):
         return self.customer

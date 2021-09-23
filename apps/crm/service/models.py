@@ -196,6 +196,11 @@ class Maintenance(models.Model):
         verbose_name = 'CRM-M-保修单明细'
         verbose_name_plural = verbose_name
         db_table = 'crm_maintenance'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_maintenance', 'Can view user CRM-M-保修单明细-用户'),
+            ('view_handler_maintenance', 'Can view handler CRM-M-保修单明细-处理'),
+        )
 
     def __str__(self):
         return self.order_id

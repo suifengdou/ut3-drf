@@ -62,6 +62,11 @@ class StorageWorkOrder(models.Model):
         verbose_name = 'WOP-仓储工单'
         verbose_name_plural = verbose_name
         db_table = 'wop_storage'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_storageworkorder', 'Can view user WOP-仓储工单-用户'),
+            ('view_handler_storageworkorder', 'Can view handler WOP-仓储工单-处理'),
+        )
 
     def __str__(self):
         return self.keyword

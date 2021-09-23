@@ -73,6 +73,11 @@ class ManualOrder(models.Model):
         verbose_name = 'DFC-手工订单'
         verbose_name_plural = verbose_name
         db_table = 'dfc_manualorder'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_manualorder', 'Can view user DFC-手工订单-用户'),
+            ('view_handler_manualorder', 'Can view handler DFC-手工订单-处理'),
+        )
 
     def __str__(self):
         return self.order_id
@@ -106,6 +111,11 @@ class MOGoods(models.Model):
         verbose_name_plural = verbose_name
         unique_together = (('manual_order', 'goods_name'))
         db_table = 'dfc_manualorder_goods'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_mogoods', 'Can view user DFC-手工订单-货品明细-用户'),
+            ('view_handler_mogoods', 'Can view handler DFC-手工订单-货品明细-处理'),
+        )
 
     def __str__(self):
         return self.goods_name
@@ -118,6 +128,7 @@ class ManualOrderExport(models.Model):
         (2, '已完成'),
     )
 
+    ori_order =  models.OneToOneField(ManualOrder, on_delete=models.CASCADE, verbose_name='手工源单')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺名称')
     nickname = models.CharField(max_length=50, verbose_name='网名')
     receiver = models.CharField(max_length=50, verbose_name='收件人')

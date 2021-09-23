@@ -90,11 +90,11 @@ class OriInvoice(models.Model):
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
-    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+    creator = models.CharField(null=True, blank=True, max_length=150, db_index=True, verbose_name='创建者', help_text='创建者')
 
-    process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签', help_text='处理标签')
+    process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, db_index=True, verbose_name='处理标签', help_text='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')
-    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')
+    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, db_index=True, verbose_name='工单状态', help_text='工单状态')
 
     class Meta:
         verbose_name = 'WOP-发票工单-查询'
@@ -103,9 +103,9 @@ class OriInvoice(models.Model):
 
         permissions = (
             # (权限，权限描述),
-            ('view_applicant_oriinvoice', 'Can view applicant WOP-发票工单-查询'),
-            ('view_user_oriinvoice', 'Can view user WOP-发票工单-查询'),
-            ('view_handler_oriinvoice', 'Can view handler WOP-发票工单-查询'),
+            ('view_applicant_oriinvoice', 'Can view applicant WOP-发票工单-申请'),
+            ('view_user_oriinvoice', 'Can view user WOP-发票工单-用户'),
+            ('view_handler_oriinvoice', 'Can view handler WOP-发票工单-处理'),
         )
 
     def __str__(self):
@@ -233,7 +233,7 @@ class Invoice(models.Model):
 
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签', help_text='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')
-    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='订单状态', help_text='订单状态')
+    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, db_index=True, verbose_name='订单状态', help_text='订单状态')
 
     class Meta:
         verbose_name = 'WOP-发票订单-查询'
@@ -241,7 +241,7 @@ class Invoice(models.Model):
         db_table = 'wop_invoice'
         permissions = (
             # (权限，权限描述),
-            ('view_handler_invoice', 'Can view handler WOP-发票订单-查询'),
+            ('view_handler_invoice', 'Can view handler WOP-发票订单-审核'),
         )
 
 

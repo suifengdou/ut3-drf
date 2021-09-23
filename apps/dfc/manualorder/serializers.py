@@ -256,7 +256,7 @@ class MOGoodsSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         status = {
             0: "已取消",
-            1: "未发货",
+            1: "未处理",
             2: "已导入",
             3: "已发货",
         }
@@ -275,10 +275,6 @@ class MOGoodsSerializer(serializers.ModelSerializer):
         ret["order_status"] = self.get_order_status(instance)
         ret["manual_order"] = self.get_manual_order(instance)
         return ret
-
-    def to_internal_value(self, data):
-        print("111")
-        return super(MOGoodsSerializer, self).to_internal_value(data)
 
     def create(self, validated_data):
         validated_data["creator"] = self.context["request"].user.username
