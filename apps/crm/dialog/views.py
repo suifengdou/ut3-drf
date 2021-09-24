@@ -594,7 +594,6 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                         _rt_talk_dic = dict(zip(_rt_talk_title_total, _rt_talk_data))
                     else:
                         n -= 1
-                        data['false'] += 1
                         data['error'].append("%s 对话的格式不对，导致无法提取" % obj.id)
                         obj.mistake_tag = 2
                         obj.save()
@@ -606,7 +605,6 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                     all_info_element = re.split(r'(\d{11})', str(_rt_talk_dic["cs_information"]))
                     if len(all_info_element) < 3:
                         n -= 1
-                        data['false'] += 1
                         data['error'].append("%s 对话的客户信息格式不对，导致无法提取" % obj.id)
                         obj.mistake_tag = 3
                         obj.save()
@@ -615,7 +613,6 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                         receiver, mobile, rt_address = all_info_element
                         if len(rt_address) < 8:
                             n -= 1
-                            data['false'] += 1
                             data['error'].append("%s 对话的客户信息格式不对，导致无法提取" % obj.id)
                             obj.mistake_tag = 3
                             obj.save()
@@ -777,26 +774,27 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)', '', str(compensation_data[i]))
                         compensation_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "formula", "order_category"]
                         compensation_dic = dict(zip(compensation_fields, compensation_data))
+                        cs_error = 0
                         for key, value in compensation_dic.items():
                             if not value:
                                 n -= 1
-                                data["false"] += 1
+                                cs_error = 1
                                 data["error"].append("%s 缺失必须要信息 %s" % (obj.id, key))
                                 obj.mistake_tag = 11
                                 obj.save()
-                                continue
+                                break
+                        if cs_error:
+                            continue
                         _q_goods = Goods.objects.filter(name__icontains=compensation_dic["goods_name"])
                         if _q_goods.exists():
                             compensation_dic["goods_name"] = _q_goods[0]
                         else:
                             n -= 1
-                            data["false"] += 1
                             obj.mistake_tag = 8
                             obj.save()
                             continue
                         if compensation_dic["order_category"] not in ['1', '3']:
                             n -= 1
-                            data["false"] += 1
                             obj.mistake_tag = 8
                             obj.save()
                             continue
@@ -809,19 +807,16 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             check_result = round(order.actual_receipts - order.receivable, 2)
                             if order.checking != check_result:
                                 n -= 1
-                                data["false"] += 1
                                 obj.mistake_tag = 13
                                 obj.save()
                                 continue
                             if float(compensation_dic["compensation"]) != check_result:
                                 n -= 1
-                                data["false"] += 1
                                 obj.mistake_tag = 14
                                 obj.save()
                                 continue
                         except Exception as e:
                             n -= 1
-                            data["false"] += 1
                             obj.mistake_tag = 13
                             obj.save()
                             continue
@@ -836,13 +831,13 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             order.creator = request.user.username
                             order.save()
                         except Exception as e:
-                            data['false'] += 1
+                            n -= 1
                             data['error'].append("保存差价申请单出错")
                             obj.mistake_tag = 15
                             obj.save()
                             continue
                     else:
-                        data['false'] += 1
+                        n -= 1
                         data['error'].append("对话的格式不对，导致无法提取")
                         obj.mistake_tag = 1
                         obj.save()
@@ -990,7 +985,6 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                         _rt_talk_dic = dict(zip(_rt_talk_title_total, _rt_talk_data))
                     else:
                         n -= 1
-                        data['false'] += 1
                         data['error'].append("%s 对话的格式不对，导致无法提取" % obj.id)
                         obj.mistake_tag = 2
                         obj.save()
@@ -1002,7 +996,6 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                     all_info_element = re.split(r'(\d{11})', str(_rt_talk_dic["cs_information"]))
                     if len(all_info_element) < 3:
                         n -= 1
-                        data['false'] += 1
                         data['error'].append("%s 对话的客户信息格式不对，导致无法提取" % obj.id)
                         obj.mistake_tag = 3
                         obj.save()
@@ -1011,7 +1004,6 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                         receiver, mobile, rt_address = all_info_element
                         if len(rt_address) < 8:
                             n -= 1
-                            data['false'] += 1
                             data['error'].append("%s 对话的客户信息格式不对，导致无法提取" % obj.id)
                             obj.mistake_tag = 3
                             obj.save()
@@ -1165,29 +1157,30 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                             order.erp_order_id = obj.erp_order_id
                             obj.save()
                         for i in range(len(compensation_data)):
-                            compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)', '', str(compensation_data[i]))
+                            compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)|(退款)', '', str(compensation_data[i]))
                         compensation_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "formula", "order_category"]
                         compensation_dic = dict(zip(compensation_fields, compensation_data))
+                        cs_error = 0
                         for key, value in compensation_dic.items():
                             if not value:
                                 n -= 1
-                                data["false"] += 1
+                                cs_error = 1
                                 data["error"].append("%s 缺失必须要信息 %s" % (obj.id, key))
                                 obj.mistake_tag = 11
                                 obj.save()
-                                continue
+                                break
+                        if cs_error:
+                            continue
                         _q_goods = Goods.objects.filter(name__icontains=compensation_dic["goods_name"])
                         if _q_goods.exists():
                             compensation_dic["goods_name"] = _q_goods[0]
                         else:
                             n -= 1
-                            data["false"] += 1
                             obj.mistake_tag = 8
                             obj.save()
                             continue
                         if compensation_dic["order_category"] not in ['1', '3']:
                             n -= 1
-                            data["false"] += 1
                             obj.mistake_tag = 8
                             obj.save()
                             continue
@@ -1200,19 +1193,16 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                             check_result = round(order.actual_receipts - order.receivable, 2)
                             if order.checking != check_result:
                                 n -= 1
-                                data["false"] += 1
                                 obj.mistake_tag = 13
                                 obj.save()
                                 continue
                             if float(compensation_dic["compensation"]) != check_result:
                                 n -= 1
-                                data["false"] += 1
                                 obj.mistake_tag = 14
                                 obj.save()
                                 continue
                         except Exception as e:
                             n -= 1
-                            data["false"] += 1
                             obj.mistake_tag = 13
                             obj.save()
                             continue
@@ -1227,13 +1217,12 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                             order.create = request.user.username
                             order.save()
                         except Exception as e:
-                            data['false'] += 1
                             data['error'].append("保存差价申请单出错")
                             obj.mistake_tag = 15
                             obj.save()
                             continue
                     else:
-                        data['false'] += 1
+                        n -= 1
                         data['error'].append("对话的格式不对，导致无法提取")
                         obj.mistake_tag = 1
                         obj.save()

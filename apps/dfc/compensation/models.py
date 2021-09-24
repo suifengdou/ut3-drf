@@ -26,15 +26,9 @@ class Compensation(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '重复建单'),
-        (2, '特殊订单才能追加'),
-        (3, '追加单保存出错'),
-        (4, '实收减应收不等于校验金额'),
-        (5, '差价金额不等于校验金额'),
-        (6, '恢复单保存出错'),
-        (7, '补偿单保存出错'),
-        (8, '相同单号存在多个差价，需要设置特殊订单'),
-        (9, '相同单号存在多个差价，需要设置特殊订单'),
+        (1, '重复创建'),
+        (2, '重复递交'),
+        (3, '保存批次单明细失败'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -95,11 +89,7 @@ class BatchCompensation(models.Model):
     MISTAKE_LIST = (
         (0, '正常'),
         (1, '无OA单号'),
-        (2, '先设置订单已完成再审核'),
-        (3, '已递交过此OA单号'),
-        (4, '补寄配件记录格式错误'),
-        (5, '补寄原因错误'),
-        (6, '单据创建失败'),
+        (2, '有未完成的明细')
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -107,7 +97,7 @@ class BatchCompensation(models.Model):
         (2, '特殊订单'),
     )
     order_id = models.CharField(max_length=60, db_index=True, verbose_name='批次单号', help_text='创建时间')
-    oa_order_id = models.CharField(null=True, blank=True, max_length=60, verbose_name='OA单号', help_text='创建时间')
+    oa_order_id = models.CharField(null=True, blank=True, db_index=True, max_length=60, verbose_name='OA单号', help_text='创建时间')
     order_category = models.SmallIntegerField(choices=ORDER_CATEGORY, default=1, verbose_name='单据类型', help_text='单据类型')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺', help_text='店铺')
     order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='单据状态', help_text='创建时间')
@@ -123,6 +113,11 @@ class BatchCompensation(models.Model):
         verbose_name = 'DFC-补偿汇总单'
         verbose_name_plural = verbose_name
         db_table = 'dfc_compensation_batch'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_batchcompensation', 'Can view user DFC-补偿汇总单-用户'),
+            ('view_handler_batchcompensation', 'Can view handler DFC-补偿汇总单-处理'),
+        )
 
     def __str__(self):
         return str(self.order_id)
@@ -138,17 +133,18 @@ class BCDetail(models.Model):
 
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '已付金额不是零，不可重置'),
-        (2, '重置保存补偿单出错'),
-        (3, '补运费和已付不相等'),
-        (4, '补寄配件记录格式错误'),
-        (5, '补寄原因错误'),
-        (6, '单据创建失败'),
+        (1, '补运费和已付不相等'),
+        (2, '未支付状态'),
+        (3, '处理标签错误'),
+        (4, '已重置不可重复'),
+        (5, '已付金额不是零，不可重置'),
+        (6, '处理标签错误'),
+        (7, '单据创建失败'),
     )
     PROCESS_TAG = (
-        (0, '未处理'),
-        (1, '已处理'),
-        (2, '特殊订单'),
+        (0, '无异常'),
+        (1, '无效支付宝'),
+        (2, '支付宝和收款人不匹配'),
     )
 
     batch_order = models.ForeignKey(BatchCompensation, on_delete=models.CASCADE, verbose_name='批次单')
@@ -165,9 +161,12 @@ class BCDetail(models.Model):
     receivable = models.FloatField(verbose_name='应收金额')
     checking = models.FloatField(verbose_name='验算结果')
     memorandum = models.TextField(blank=True, null=True, verbose_name='备注')
+    erp_order_id = models.CharField(max_length=60, null=True, blank=True, unique=True, verbose_name='UT订单号',
+                                    help_text='UT订单号')
 
     handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='处理人')
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间')
+    is_payment = models.BooleanField(default=False, verbose_name="是否支付")
 
     process_tag = models.IntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表')
@@ -188,3 +187,13 @@ class BCDetail(models.Model):
 
 
 
+class BCDetailResetList(models.Model):
+    bcdetail = models.OneToOneField(BCDetail, on_delete=models.CASCADE, verbose_name='补偿汇总明细单')
+
+    class Meta:
+        verbose_name = 'DFC-补偿汇总明细单重置表'
+        verbose_name_plural = verbose_name
+        db_table = 'dfc_compensation_batch_detail_resetlist'
+
+    def __str__(self):
+        return str(self.id)
