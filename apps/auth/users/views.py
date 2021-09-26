@@ -73,7 +73,7 @@ class UserViewset(viewsets.ModelViewSet):
         data = {
             "name": user.username,
             "roles": roles,
-            "avatar": 'http://qy9qcmykj.hb-bkt.clouddn.com/avatar-male.png',
+            "avatar": 'http://ut3.xiaogou777.com/avatar.png',
             "introduction": "UT3用户",
             "company": company,
             "department": department

@@ -7,3 +7,4 @@ __pycache__
 /apps/**/migrations
 /.idea
 /ut3/settings.py
+/static_new
