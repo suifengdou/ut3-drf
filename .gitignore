@@ -8,3 +8,4 @@ __pycache__
 /.idea
 /ut3/settings.py
 /static_new
+*.pid

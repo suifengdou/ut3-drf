@@ -54,7 +54,7 @@ class OriginData(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'DFC-手工订单ERP格式导出'
+        verbose_name = 'DFC-原始批量赠品单'
         verbose_name_plural = verbose_name
 
         db_table = 'dfc_origindata'
@@ -116,7 +116,7 @@ class BatchTable(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'DFC-手工订单ERP格式导出'
+        verbose_name = 'DFC-批量赠品单'
         verbose_name_plural = verbose_name
         unique_together = (("shop", "order_id", "goods_id"),)
         db_table = 'dfc_batchtable'

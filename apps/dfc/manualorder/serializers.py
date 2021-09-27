@@ -193,8 +193,9 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         manual_order = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
             goods_detail['manual_order'] = manual_order
-            goods_detail["goods_name"] = goods_detail.goods_name
-            goods_detail["goods_id"] = goods_detail.goods_name.goods_id
+            goods_name = Goods.objects.filter(id=goods_detail["goods_name"])[0]
+            goods_detail["goods_name"] = goods_name
+            goods_detail["goods_id"] = goods_name.goods_id
             goods_detail.pop("xh")
             self.create_goods_detail(goods_detail)
         return manual_order
