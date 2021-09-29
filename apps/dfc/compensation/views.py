@@ -48,7 +48,7 @@ class CompensationSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['compensation.view_compensation']
     }
 
     def get_queryset(self):
@@ -249,7 +249,7 @@ class CompensationViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['compensation.view_compensation',]
     }
 
     def get_queryset(self):
@@ -288,7 +288,7 @@ class BatchCompensationSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['compensation.view_user_batchcompensation']
     }
 
     def get_queryset(self):
@@ -398,7 +398,7 @@ class BatchCompensationSettleViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['compensation.view_handler_batchcompensation']
     }
 
     def get_queryset(self):
@@ -501,7 +501,7 @@ class BatchCompensationViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['compensation.view_batchcompensation']
     }
 
     def get_queryset(self):
@@ -541,7 +541,7 @@ class BCDetailSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['compensation.view_user_batchcompensation']
     }
 
     def get_queryset(self):
@@ -624,7 +624,7 @@ class BCDetailSettleViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['compensation.view_handler_batchcompensation']
     }
 
     def get_queryset(self):
@@ -820,7 +820,7 @@ class BCDetailViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['compensation.view_batchcompensation']
     }
 
     def get_queryset(self):

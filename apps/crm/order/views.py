@@ -47,7 +47,7 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['order.view_oriorderinfo']
     }
 
     def get_queryset(self):
@@ -367,7 +367,7 @@ class OriOrderManageViewset(viewsets.ReadOnlyModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['order.view_oriorderinfo']
     }
 
     def get_queryset(self):
@@ -406,7 +406,7 @@ class BMSOrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['order.view_bmsorderinfo']
     }
 
     def get_queryset(self):
@@ -628,6 +628,94 @@ class BMSOrderSubmitViewset(viewsets.ModelViewSet):
         return report_dic
 
 
+class BMSOrderManageViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = BMSOrderInfoSerializer
+    filter_class = BMSOrderInfoFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['order.view_bmsorderinfo']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return BMSOrderInfo.objects.none()
+        queryset = BMSOrderInfo.objects.all().order_by("id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = BMSOrderInfoFilter(params)
+        serializer = BMSOrderInfoSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = BMSOrderInfoFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = BMSOrderInfo.objects.filter(id__in=order_ids)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        print(request)
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            pass
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            pass
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+
 class OrderSubmitViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -648,7 +736,7 @@ class OrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['order.view_orderinfo']
     }
 
     def get_queryset(self):
@@ -890,7 +978,7 @@ class OrderManageViewset(viewsets.ReadOnlyModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['order.view_orderinfo']
     }
 
     def get_queryset(self):

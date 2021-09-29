@@ -50,7 +50,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['service.view_orimaintenance']
     }
 
     def get_queryset(self):
@@ -330,7 +330,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['service.view_orimaintenance']
     }
 
     def get_queryset(self):
@@ -857,7 +857,7 @@ class OriMaintenanceViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['service.view_orimaintenance']
     }
 
     def get_queryset(self):
@@ -896,7 +896,7 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
@@ -1250,7 +1250,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
@@ -1509,7 +1509,7 @@ class MaintenanceViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
@@ -1579,7 +1579,7 @@ class FindAndFoundViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
@@ -1651,7 +1651,7 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):

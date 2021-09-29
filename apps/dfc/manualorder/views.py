@@ -49,7 +49,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['manualorder.view_manualorder']
     }
 
     def get_queryset(self):
@@ -439,7 +439,7 @@ class ManualOrderManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['manualorder.view_manualorder']
     }
 
     def get_queryset(self):
@@ -480,7 +480,7 @@ class MOGoodsTrackViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['manualorder.view_mogoods']
     }
 
     def get_queryset(self):
@@ -519,7 +519,7 @@ class MOGoodsManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['manualorder.view_mogoods']
     }
 
     def get_queryset(self):
@@ -558,7 +558,7 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['manualorder.view_manualorderexport']
     }
 
     def get_queryset(self):
@@ -656,7 +656,7 @@ class ManualOrderExportManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['manualorder.view_manualorderexport']
     }
 
     def get_queryset(self):

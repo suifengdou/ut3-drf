@@ -49,7 +49,7 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['callcenter.view_oricalllog',]
     }
 
     def get_queryset(self):
@@ -501,7 +501,7 @@ class OriCallLogCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['callcenter.view_oricalllog']
     }
 
     def get_queryset(self):
@@ -779,7 +779,7 @@ class OriCallLogViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['callcenter.view_oricalllog']
     }
 
     def get_queryset(self):
@@ -1175,7 +1175,7 @@ class CallLogViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['callcenter.view_calllog']
     }
 
     def get_queryset(self):

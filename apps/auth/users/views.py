@@ -38,9 +38,9 @@ class UserViewset(viewsets.ModelViewSet):
     filter_class = UserFilter
     filter_fields = ("username", "creator", "create_time", "is_staff", "is_active")
     permission_classes = (IsAuthenticated,)
-    extra_perm_map = {
-        "GET": ['users.view_userprofile']
-    }
+    # extra_perm_map = {
+    #     "GET": ['users.view_userprofile']
+    # }
 
     def list(self, request, *args, **kwargs):
         print(request)
@@ -71,7 +71,7 @@ class UserViewset(viewsets.ModelViewSet):
             result_permissions = filter(lambda x: "view" in x, user.get_group_permissions())
             roles = list(result_permissions)
         data = {
-            "name": user.username,
+             "name": user.username,
             "roles": roles,
             "avatar": 'http://ut3.xiaogou777.com/avatar.png',
             "introduction": "UT3用户",

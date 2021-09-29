@@ -55,7 +55,7 @@ class ServicerViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['shop.view_shop']
+        "GET": ['dialog.view_servicer']
     }
 
 
@@ -79,7 +79,7 @@ class DialogTBViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogtb']
     }
 
     def get_queryset(self):
@@ -504,7 +504,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_handler_dialogtbdetail']
     }
 
     def get_queryset(self):
@@ -890,7 +890,7 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_user_dialogtbdetail']
     }
 
     def get_queryset(self):
@@ -1275,7 +1275,7 @@ class DialogTBDetailViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogtbdetail']
     }
 
     def get_queryset(self):
@@ -1365,7 +1365,7 @@ class DialogTBWordsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogtbwords']
     }
 
     def get_queryset(self):
@@ -1606,7 +1606,7 @@ class DialogJDViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogjd']
     }
 
     def get_queryset(self):
@@ -2046,7 +2046,7 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogjddetail']
     }
 
     def get_queryset(self):
@@ -2330,7 +2330,7 @@ class DialogJDDetailViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogjddetail']
     }
 
     def get_queryset(self):
@@ -2421,7 +2421,7 @@ class DialogJDWordsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogjdwords']
     }
 
     def get_queryset(self):
@@ -2511,7 +2511,7 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogow']
     }
 
     def get_queryset(self):
@@ -2994,7 +2994,7 @@ class DialogOWViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogow']
     }
 
     def get_queryset(self):
@@ -3086,7 +3086,7 @@ class DialogOWDetailSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogowdetail']
     }
 
     def get_queryset(self):
@@ -3327,7 +3327,7 @@ class DialogOWDetailViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['dialog.view_dialogowdetail']
     }
 
     def get_queryset(self):
@@ -3568,9 +3568,9 @@ class DialogOWWordsViewset(viewsets.ModelViewSet):
     filter_class = DialogOWWordsFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
-    }
+    # extra_perm_map = {
+    #     "GET": ['dialog.view_dialogowwords']
+    # }
 
     def get_queryset(self):
         if not self.request:
