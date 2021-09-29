@@ -98,7 +98,6 @@ class StatementsSerializer(serializers.ModelSerializer):
             ret["category"] = self.get_category(instance)
             ret["account"] = self.get_account(instance)
         except Exception as e:
-            print(e)
             error = {"id": -1, "name": "显示错误"}
             ret["category"] = error
             ret["account"] = error

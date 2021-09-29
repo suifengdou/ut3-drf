@@ -82,7 +82,6 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -216,7 +215,6 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -234,7 +232,6 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -252,7 +249,6 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -270,7 +266,6 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -365,7 +360,6 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -495,7 +489,6 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check_split(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -660,7 +653,6 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_logistics(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -678,7 +670,6 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -857,7 +848,6 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -998,10 +988,6 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
                 obj.process_tag = 4
 
                 obj.save()
-
-
-
-                print(obj)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1010,7 +996,6 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def fix(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1343,7 +1328,6 @@ class TOGoodsCommonViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1368,7 +1352,6 @@ class TOGoodsCommonViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1431,7 +1414,6 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1564,7 +1546,6 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
                 obj.mistake_tag = 0
                 obj.process_tag = 4
                 obj.save()
-                print(obj)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1573,7 +1554,6 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def fix(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1906,7 +1886,6 @@ class TOGoodsSpecialViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1931,7 +1910,6 @@ class TOGoodsSpecialViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -2115,7 +2093,6 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -2319,7 +2296,6 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -2630,7 +2606,6 @@ class ROGoodsReceivalViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)

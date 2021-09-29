@@ -31,25 +31,17 @@ from collections import defaultdict
 with pd.ExcelFile("address.xlsx") as xls:
     df = pd.read_excel(xls, sheet_name=3)
     for row in df["客户地址"]:
-        print(row)
         str_address = jieba.cut(row, use_paddle=True, cut_all=False)
         jieba.load_userdict("addr_key_words.txt")
         key_words = pseg.cut(row, use_paddle=True)
         try:
             key_words = dict(key_words)
         except Exception as e:
-            print(e)
             continue
         key_words_reverse = zip(key_words.values(), key_words.keys())
         words_new = defaultdict(list)
         for key, value in key_words.items():
             words_new[value].append(key)
-        print(str_address)
-        print(dict(key_words))
-        print(dict(words_new))
-
-
-        print(key_words_reverse)
         f1 = open("address_result.txt", "a", encoding="utf-8")
         f1.write("%s    %s\n" % (row, words_new["ns"]))
         f1.close()

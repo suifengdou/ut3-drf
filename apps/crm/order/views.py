@@ -85,7 +85,6 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def fix(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -230,7 +229,6 @@ class OriOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
@@ -444,7 +442,6 @@ class BMSOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -490,7 +487,6 @@ class BMSOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
@@ -681,7 +677,6 @@ class BMSOrderManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -841,7 +836,6 @@ class OrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
