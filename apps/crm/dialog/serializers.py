@@ -50,7 +50,6 @@ class ServicerSerializer(serializers.ModelSerializer):
         return ret
 
     def to_representation(self, instance):
-        print("1")
         ret = super(ServicerSerializer, self).to_representation(instance)
         ret["shop"] = self.get_shop(instance)
         ret["username"] = self.get_username(instance)

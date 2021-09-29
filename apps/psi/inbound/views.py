@@ -79,7 +79,6 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -221,7 +220,6 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -239,7 +237,6 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -257,7 +254,6 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -275,7 +271,6 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -310,7 +305,6 @@ class OriInboundSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
@@ -476,7 +470,6 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -581,7 +574,6 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -599,7 +591,6 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -617,7 +608,6 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -635,7 +625,6 @@ class OriInboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -727,7 +716,6 @@ class InboundCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -766,7 +754,6 @@ class InboundCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -784,7 +771,6 @@ class InboundCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -802,7 +788,6 @@ class InboundCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -820,7 +805,6 @@ class InboundCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -912,7 +896,6 @@ class InboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1017,7 +1000,6 @@ class InboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1035,7 +1017,6 @@ class InboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1053,7 +1034,6 @@ class InboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1071,7 +1051,6 @@ class InboundManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1163,7 +1142,6 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1268,7 +1246,6 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1286,7 +1263,6 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1304,7 +1280,6 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1322,7 +1297,6 @@ class InboundDetailValidViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1414,7 +1388,6 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1519,7 +1492,6 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1537,7 +1509,6 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1555,7 +1526,6 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1573,7 +1543,6 @@ class InboundDetailManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1665,7 +1634,6 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1770,7 +1738,6 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1788,7 +1755,6 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1806,7 +1772,6 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1824,7 +1789,6 @@ class InboundVerifyManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)

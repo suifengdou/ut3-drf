@@ -78,7 +78,6 @@ class InventoryViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -195,7 +194,6 @@ class InventoryViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_used(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -213,7 +211,6 @@ class InventoryViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -231,7 +228,6 @@ class InventoryViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_special(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -249,7 +245,6 @@ class InventoryViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)

@@ -57,7 +57,6 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -152,7 +151,7 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
+
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(file)
@@ -468,7 +467,7 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
+
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -566,7 +565,7 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
+
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(file)
@@ -896,7 +895,7 @@ class OriInvoiceHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
+
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -976,7 +975,7 @@ class OriInvoiceHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check_unpack(self, request, *args, **kwargs):
-        print(request)
+
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1191,7 +1190,7 @@ class OriInvoiceHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
+
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(file)
@@ -1613,7 +1612,7 @@ class InvoiceHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
+
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1849,7 +1848,7 @@ class DeliverHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
+
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1919,7 +1918,7 @@ class DeliverHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
+
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(file)

@@ -74,7 +74,6 @@ class SWOReverseCreateViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -169,7 +168,6 @@ class SWOCreateViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -272,7 +270,6 @@ class SWOHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -387,7 +384,6 @@ class SWOSupplierHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -511,7 +507,6 @@ class SWOCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -610,7 +605,6 @@ class SWOFinanceHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)

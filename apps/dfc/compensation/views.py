@@ -86,7 +86,6 @@ class CompensationSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -96,7 +95,6 @@ class CompensationSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         check_category = list(check_list.values("shop", "order_category").annotate(Count("id")))
-        print(check_category)
         if len(check_category) > 1:
             raise serializers.ValidationError("只能选择单一店铺单一类型！")
         shop = check_list[0].shop
@@ -326,7 +324,6 @@ class BatchCompensationSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -433,7 +430,6 @@ class BatchCompensationSettleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -659,7 +655,6 @@ class BCDetailSettleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -707,7 +702,6 @@ class BCDetailSettleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def reset(self, request, *args, **kwargs):
-        print(request)
         user = request.user.username
         params = request.data
         check_list = self.get_handle_list(params)

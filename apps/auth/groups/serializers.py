@@ -30,7 +30,6 @@ class GroupSerializer(serializers.ModelSerializer):
         return ret
 
     def to_internal_value(self, data):
-        print(data)
         return super(GroupSerializer, self).to_internal_value(data)
 
 

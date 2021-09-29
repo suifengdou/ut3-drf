@@ -85,7 +85,6 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -120,7 +119,6 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
@@ -366,7 +364,6 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -487,7 +484,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                             try:
                                 order.district = District.objects.filter(city=order.city, name="其他区")[0]
                             except Exception as e:
-                                print(e)
+                                pass
 
                 elif len(area) == 2:
                     _q_city = City.objects.filter(name=area[1])
@@ -609,7 +606,6 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                     order.save()
                     data["successful"] += 1
                 except Exception as e:
-                    print(e)
                     n -= 1
                     data['error'].append("%s 保存出错" % obj.order_id)
                     data["false"] += 1
@@ -628,7 +624,6 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def fix(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -679,7 +674,6 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
@@ -931,7 +925,6 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1076,7 +1069,6 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
@@ -1286,7 +1278,6 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1335,7 +1326,6 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
@@ -1684,7 +1674,6 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1724,7 +1713,6 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)

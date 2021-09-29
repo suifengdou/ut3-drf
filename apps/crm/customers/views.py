@@ -76,7 +76,7 @@ class CustomerViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
+
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)

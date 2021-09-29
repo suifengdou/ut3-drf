@@ -50,7 +50,7 @@ class GoodsViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
+
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)

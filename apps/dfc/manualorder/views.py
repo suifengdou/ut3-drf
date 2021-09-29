@@ -89,7 +89,6 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -286,7 +285,6 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        print(request)
         file = request.FILES.get('file', None)
         if file:
             data = self.handle_upload_file(request, file)
@@ -594,7 +592,6 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
-        print(request)
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
