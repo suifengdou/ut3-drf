@@ -32,6 +32,7 @@ from apps.base.goods.models import Goods
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.dfc.compensation.models import Compensation
 from apps.utils.geography.tools import PickOutAdress
+from apps.auth.users.models import UserProfile
 
 
 class ServicerViewset(viewsets.ModelViewSet):
@@ -57,6 +58,119 @@ class ServicerViewset(viewsets.ModelViewSet):
     extra_perm_map = {
         "GET": ['dialog.view_servicer']
     }
+
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+            columns_key_ori = df.columns.values.tolist()
+            filter_fields = ["店铺", "账号", "昵称", "客服类型"]
+            INIT_FIELDS_DIC = {
+                "店铺": "shop",
+                "账号": "username",
+                "昵称": "name",
+                "客服类型": "category"
+            }
+            result_keys = []
+            for keywords in columns_key_ori:
+                if keywords in filter_fields:
+                    result_keys.append(keywords)
+
+            try:
+                df = df[result_keys]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            result_columns = []
+            for keywords in columns_key:
+                result_columns.append(INIT_FIELDS_DIC.get(keywords, None))
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = Servicer.verify_mandatory(result_columns)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            ret_columns_key = dict(zip(columns_key, result_columns))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+        category_dic = {"人工": 1, "机器人": 0}
+        for row in resource:
+            _q_order = Servicer.objects.filter(name=row["name"])
+            if _q_order.exists():
+                order = _q_order[0]
+            else:
+                order = Servicer()
+            _q_shop = Shop.objects.filter(name=row["shop"])
+            if _q_shop.exists():
+                order.shop = _q_shop[0]
+            else:
+                report_dic["error"].append("店铺名称错误")
+                continue
+            _q_username = UserProfile.objects.filter(username=row["username"])
+            if _q_username.exists():
+                order.username = _q_username[0]
+            else:
+                report_dic["error"].append("无此账号")
+                continue
+            order.category = category_dic.get(row["category"])
+            order.name = row["name"]
+            try:
+                order.creator = request.user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["nickname"])
+                report_dic["false"] += 1
+        return report_dic
 
 
 class DialogTBViewset(viewsets.ModelViewSet):

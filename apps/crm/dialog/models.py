@@ -35,6 +35,16 @@ class Servicer(models.Model):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def verify_mandatory(cls, columns_key):
+        VERIFY_FIELD = ["name", "shop", "username", "category"]
+
+        for i in VERIFY_FIELD:
+            if i not in columns_key:
+                return 'verify_field error, must have mandatory field: "{}""'.format(i)
+        else:
+            return None
+
 
 class DialogTag(models.Model):
     ORDER_STATUS = (

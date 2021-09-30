@@ -185,6 +185,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         data["creator"] = self.context["request"].user.username
         if data["id"] == 'n':
             data.pop("id", None)
+            data.pop("name", None)
             goods_detail = MOGoods.objects.create(**data)
         else:
             data.pop("name", None)
@@ -281,6 +282,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
             goods_detail["goods_name"] = _q_goods
             goods_detail["goods_id"] = _q_goods.goods_id
+            goods_detail["id"] = 'n'
             goods_detail.pop("xh")
             self.create_goods_detail(goods_detail)
         return instance
