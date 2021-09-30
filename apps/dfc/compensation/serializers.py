@@ -108,10 +108,11 @@ class CompensationSerializer(serializers.ModelSerializer):
         return ret
 
     def validate(self, attrs):
-        if float(attrs["checking"]) != float(attrs["actual_receipts"]) - float(attrs["receivable"]):
-            raise serializers.ValidationError("验算公式错误！")
-        if float(attrs["checking"]) != float(attrs["compensation"]):
-            raise serializers.ValidationError("验算结果与补偿金额不同！")
+        if all([attrs.get("checking", None), attrs.get("actual_receipts", None), attrs.get("receivable", None), attrs.get("compensation", None)]):
+            if float(attrs["checking"]) != float(attrs["actual_receipts"]) - float(attrs["receivable"]):
+                raise serializers.ValidationError("验算公式错误！")
+            if float(attrs["checking"]) != float(attrs["compensation"]):
+                raise serializers.ValidationError("验算结果与补偿金额不同！")
         return attrs
 
     def create(self, validated_data):

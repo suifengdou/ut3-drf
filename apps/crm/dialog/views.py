@@ -1086,6 +1086,7 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                             obj.mistake_tag = 9
                             obj.save()
                             continue
+                        mistake_tag = 0
                         for goods in goods_details:
                             if len(goods) == 2:
                                 _q_goods = Goods.objects.filter(name=goods[0])
@@ -1096,13 +1097,17 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                                     n -= 1
                                     obj.mistake_tag = 7
                                     obj.save()
-                                    continue
+                                    mistake_tag = 1
+                                    break
                             else:
                                 data["error"].append("%s 货品错误" % obj.id)
                                 n -= 1
                                 obj.mistake_tag = 8
                                 obj.save()
-                                continue
+                                mistake_tag = 1
+                                break
+                        if mistake_tag:
+                            continue
                     else:
                         data["error"].append("%s 货品错误" % obj.id)
                         n -= 1

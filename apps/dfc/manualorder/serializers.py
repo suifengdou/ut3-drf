@@ -1,9 +1,14 @@
 import datetime
+import jieba
+import re
 from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import ManualOrder, MOGoods, ManualOrderExport
 from apps.base.goods.models import Goods
+from apps.utils.geography.models import District
+from apps.utils.geography.tools import PickOutAdress
+
 
 
 class ManualOrderSerializer(serializers.ModelSerializer):
@@ -187,9 +192,43 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         return goods_detail
 
     def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
+        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                        '白沙黎族自治县', '中山市', '东莞市']
+        user = self.context["request"].user
+        validated_data["creator"] = user.username
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)
+        validated_data["department"] = user.department
+
+        rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", validated_data["address"])
+        seg_list = jieba.lcut(rt_address)
+
+        _spilt_addr = PickOutAdress(seg_list)
+        _rt_addr = _spilt_addr.pickout_addr()
+        cs_info_fields = ["province", "city", "district", "address"]
+        for key_word in cs_info_fields:
+            validated_data[key_word] = _rt_addr.get(key_word, None)
+
+        if not validated_data["city"]:
+            raise serializers.ValidationError("地址无法提取省市区")
+
+        if validated_data["province"] != validated_data["city"].province:
+            raise serializers.ValidationError("地址无法提取省市区")
+
+        if rt_address.find(str(validated_data["province"].name)[:2]) == -1 and rt_address.find(str(validated_data["city"].name)[:2]) == -1:
+            raise serializers.ValidationError("地址无法提取省市区")
+
+        if validated_data["city"].name not in special_city and not validated_data["district"]:
+            validated_data["district"] = District.objects.filter(city=validated_data["city"], name="其他区")[0]
+
+        if '集运' in str(validated_data["address"]):
+            raise serializers.ValidationError("地址是集运仓")
+
+        if validated_data["city"].name in special_city:
+            validated_data["district"] = ''
+
         manual_order = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
             goods_detail['manual_order'] = manual_order
@@ -201,10 +240,42 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         return manual_order
 
     def update(self, instance, validated_data):
+        user = self.context["request"].user
+        validated_data["department"] = user.department
+        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                        '白沙黎族自治县', '中山市', '东莞市']
         validated_data["update_time"] = datetime.datetime.now()
+        rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", validated_data["address"])
+        seg_list = jieba.lcut(rt_address)
+
+        _spilt_addr = PickOutAdress(seg_list)
+        _rt_addr = _spilt_addr.pickout_addr()
+        cs_info_fields = ["province", "city", "district", "address"]
+        for key_word in cs_info_fields:
+            validated_data[key_word] = _rt_addr.get(key_word, None)
+
+        if not validated_data["city"]:
+            raise serializers.ValidationError("地址无法提取省市区")
+
+        if validated_data["province"] != validated_data["city"].province:
+            raise serializers.ValidationError("地址无法提取省市区")
+
+        if rt_address.find(str(validated_data["province"].name)[:2]) == -1 and rt_address.find(str(validated_data["city"].name)[:2]) == -1:
+            raise serializers.ValidationError("地址无法提取省市区")
+
+        if validated_data["city"].name not in special_city and not validated_data["district"]:
+            validated_data["district"] = District.objects.filter(city=validated_data["city"], name="其他区")[0]
+
+        if '集运' in str(validated_data["address"]):
+            raise serializers.ValidationError("地址是集运仓")
+        if validated_data["city"].name in special_city:
+            validated_data["district"] = ''
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        instance.mogoods_set.all().delete()
         for goods_detail in goods_details:
             goods_detail['manual_order'] = instance
             _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]

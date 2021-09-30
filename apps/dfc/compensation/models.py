@@ -66,6 +66,11 @@ class Compensation(models.Model):
         verbose_name = 'DFC-补偿单'
         verbose_name_plural = verbose_name
         db_table = 'dfc_compensation'
+        permissions = (
+            # (权限，权限描述),
+            ('view_user_compensation', 'Can view user DFC-补偿单-用户'),
+            ('view_handler_compensation', 'Can view handler DFC-补偿单-处理'),
+        )
 
     def __str__(self):
         return str(self.alipay_id)

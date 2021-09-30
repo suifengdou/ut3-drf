@@ -31,5 +31,5 @@ class DepartmentViewset(viewsets.ModelViewSet):
     filter_fields = ("name", "d_id", "create_time", "update_time", "is_delete", "creator")
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['department.view_company']
+        "GET": ['department.view_department']
     }
