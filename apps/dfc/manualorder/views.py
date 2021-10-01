@@ -602,7 +602,8 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                obj.ori_order.mogoods_set.all().update(order_status=2, submit_user=request.user.username)
+                obj.ori_order.mogoods_set.all().update(order_status=2)
+                obj.submit_user = request.user.username
                 obj.order_status = 2
                 obj.save()
         else:
