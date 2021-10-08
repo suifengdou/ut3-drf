@@ -228,7 +228,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("地址是集运仓")
 
         if validated_data["city"].name in special_city:
-            validated_data["district"] = ''
+            validated_data["district"] = None
 
         manual_order = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
@@ -272,7 +272,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         if '集运' in str(validated_data["address"]):
             raise serializers.ValidationError("地址是集运仓")
         if validated_data["city"].name in special_city:
-            validated_data["district"] = ''
+            validated_data["district"] = None
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)

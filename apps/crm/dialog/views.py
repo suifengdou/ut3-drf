@@ -660,6 +660,10 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
+                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
+                        '白沙黎族自治县', '中山市', '东莞市']
         _rt_talk_title_new = ['order_category', 'goods_details', 'order_id', 'cs_information']
         _rt_talk_title_total = ['order_category', 'goods_details', 'order_id', 'cs_information',
                                 'm_sn', 'broken_part', 'description']
@@ -770,6 +774,8 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 5
                         obj.save()
                         continue
+                    if order.city.name in special_city:
+                        order.district = None
                     try:
                         order.department = request.user.department
                         order.creator = request.user.username
@@ -1154,6 +1160,8 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                         continue
                     if order.city.name not in special_city and not order.district:
                         order.district = District.objects.filter(city=order.city, name="其他区")[0]
+                    if order.city.name in special_city:
+                        order.district = None
 
                     if '集运' in str(order.address):
                         data["error"].append("%s 地址是集运仓" % obj.id)
@@ -2315,6 +2323,8 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 5
                         obj.save()
                         continue
+                    if order.city.name in special_city:
+                        order.district = None
                     try:
                         order.department = request.user.department
                         order.creator = request.user.username

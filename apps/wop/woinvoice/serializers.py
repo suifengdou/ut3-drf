@@ -244,7 +244,7 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         if len(goods_list) != len(goods_check):
             raise serializers.ValidationError("明细中货品重复！")
         else:
-            amount_list = list(map(lambda x: int(x["price"]) * int(x["quantity"]), goods_details))
+            amount_list = list(map(lambda x: float(x["price"]) * int(x["quantity"]), goods_details))
             amount = reduce(lambda x, y: x + y, amount_list)
             return amount
 
