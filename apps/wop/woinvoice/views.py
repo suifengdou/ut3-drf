@@ -1658,7 +1658,7 @@ class InvoiceHandleViewset(viewsets.ModelViewSet):
                     deliver_order.remark = deliver_order.logistics
                     if work_order.sent_district:
                         _q_district = District.objects.filter(city=work_order.sent_city,
-                                                              district=work_order.sent_district)
+                                                              name=work_order.sent_district)
                         if _q_district.exists():
                             deliver_order.district = _q_district[0].name
                         else:

@@ -35,7 +35,7 @@ class BatchCompensationFilter(django_filters.FilterSet):
 class BCDetailFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
-    batch_order = django_filters.ModelChoiceFilter(to_field_name="oa_order_id", queryset=BatchCompensation.objects.all())
+    batch_order = django_filters.ModelChoiceFilter(to_field_name="order_id", queryset=BatchCompensation.objects.all())
 
     class Meta:
         model = BCDetail
