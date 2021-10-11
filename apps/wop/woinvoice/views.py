@@ -3,6 +3,7 @@ import numpy as np
 import datetime
 import re
 from functools import reduce
+from apps.utils.geography.tools import PickOutAdress
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework.authentication import SessionAuthentication
@@ -276,10 +277,16 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
         else:
             work_order.order_id = resource[0]['order_id']
 
+        goods_ids = [row['goods_id'] for row in resource]
+        goods_quantity = [row['quantity'] for row in resource]
+        goods_prices = [row['price'] for row in resource]
+        amount = reduce(lambda x, y: x + y, map(lambda z: z[0] * z[1], zip(goods_prices, goods_quantity)))
+        work_order.amount = round(amount, 2)
+
         _q_work_order = OriInvoice.objects.filter(order_id=str(resource[0]['order_id']))
         if not _q_work_order.exists():
             # 开始导入数据
-            check_list = ['title', 'tax_id', 'sent_consignee', 'sent_smartphone', 'sent_district', 'sent_address',
+            check_list = ['title', 'tax_id', 'sent_consignee', 'sent_smartphone', 'sent_address',
                           'phone', 'bank', 'account', 'address', 'remark', 'message', 'nickname']
 
             _q_shop = Shop.objects.filter(name=resource[0]['shop'])
@@ -309,13 +316,18 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
                 report_dic['error'].append(error)
                 return report_dic
 
-            _q_city = City.objects.filter(city=str(resource[0]['sent_city']))
-            if _q_city.exists():
-                work_order.sent_city = _q_city[0]
-            else:
-                error = '城市%s非法，请使用正确的二级城市名称' % resource[0]['sent_city']
-                report_dic['error'].append(error)
-                return report_dic
+            _spilt_addr = PickOutAdress(resource[0]['sent_address'])
+            _rt_addr = _spilt_addr.pickout_addr()
+            if not isinstance(_rt_addr, dict):
+                raise serializers.ValidationError("地址无法提取省市区")
+            _rt_addr["district"] = _rt_addr["district"].name
+            cs_info_fields = ["city", "district", "address"]
+            order_cs_fields = ["sent_city", "sent_district", "sent_address"]
+            for i in range(len(cs_info_fields)):
+                setattr(work_order, order_cs_fields[i], _rt_addr.get(cs_info_fields[i], None))
+
+            if '集运' in str(_rt_addr["address"]):
+                raise serializers.ValidationError("地址是集运仓")
 
             logical_decision = {
                 '是': 1,
@@ -330,14 +342,14 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
                 work_order.is_deliver = is_deliver
 
             if order_category == 1:
-                check_list = check_list[:10]
+                check_list = check_list[:8]
                 for k in check_list:
                     if not resource[0][k]:
                         error = '%s非法，开专票请把必填项补全' % k
                         report_dic['error'].append(error)
                         return report_dic
             elif order_category == 2:
-                check_list = check_list[:6]
+                check_list = check_list[:4]
                 for k in check_list:
                     if not resource[0][k]:
                         error = '%s非法，开普票请把必填项补全' % k
@@ -383,9 +395,6 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
             all_goods_info = work_order.oriinvoicegoods_set.all()
             all_goods_info.delete()
 
-        goods_ids = [row['goods_id'] for row in resource]
-        goods_quantity = [row['quantity'] for row in resource]
-        goods_prices = [row['price'] for row in resource]
 
         for goods_id, quantity, price in zip(goods_ids, goods_quantity, goods_prices):
             goods_order = OriInvoiceGoods()
@@ -590,8 +599,6 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
             '发票备注': 'remark',
             '收件人姓名': 'sent_consignee',
             '收件人手机': 'sent_smartphone',
-            '收件城市': 'sent_city',
-            '收件区县': 'sent_district',
             '收件地址': 'sent_address',
             '是否发顺丰': 'is_deliver',
             '工单留言': 'message',
@@ -608,7 +615,7 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
             with pd.ExcelFile(_file) as xls:
                 df = pd.read_excel(xls, sheet_name=0, converters={u'货品编码': str})
                 FILTER_FIELDS = ['店铺', '收款开票公司', '源单号', '发票类型', '发票抬头', '纳税人识别号', '联系电话', '银行名称',
-                                 '银行账号', '地址', '发票备注', '收件人姓名', '收件人手机', '收件城市', '收件区县', '收件地址',
+                                 '银行账号', '地址', '发票备注', '收件人姓名', '收件人手机', '收件地址',
                                  '是否发顺丰', '工单留言', '货品编码', '货品名称', '数量', '含税单价', '用户昵称']
 
                 try:
@@ -638,7 +645,7 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
                 df.rename(columns=ret_columns_key, inplace=True)
                 check_list = ['shop', 'company', 'order_id', 'order_category', 'title', 'tax_id', 'phone', 'bank',
                               'account', 'address', 'remark', 'sent_consignee', 'sent_smartphone',
-                              'sent_city', 'sent_district', 'sent_address', 'is_deliver', 'goods_id']
+                              'sent_address', 'is_deliver', 'goods_id']
                 df_check = df[check_list]
 
                 tax_ids = list(set(df_check.tax_id))
@@ -690,10 +697,16 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
         else:
             work_order.order_id = resource[0]['order_id']
 
+        goods_ids = [row['goods_id'] for row in resource]
+        goods_quantity = [row['quantity'] for row in resource]
+        goods_prices = [row['price'] for row in resource]
+        amount = reduce(lambda x, y: x + y, map(lambda z: z[0] * z[1], zip(goods_prices, goods_quantity)))
+        work_order.amount = round(amount, 2)
+
         _q_work_order = OriInvoice.objects.filter(order_id=str(resource[0]['order_id']))
         if not _q_work_order.exists():
             # 开始导入数据
-            check_list = ['title', 'tax_id', 'sent_consignee', 'sent_smartphone', 'sent_district', 'sent_address',
+            check_list = ['title', 'tax_id', 'sent_consignee', 'sent_smartphone', 'sent_address',
                           'phone', 'bank', 'account', 'address', 'remark', 'message', 'nickname']
 
             _q_shop = Shop.objects.filter(name=resource[0]['shop'])
@@ -723,13 +736,18 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
                 report_dic['error'].append(error)
                 return report_dic
 
-            _q_city = City.objects.filter(city=str(resource[0]['sent_city']))
-            if _q_city.exists():
-                work_order.sent_city = _q_city[0]
-            else:
-                error = '城市%s非法，请使用正确的二级城市名称' % resource[0]['sent_city']
-                report_dic['error'].append(error)
-                return report_dic
+            _spilt_addr = PickOutAdress(resource[0]['sent_address'])
+            _rt_addr = _spilt_addr.pickout_addr()
+            if not isinstance(_rt_addr, dict):
+                raise serializers.ValidationError("地址无法提取省市区")
+            _rt_addr["district"] = _rt_addr["district"].name
+            cs_info_fields = ["city", "district", "address"]
+            order_cs_fields = ["sent_city", "sent_district", "sent_address"]
+            for i in range(len(cs_info_fields)):
+                setattr(work_order, order_cs_fields[i], _rt_addr.get(cs_info_fields[i], None))
+
+            if '集运' in str(_rt_addr["address"]):
+                raise serializers.ValidationError("地址是集运仓")
 
             logical_decision = {
                 '是': 1,
@@ -744,14 +762,14 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
                 work_order.is_deliver = is_deliver
 
             if order_category == 1:
-                check_list = check_list[:10]
+                check_list = check_list[:8]
                 for k in check_list:
                     if not resource[0][k]:
                         error = '%s非法，开专票请把必填项补全' % k
                         report_dic['error'].append(error)
                         return report_dic
             elif order_category == 2:
-                check_list = check_list[:6]
+                check_list = check_list[:4]
                 for k in check_list:
                     if not resource[0][k]:
                         error = '%s非法，开普票请把必填项补全' % k
@@ -777,7 +795,6 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
 
             try:
                 work_order.creator = self.request.user.username
-                work_order.process_tag = 7
                 work_order.save()
                 report_dic["successful"] += 1
             # 保存出错，直接错误条数计数加一。
@@ -797,9 +814,6 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
             all_goods_info = work_order.oriinvoicegoods_set.all()
             all_goods_info.delete()
 
-        goods_ids = [row['goods_id'] for row in resource]
-        goods_quantity = [row['quantity'] for row in resource]
-        goods_prices = [row['price'] for row in resource]
 
         for goods_id, quantity, price in zip(goods_ids, goods_quantity, goods_prices):
             goods_order = OriInvoiceGoods()

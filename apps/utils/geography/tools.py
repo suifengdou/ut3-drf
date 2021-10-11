@@ -1,16 +1,20 @@
 # coding: utf8
+import re
+import jieba
 from .models import Nationality, Province, City, District
 from functools import reduce
 
 
+
 class PickOutAdress():
 
-    def __init__(self, addr_list):
-        self.addr_list = addr_list
+    def __init__(self, address):
+        jieba.load_userdict("apps/utils/geography/addr_key_words.txt")
+        self.address = address
+        self.addr_list = self.spiltAddress(self.address)
         self.province = None
         self.city = None
         self.district = None
-        self.address = None
         self.switch = True
         self.addr_index = 0
         self.special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市',
@@ -18,7 +22,6 @@ class PickOutAdress():
                              '琼中黎族苗族自治县', '琼海市', '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县',
                              '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县', '白沙黎族自治县', '中山市', '东莞市']
         self.terminator = 0
-
 
     def pickout_addr(self, *args, **kwargs):
         index = 0
@@ -37,6 +40,7 @@ class PickOutAdress():
             if _q_district_again.exists():
                 self.district = _q_district_again[0]
         self.address = reduce(lambda x, y: str(x) + str(y), self.addr_list[self.addr_index:])
+        self.check_result()
         result_addr = {
             "province": self.province,
             "city": self.city,
@@ -59,7 +63,6 @@ class PickOutAdress():
                 if self.switch:
                     self.switch = False
                     self.addr_index = index
-
 
     def pickout_city(self, words, index, *args, **kwargs):
         if self.province:
@@ -102,5 +105,19 @@ class PickOutAdress():
             if _q_district.exists():
                 self.district = _q_district[0]
                 self.terminator = 1
+
+    def spiltAddress(self, address, *args, **kwargs):
+        rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", address)
+        seg_list = jieba.lcut(rt_address)
+        return seg_list
+
+    def check_result(self):
+        if not self.city:
+            return False
+        if self.address.find(str(self.province.name)[:2]) == -1 and self.address.find(str(self.city.name)[:2]) == -1:
+            return False
+        if self.province != self.city.province:
+            return False
+
 
 

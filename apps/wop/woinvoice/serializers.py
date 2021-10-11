@@ -205,44 +205,21 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError("登陆账号没有设置公司或者部门，不可以创建！")
 
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
         user = self.context["request"].user
         validated_data["creator"] = user.username
-        goods_details = validated_data.pop("goods_details", [])
-        self.check_goods_details(goods_details)
-        validated_data["department"] = user.department
 
-        rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", validated_data["sent_address"])
-        seg_list = jieba.lcut(rt_address)
-
-        _spilt_addr = PickOutAdress(seg_list)
+        _spilt_addr = PickOutAdress(validated_data['sent_address'])
         _rt_addr = _spilt_addr.pickout_addr()
-        cs_info_fields = ["province", "city", "district", "address"]
-        for key_word in cs_info_fields:
-            validated_data[key_word] = _rt_addr.get(key_word, None)
-
-        if not _rt_addr["city"]:
+        if not isinstance(_rt_addr, dict):
             raise serializers.ValidationError("地址无法提取省市区")
-
-        if _rt_addr["province"] != _rt_addr["city"].province:
-            raise serializers.ValidationError("地址无法提取省市区")
-
-        if rt_address.find(str(_rt_addr["province"].name)[:2]) == -1 and rt_address.find(str(_rt_addr["city"].name)[:2]) == -1:
-            raise serializers.ValidationError("地址无法提取省市区")
-
-        if _rt_addr["city"].name not in special_city and not _rt_addr["district"]:
-            _rt_addr["district"] = District.objects.filter(city=_rt_addr["city"], name="其他区")[0].name
-
+        _rt_addr["district"] = _rt_addr["district"].name
+        cs_info_fields = ["city", "district", "address"]
+        order_cs_fields = ["sent_city", "sent_district", "sent_address"]
+        for i in range(len(cs_info_fields)):
+            validated_data[order_cs_fields[i]] = _rt_addr.get(cs_info_fields[i], None)
         if '集运' in str(_rt_addr["address"]):
             raise serializers.ValidationError("地址是集运仓")
 
-        if _rt_addr["city"].name in special_city:
-            _rt_addr["district"] = None
-        validated_data["sent_city"] = _rt_addr["city"]
-        validated_data["sent_district"] = _rt_addr["district"]
         ori_invoice = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
             goods_detail['invoice'] = ori_invoice
@@ -254,10 +231,6 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         return ori_invoice
 
     def update(self, instance, validated_data):
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
         validated_data["update_time"] = datetime.datetime.now()
         # groups_list = validated_data.pop("groups", [])
         # user_permissions = validated_data.pop("user_permissions", [])
@@ -266,34 +239,19 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         validated_data["amount"] = amount
         create_time = validated_data.pop("create_time", "")
         update_tim = validated_data.pop("update_tim", "")
-        rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", validated_data["sent_address"])
-        seg_list = jieba.lcut(rt_address)
 
-        _spilt_addr = PickOutAdress(seg_list)
+        _spilt_addr = PickOutAdress(validated_data['sent_address'])
         _rt_addr = _spilt_addr.pickout_addr()
-        cs_info_fields = ["province", "city", "district", "address"]
-        for key_word in cs_info_fields:
-            validated_data[key_word] = _rt_addr.get(key_word, None)
-
-        if not _rt_addr["city"]:
+        if not isinstance(_rt_addr, dict):
             raise serializers.ValidationError("地址无法提取省市区")
-
-        if _rt_addr["province"] != _rt_addr["city"].province:
-            raise serializers.ValidationError("地址无法提取省市区")
-
-        if rt_address.find(str(_rt_addr["province"].name)[:2]) == -1 and rt_address.find(str(_rt_addr["city"].name)[:2]) == -1:
-            raise serializers.ValidationError("地址无法提取省市区")
-
-        if _rt_addr["city"].name not in special_city and not _rt_addr["district"]:
-            _rt_addr["district"] = District.objects.filter(city=_rt_addr["city"], name="其他区")[0].name
-
+        _rt_addr["district"] = _rt_addr["district"].name
+        cs_info_fields = ["city", "district", "address"]
+        order_cs_fields = ["sent_city", "sent_district", "sent_address"]
+        for i in range(len(cs_info_fields)):
+            validated_data[order_cs_fields[i]] = _rt_addr.get(cs_info_fields[i], None)
         if '集运' in str(_rt_addr["address"]):
             raise serializers.ValidationError("地址是集运仓")
 
-        if _rt_addr["city"].name in special_city:
-            _rt_addr["district"] = None
-        validated_data["sent_city"] = _rt_addr["city"]
-        validated_data["sent_district"] = _rt_addr["district"]
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         for goods_detail in goods_details:
             goods_detail['invoice'] = instance
@@ -319,6 +277,7 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         else:
             amount_list = list(map(lambda x: float(x["price"]) * int(x["quantity"]), goods_details))
             amount = reduce(lambda x, y: x + y, amount_list)
+            amount = round(amount, 2)
             return amount
 
     def create_goods_detail(self, data):

@@ -154,34 +154,18 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                     serial_number = str(datetime.date.today()).replace("-", "")
                     obj.erp_order_id = serial_number + _prefix + str(obj.id)
                 order.order_category = 3
-                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.address))
-                seg_list = jieba.lcut(address)
 
-                _spilt_addr = PickOutAdress(seg_list)
+                _spilt_addr = PickOutAdress(str(obj.address))
                 _rt_addr = _spilt_addr.pickout_addr()
+                if not isinstance(_rt_addr, dict):
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
                 cs_info_fields = ["province", "city", "district", "address"]
                 for key_word in cs_info_fields:
                     setattr(order, key_word, _rt_addr.get(key_word, None))
-
-                if not order.city:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-
-                if order.province != order.city.province:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
-                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 1
-                    obj.save()
-                    continue
 
                 if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
                     data["error"].append("%s 手机错误" % obj.id)
@@ -196,7 +180,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                     obj.save()
                     continue
 
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
+                order_fields = ["shop", "nickname", "receiver", "mobile", "erp_order_id", "order_id"]
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
 

@@ -66,7 +66,7 @@ class OriInvoice(models.Model):
 
     sent_consignee = models.CharField(max_length=150, verbose_name='收件人姓名', help_text='收件人姓名')
     sent_smartphone = models.CharField(max_length=30, verbose_name='收件人手机', help_text='收件人手机')
-    sent_city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='收件城市', help_text='收件城市')
+    sent_city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, verbose_name='收件城市', help_text='收件城市')
     sent_district = models.CharField(null=True, blank=True, max_length=30, verbose_name='收件区县', help_text='收件区县')
     sent_address = models.CharField(max_length=200, verbose_name='收件地址', help_text='收件地址')
 
@@ -114,7 +114,7 @@ class OriInvoice(models.Model):
     @classmethod
     def verify_mandatory(cls, columns_key):
         VERIFY_FIELD = ['shop', 'company', 'order_id', 'order_category', 'title', 'tax_id', 'phone', 'bank', 'account',
-                        'remark', 'sent_consignee', 'sent_smartphone', 'sent_city', 'sent_district', 'sent_address',
+                        'remark', 'sent_consignee', 'sent_smartphone', 'sent_address',
                         'is_deliver', 'message', 'goods_id', 'goods_name', 'quantity', 'price']
 
         for i in VERIFY_FIELD:

@@ -375,7 +375,6 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
             '礼品赠品': 3
         }
         report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
-        jieba.load_userdict("apps/dfc/manualorder/addr_key_words.txt")
         for row in resource:
 
             order_fields = ["nickname", "receiver", "address", "mobile", "m_sn", "broken_part", "description"]
@@ -386,11 +385,13 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
             _q_shop =  Shop.objects.filter(name=row["shop"])
             if _q_shop.exists():
                 order.shop = _q_shop[0]
-            address = re.sub("[0-9!#$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(order.address))
-            seg_list = jieba.lcut(address)
 
-            _spilt_addr = PickOutAdress(seg_list)
+            _spilt_addr = PickOutAdress(str(order.address))
             _rt_addr = _spilt_addr.pickout_addr()
+            if not isinstance(_rt_addr, dict):
+                report_dic["error"].append("%s 地址无法提取省市区" % order.address)
+                report_dic["false"] += 1
+                continue
             cs_info_fields = ["province", "city", "district", "address"]
             for key_word in cs_info_fields:
                 setattr(order, key_word, _rt_addr.get(key_word, None))

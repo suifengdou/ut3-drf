@@ -660,10 +660,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
+
         _rt_talk_title_new = ['order_category', 'goods_details', 'order_id', 'cs_information']
         _rt_talk_title_total = ['order_category', 'goods_details', 'order_id', 'cs_information',
                                 'm_sn', 'broken_part', 'description']
@@ -739,34 +736,17 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                     order.receiver = receiver
                     order.mobile = mobile
 
-                    rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", rt_address)
-                    seg_list = jieba.lcut(rt_address)
-
-                    _spilt_addr = PickOutAdress(seg_list)
+                    _spilt_addr = PickOutAdress(rt_address)
                     _rt_addr = _spilt_addr.pickout_addr()
+                    if not isinstance(_rt_addr, dict):
+                        data["error"].append("%s 地址无法提取省市区" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 1
+                        obj.save()
+                        continue
                     cs_info_fields = ["province", "city", "district", "address"]
                     for key_word in cs_info_fields:
                         setattr(order, key_word, _rt_addr.get(key_word, None))
-
-                    if not order.city:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
-
-                    if order.province != order.city.province:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
-                    if rt_address.find(str(order.province.name)[:2]) == -1 and rt_address.find(str(order.city.name)[:2]) == -1:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
 
                     if '集运' in str(order.address):
                         data["error"].append("%s 地址是集运仓" % obj.id)
@@ -774,8 +754,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 5
                         obj.save()
                         continue
-                    if order.city.name in special_city:
-                        order.district = None
+
                     try:
                         order.department = request.user.department
                         order.creator = request.user.username
@@ -1131,37 +1110,17 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                     order.receiver = receiver
                     order.mobile = mobile
 
-                    rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", rt_address)
-                    seg_list = jieba.lcut(rt_address)
-
-                    _spilt_addr = PickOutAdress(seg_list)
+                    _spilt_addr = PickOutAdress(rt_address)
                     _rt_addr = _spilt_addr.pickout_addr()
+                    if not isinstance(_rt_addr, dict):
+                        data["error"].append("%s 地址无法提取省市区" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 1
+                        obj.save()
+                        continue
                     cs_info_fields = ["province", "city", "district", "address"]
                     for key_word in cs_info_fields:
                         setattr(order, key_word, _rt_addr.get(key_word, None))
-                    if not order.city:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
-
-                    if order.province != order.city.province:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
-                    if rt_address.find(str(order.province.name)[:2]) == -1 and rt_address.find(str(order.city.name)[:2]) == -1:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
-                    if order.city.name not in special_city and not order.district:
-                        order.district = District.objects.filter(city=order.city, name="其他区")[0]
-                    if order.city.name in special_city:
-                        order.district = None
 
                     if '集运' in str(order.address):
                         data["error"].append("%s 地址是集运仓" % obj.id)
@@ -2216,10 +2175,6 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
             "小狗京东商城店铺FBP": shop_pop
         }
 
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
         _rt_talk_title_new = ['order_category', 'goods_details', 'order_id', 'cs_information']
         _rt_talk_title_total = ['order_category', 'goods_details', 'order_id', 'cs_information',
                                 'm_sn', 'broken_part', 'description']
@@ -2286,36 +2241,17 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
                     order.receiver = receiver
                     order.mobile = mobile
 
-                    rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", rt_address)
-                    seg_list = jieba.lcut(rt_address)
-
-                    _spilt_addr = PickOutAdress(seg_list)
+                    _spilt_addr = PickOutAdress(rt_address)
                     _rt_addr = _spilt_addr.pickout_addr()
+                    if not isinstance(_rt_addr, dict):
+                        data["error"].append("%s 地址无法提取省市区" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 1
+                        obj.save()
+                        continue
                     cs_info_fields = ["province", "city", "district", "address"]
                     for key_word in cs_info_fields:
                         setattr(order, key_word, _rt_addr.get(key_word, None))
-
-                    if not order.city:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
-
-                    if order.province != order.city.province:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
-                    if rt_address.find(str(order.province.name)[:2]) == -1 and rt_address.find(str(order.city.name)[:2]) == -1:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 4
-                        obj.save()
-                        continue
-                    if order.city.name not in special_city and not order.district:
-                        order.district = District.objects.filter(city=order.city, name="其他区")[0]
 
                     if '集运' in str(order.address):
                         data["error"].append("%s 地址是集运仓" % obj.id)
@@ -2323,8 +2259,7 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 5
                         obj.save()
                         continue
-                    if order.city.name in special_city:
-                        order.district = None
+
                     try:
                         order.department = request.user.department
                         order.creator = request.user.username
@@ -2739,36 +2674,18 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
                     order.mobile = obj.mobile
 
                 order.address = str(obj.area) + str(obj.address)
-                address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", order.address)
-                seg_list = jieba.lcut(address)
 
-                _spilt_addr = PickOutAdress(seg_list)
+                _spilt_addr = PickOutAdress(order.address)
                 _rt_addr = _spilt_addr.pickout_addr()
+                if not isinstance(_rt_addr, dict):
+                    data["error"].append("%s 地址无法提取省市区" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
                 cs_info_fields = ["province", "city", "district", "address"]
                 for key_word in cs_info_fields:
                     setattr(order, key_word, _rt_addr.get(key_word, None))
-
-                if not order.city:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 6
-                    obj.save()
-                    continue
-
-                if order.province != order.city.province:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 6
-                    obj.save()
-                    continue
-                if address.find(str(order.province.name)[:2]) == -1 and address.find(str(order.city.name)[:2]) == -1:
-                    data["error"].append("%s 地址无法提取省市区" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 6
-                    obj.save()
-                    continue
-                if order.city.name not in special_city and not order.district:
-                    order.district = District.objects.filter(city=order.city, name="其他区")[0]
 
                 if '集运' in str(obj.address):
                     data["error"].append("%s地址是集运仓" % obj.id)
