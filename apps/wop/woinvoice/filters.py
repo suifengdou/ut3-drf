@@ -45,6 +45,7 @@ class InvoiceGoodsFilter(django_filters.FilterSet):
 
 class DeliverOrderFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
+    update_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = DeliverOrder

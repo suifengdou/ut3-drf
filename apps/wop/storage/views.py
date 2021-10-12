@@ -14,113 +14,20 @@ from .serializers import StorageWorkOrderSerializer
 from .filters import StorageWorkOrderFilter
 
 
-class SWOReverseCreateViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定货品明细
-    list:
-        返回货品明细
-    update:
-        更新货品明细
-    destroy:
-        删除货品明细
-    create:
-        创建货品明细
-    partial_update:
-        更新部分货品明细
-    """
-    serializer_class = StorageWorkOrderSerializer
-    filter_class = StorageWorkOrderFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
-    }
-
-    def get_queryset(self):
-        if not self.request:
-            return StorageWorkOrder.objects.none()
-        user = self.request.user
-        queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=1,  wo_category=1).order_by("id")
-        return queryset
-
-    @action(methods=['patch'], detail=False)
-    def export(self, request, *args, **kwargs):
-        user = self.request.user
-        if not user.is_our:
-            request.data["creator"] = user.username
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.data
-        params["order_status"] = 1
-        params["wo_category"] = 1
-        f = StorageWorkOrderFilter(params)
-        serializer = StorageWorkOrderSerializer(f.qs, many=True)
-        return Response(serializer.data)
-
-    def get_handle_list(self, params):
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
-        if all_select_tag:
-            handle_list = StorageWorkOrderFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=1)
-            else:
-                handle_list = []
-        return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            check_list.update(order_status=2, is_return=0)
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-
 class SWOCreateViewset(viewsets.ModelViewSet):
     """
     retrieve:
-        返回指定货品明细
+        返回指定未处理的仓储工单
     list:
-        返回货品明细
+        返回未处理的仓储工单
     update:
-        更新货品明细
+        更新未处理的仓储工单
     destroy:
-        删除货品明细
+        删除未处理的仓储工单
     create:
-        创建货品明细
+        创建未处理的仓储工单
     partial_update:
-        更新部分货品明细
+        更新部分未处理的仓储工单
     """
     serializer_class = StorageWorkOrderSerializer
     filter_class = StorageWorkOrderFilter
@@ -134,34 +41,39 @@ class SWOCreateViewset(viewsets.ModelViewSet):
         if not self.request:
             return StorageWorkOrder.objects.none()
         user = self.request.user
-        queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=1, wo_category=0).order_by("id")
+        if user.is_our:
+            queryset = StorageWorkOrder.objects.filter(order_status=1, is_forward=user.is_our).order_by("id")
+        else:
+            queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=1,
+                                                       is_forward=user.is_our).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.is_our:
-            request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
         params["order_status"] = 1
-        params["wo_category"] = 0
+        params["company"] = user.company
+        params["is_forward"] = user.is_our
         f = StorageWorkOrderFilter(params)
         serializer = StorageWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
+        user = self.request.user
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 1
-        params["wo_category"] = 0
+        params["company"] = user.company
+        params["is_forward"] = user.is_our
         if all_select_tag:
             handle_list = StorageWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=1, wo_category=0)
+                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=1, is_forward=user.is_our)
             else:
                 handle_list = []
         return handle_list
@@ -181,7 +93,6 @@ class SWOCreateViewset(viewsets.ModelViewSet):
                 order.servicer = request.user.username
                 order.submit_time = datetime.datetime.now()
                 order.order_status = 2
-                order.is_return = 1
                 order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
@@ -202,7 +113,7 @@ class SWOCreateViewset(viewsets.ModelViewSet):
         if n:
             reject_list.update(order_status=0)
         else:
-            raise serializers.ValidationError("没有可驳回的单据！")
+            raise serializers.ValidationError("没有可取消的单据！")
         data["successful"] = n
         return Response(data)
 
@@ -234,20 +145,27 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         if not self.request:
             return StorageWorkOrder.objects.none()
         user = self.request.user
-        queryset = StorageWorkOrder.objects.filter(order_status=2, is_return=0, wo_category=1).order_by("id")
+        if user.is_our:
+            queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=False).order_by("id")
+        else:
+            queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=2, is_forward=True).order_by("id")
         return queryset
 
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
+        params = request.data
         user = self.request.user
         if not user.is_our:
+            params["is_forward"] = True
             request.data["creator"] = user.username
+        else:
+            params["is_forward"] = False
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
-        params = request.data
+
         params["order_status"] = 2
-        params["wo_category"] = 1
+
         f = StorageWorkOrderFilter(params)
         serializer = StorageWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -256,14 +174,14 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 2
-        params["wo_category"] = 1
+        params["is_forward"] = 1
         params["is_return"] = 0
         if all_select_tag:
             handle_list = StorageWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=2, is_return=0, wo_category=1)
+                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=2, is_forward=1)
             else:
                 handle_list = []
         return handle_list
@@ -280,7 +198,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                if not obj.feedback:
+                if not obj.suggestion:
                     data["error"].append("%s 无反馈内容, 不可以审核" % obj.track_id)
                     n -= 1
                     continue
@@ -321,7 +239,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-class SWOSupplierHandleViewset(viewsets.ModelViewSet):
+class SWOConfirmViewset(viewsets.ModelViewSet):
     """
     retrieve:
         返回指定货品明细
@@ -348,36 +266,39 @@ class SWOSupplierHandleViewset(viewsets.ModelViewSet):
         if not self.request:
             return StorageWorkOrder.objects.none()
         user = self.request.user
-        queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=2, is_return=1).order_by("id")
+        if user.is_our:
+            queryset = StorageWorkOrder.objects.filter(order_status=3, is_forward=user.is_our).order_by("id")
+        else:
+            queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=3,
+                                                       is_forward=user.is_our).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.is_our:
-            request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 2
-        params["is_return"] = 1
+        params["order_status"] = 3
         params["company"] = user.company
+        params["is_forward"] = user.is_our
         f = StorageWorkOrderFilter(params)
         serializer = StorageWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
+        user = self.request.user
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 2
-        params["wo_category"] = 0
-        params["company"] = self.request.user.company
+        params["order_status"] = 3
+        params["company"] = user.company
+        params["is_forward"] = user.is_our
         if all_select_tag:
             handle_list = StorageWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=2, is_return=1)
+                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=3, is_forward=user.is_our)
             else:
                 handle_list = []
         return handle_list
@@ -394,7 +315,7 @@ class SWOSupplierHandleViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                if obj.wo_category:
+                if obj.is_forward:
                     if not obj.memo:
                         data["error"].append("%s 逆向结单备注不能为空" % obj.track_id)
                         n -= 1
@@ -437,7 +358,7 @@ class SWOSupplierHandleViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
-                if obj.wo_category == 0:
+                if obj.is_forward == 0:
                     obj.order_status = 1
                 else:
                     obj.is_return = 0

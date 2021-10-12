@@ -86,6 +86,8 @@ class ExpressWorkOrder(models.Model):
             # (权限，权限描述),
             ('view_user_expressworkorder', 'Can view user WOP-快递工单-用户'),
             ('view_handler_expressworkorder', 'Can view handler WOP-快递工单-处理'),
+            ('view_check_expressworkorder', 'Can view check WOP-快递工单-审核'),
+            ('view_audit_expressworkorder', 'Can view audit WOP-快递工单-结算'),
         )
 
     def __str__(self):
