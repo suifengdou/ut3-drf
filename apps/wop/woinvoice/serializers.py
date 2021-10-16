@@ -232,25 +232,23 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
-        # groups_list = validated_data.pop("groups", [])
-        # user_permissions = validated_data.pop("user_permissions", [])
         goods_details = validated_data.pop("goods_details", [])
         amount = self.check_goods_details(goods_details)
-        validated_data["amount"] = amount
         create_time = validated_data.pop("create_time", "")
-        update_tim = validated_data.pop("update_tim", "")
-
-        _spilt_addr = PickOutAdress(validated_data['sent_address'])
-        _rt_addr = _spilt_addr.pickout_addr()
-        if not isinstance(_rt_addr, dict):
-            raise serializers.ValidationError("地址无法提取省市区")
-        _rt_addr["district"] = _rt_addr["district"].name
-        cs_info_fields = ["city", "district", "address"]
-        order_cs_fields = ["sent_city", "sent_district", "sent_address"]
-        for i in range(len(cs_info_fields)):
-            validated_data[order_cs_fields[i]] = _rt_addr.get(cs_info_fields[i], None)
-        if '集运' in str(_rt_addr["address"]):
-            raise serializers.ValidationError("地址是集运仓")
+        if validated_data.get("amount", None) is not None:
+            validated_data["amount"] = amount
+        if validated_data.get('sent_address', None) is not None:
+            _spilt_addr = PickOutAdress(validated_data['sent_address'])
+            _rt_addr = _spilt_addr.pickout_addr()
+            if not isinstance(_rt_addr, dict):
+                raise serializers.ValidationError("地址无法提取省市区")
+            _rt_addr["district"] = _rt_addr["district"].name
+            cs_info_fields = ["city", "district", "address"]
+            order_cs_fields = ["sent_city", "sent_district", "sent_address"]
+            for i in range(len(cs_info_fields)):
+                validated_data[order_cs_fields[i]] = _rt_addr.get(cs_info_fields[i], None)
+            if '集运' in str(_rt_addr["address"]):
+                raise serializers.ValidationError("地址是集运仓")
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         for goods_detail in goods_details:
