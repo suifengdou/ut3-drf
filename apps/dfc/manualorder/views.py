@@ -574,6 +574,9 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         params["order_status"] = 1
         f = ManualOrderExportFilter(params)
         serializer = ManualOrderExportSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        for order in f.qs[:EXPORT_TOPLIMIT]:
+            order.process_tag = 1
+            order.save()
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -603,14 +606,17 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                obj.ori_order.mogoods_set.all().update(order_status=2)
-                obj.submit_user = request.user.username
-                obj.order_status = 2
-                obj.save()
+                if obj.process_tag == 1:
+                    obj.ori_order.mogoods_set.all().update(order_status=2)
+                    obj.submit_user = request.user.username
+                    obj.order_status = 2
+                    obj.save()
+                else:
+                    n -= 1
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
-        data["false"] = 0
+        data["false"] = len(check_list) - n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -625,6 +631,7 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
+                obj.process_tag = 0
                 obj.ori_order.order_status = 1
                 obj.ori_order.save()
                 obj.order_status = 0

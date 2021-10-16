@@ -388,6 +388,21 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_process_tag(self, instance):
+        process_list = {
+            0: "未处理",
+            1: "已处理"
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process_list.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+
     def to_representation(self, instance):
         ret = super(ManualOrderExportSerializer, self).to_representation(instance)
         ret["shop"] = self.get_shop(instance)
@@ -395,6 +410,7 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
         ret["city"] = self.get_city(instance)
         ret["district"] = self.get_district(instance)
         ret["order_status"] = self.get_order_status(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
         return ret
 
 

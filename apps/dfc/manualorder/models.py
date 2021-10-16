@@ -127,7 +127,12 @@ class ManualOrderExport(models.Model):
         (1, '未处理'),
         (2, '已完成'),
     )
-
+    PROCESS_TAG = (
+        (0, '未处理'),
+        (1, '已处理'),
+        (2, '驳回'),
+        (3, '特殊订单'),
+    )
     ori_order =  models.OneToOneField(ManualOrder, on_delete=models.CASCADE, verbose_name='手工源单')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺名称')
     nickname = models.CharField(max_length=50, verbose_name='网名')
@@ -158,6 +163,8 @@ class ManualOrderExport(models.Model):
     order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='赠品单状态')
     submit_user = models.CharField(null=True, blank=True, max_length=50, verbose_name='处理人')
     erp_order_id = models.CharField(null=True, blank=True, unique=True, max_length=50, verbose_name='原始单号')
+
+    process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
