@@ -26,9 +26,10 @@ class ExpressWorkOrder(models.Model):
         (6, '丢件破损'),
         (7, '其他异常'),
     )
-    WO_CATEGORY = (
-        (0, '正向工单'),
-        (1, '逆向工单'),
+    MISTAKE_LIST = (
+        (0, '正常'),
+        (1, '快递单号错误'),
+        (2, '处理意见为空'),
     )
 
     PROCESSTAG = (
@@ -39,8 +40,9 @@ class ExpressWorkOrder(models.Model):
         (4, '催派查'),
         (5, '丢件核'),
         (6, '纠纷中'),
-        (7, '其他'),
-        (8, '已丢件'),
+        (7, '已丢件'),
+        (8, '其他'),
+
     )
     HANDLERS = (
         (0, '未处理'),
@@ -50,28 +52,30 @@ class ExpressWorkOrder(models.Model):
     )
 
     track_id = models.CharField(unique=True, max_length=100, verbose_name='快递单号', help_text='快递单号')
-    category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='工单事项类型')
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='快递公司')
-    information = models.TextField(max_length=600, verbose_name='初始问题信息')
-    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间')
-    servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服')
-    services_interval = models.IntegerField(null=True, blank=True, verbose_name='客服处理间隔(分钟)')
+    category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='工单事项类型', help_text='工单事项类型')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='快递公司', help_text='快递公司')
+    information = models.TextField(max_length=600, verbose_name='初始问题信息', help_text='初始问题信息')
+    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间', help_text='客服提交时间')
+    servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服', help_text='客服')
+    services_interval = models.IntegerField(null=True, blank=True, verbose_name='反馈间隔(分钟)', help_text='反馈间隔(分钟)')
+    suggestion = models.TextField(null=True, blank=True, max_length=900, verbose_name='处理意见', help_text='处理意见')
 
-    handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='快递处理人')
-    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='快递处理时间')
-    express_interval = models.IntegerField(null=True, blank=True, verbose_name='快递处理间隔(分钟)')
-    feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='反馈内容')
-    is_losing = models.BooleanField(default=False, verbose_name='是否理赔')
+    handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='快递处理人', help_text='快递处理人')
+    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='快递处理时间', help_text='快递处理时间')
+    express_interval = models.IntegerField(null=True, blank=True, verbose_name='处理间隔(分钟)', help_text='处理间隔(分钟)')
+    feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='反馈内容', help_text='反馈内容')
+    is_losing = models.BooleanField(default=False, verbose_name='是否理赔', help_text='是否理赔')
 
-    return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号')
-    is_return = models.BooleanField(default=True, verbose_name='是否返回')
-    memo = models.TextField(null=True, blank=True, verbose_name='备注')
-    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态')
+    return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号', help_text='返回单号')
+    is_return = models.BooleanField(default=True, verbose_name='是否返回', help_text='是否返回')
+    memo = models.TextField(null=True, blank=True, verbose_name='备注', help_text='备注')
+    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')
 
-    wo_category = models.SmallIntegerField(choices=WO_CATEGORY, default=0, verbose_name='工单类型')
-    process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
-    mid_handler = models.SmallIntegerField(choices=HANDLERS, default=0, verbose_name='处理状态')
+    is_forward = models.BooleanField(default=False, verbose_name='是否正向', help_text='是否正向')
+    process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签', help_text='处理标签')
+    handling_status = models.SmallIntegerField(choices=HANDLERS, default=0, verbose_name='处理状态', help_text='处理状态')
 
+    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')

@@ -809,7 +809,6 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
                 report_dic["error"].append(error)
                 report_dic["false"] += 1
                 return report_dic
-            work_order.process_tag = 7
             work_order.save()
             all_goods_info = work_order.oriinvoicegoods_set.all()
             all_goods_info.delete()

@@ -26,6 +26,17 @@ class StorageWorkOrder(models.Model):
         (4, '入库咨询'),
         (5, '出库咨询'),
     )
+    MISTAKE_LIST = (
+        (0, '正常'),
+        (1, '快递单号错误'),
+    )
+
+    HANDLINGS = (
+        (0, '未处理'),
+        (1, '在处理'),
+        (2, '待核实'),
+        (3, '已处理'),
+    )
 
 
     keyword = models.CharField(unique=True, max_length=100, verbose_name='快递单号', help_text='快递单号')
@@ -33,7 +44,7 @@ class StorageWorkOrder(models.Model):
     information = models.TextField(max_length=600, verbose_name='初始问题信息', help_text='初始问题信息')
     submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间', help_text='客服提交时间')
     servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服', help_text='客服')
-    services_interval = models.IntegerField(null=True, blank=True, verbose_name='客服处理间隔(分钟)', help_text='客服处理间隔(分钟)')
+    services_interval = models.IntegerField(null=True, blank=True, verbose_name='反馈间隔(分钟)', help_text='反馈间隔(分钟)')
 
     handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='处理人', help_text='处理人')
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间', help_text='处理时间')
@@ -50,6 +61,8 @@ class StorageWorkOrder(models.Model):
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')
     category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='工单事项类型', help_text='工单事项类型')
     is_forward = models.BooleanField(default=False, verbose_name='是否正向', help_text='是否正向')
+    handling_status = models.SmallIntegerField(choices=HANDLINGS, default=0, verbose_name='处理状态')
+    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
