@@ -534,6 +534,7 @@ class MOGoodsManageViewset(viewsets.ModelViewSet):
         params = request.data
         f = MOGoodsFilter(params)
         serializer = MOGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+
         return Response(serializer.data)
 
 

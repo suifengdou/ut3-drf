@@ -45,8 +45,10 @@ class ExpenseFilter(django_filters.FilterSet):
 
 class VerificationPrestoreFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    prestore = django_filters.ModelChoiceFilter(to_field_name="order_id", queryset=Prestore.objects.all())
-    statement = django_filters.ModelChoiceFilter(to_field_name="order_id", queryset=Statements.objects.all())
+    prestore = django_filters.ModelMultipleChoiceFilter(field_name='prestore__order_id', to_field_name="order_id",
+                                                        queryset=Prestore.objects.all())
+    statement = django_filters.ModelMultipleChoiceFilter(field_name='statement__order_id', to_field_name="order_id",
+                                                         queryset=Statements.objects.all())
 
     class Meta:
         model = VerificationPrestore
@@ -55,8 +57,9 @@ class VerificationPrestoreFilter(django_filters.FilterSet):
 
 class VerificationExpensesFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    expense = django_filters.ModelChoiceFilter(to_field_name="order_id", queryset=Expense.objects.all())
-    statement = django_filters.ModelChoiceFilter(to_field_name="order_id", queryset=Statements.objects.all())
+    expense = django_filters.ModelMultipleChoiceFilter(field_name='expense__order_id', to_field_name="order_id", queryset=Expense.objects.all())
+    statement = django_filters.ModelMultipleChoiceFilter(field_name='statement__order_id', to_field_name="order_id",
+                                                         queryset=Statements.objects.all())
 
     class Meta:
         model = VerificationExpenses
@@ -65,8 +68,10 @@ class VerificationExpensesFilter(django_filters.FilterSet):
 
 class ExpendListFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    prestore = django_filters.ModelChoiceFilter(to_field_name="order_id", queryset=Prestore.objects.all())
-    statement = django_filters.ModelChoiceFilter(to_field_name="order_id", queryset=Statements.objects.all())
+    prestore = django_filters.ModelMultipleChoiceFilter(field_name='prestore__order_id', to_field_name="order_id",
+                                                        queryset=Prestore.objects.all())
+    statement = django_filters.ModelMultipleChoiceFilter(field_name='statement__order_id', to_field_name="order_id",
+                                                         queryset=Statements.objects.all())
 
     class Meta:
         model = ExpendList

@@ -27,7 +27,7 @@ class MOGoodsFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
-    manual_order = django_filters.ModelChoiceFilter(to_field_name="mobile", queryset=ManualOrder.objects.all())
+    manual_order = django_filters.ModelMultipleChoiceFilter(field_name='manual_order__mobile', to_field_name="mobile", queryset=ManualOrder.objects.all())
 
     class Meta:
         model = MOGoods

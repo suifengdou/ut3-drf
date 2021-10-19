@@ -80,7 +80,7 @@ class ManualOrder(models.Model):
         )
 
     def __str__(self):
-        return self.order_id
+        return str(self.id)
 
 
 class MOGoods(models.Model):
@@ -118,7 +118,7 @@ class MOGoods(models.Model):
         )
 
     def __str__(self):
-        return self.goods_name
+        return str(self.id)
 
 
 class ManualOrderExport(models.Model):
@@ -177,7 +177,7 @@ class ManualOrderExport(models.Model):
         db_table = 'dfc_manualorder_export'
 
     def __str__(self):
-        return self.order_id
+        return str(self.id)
 
 
 

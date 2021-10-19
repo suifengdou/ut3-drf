@@ -263,6 +263,11 @@ class MOGoodsSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def get_manual_order(self, instance):
+        category_status = {
+            1: "质量问题",
+            2: "开箱即损",
+            3: "礼品赠品",
+        }
         try:
             ret = {
                 "id": instance.manual_order.id,
@@ -273,7 +278,7 @@ class MOGoodsSerializer(serializers.ModelSerializer):
                 "address": instance.manual_order.address,
                 "mobile": instance.manual_order.mobile,
                 "order_id": instance.manual_order.order_id,
-                "order_category": instance.manual_order.order_category,
+                "order_category": category_status.get(instance.manual_order.order_category, None),
                 "m_sn": instance.manual_order.m_sn,
                 "broken_part": instance.manual_order.broken_part,
                 "description": instance.manual_order.description

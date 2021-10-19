@@ -1688,6 +1688,7 @@ class InvoiceHandleViewset(viewsets.ModelViewSet):
                         deliver_order.message = '%s%s共%s张(发票号最大显示3个，完整见UT发票订单)' % (
                         work_order.sign_department.name, work_order.creator, invoice_num)
                     try:
+                        deliver_order.creator = work_order.creator
                         deliver_order.save()
                     except Exception as e:
                         data["error"].append("%s 生成快递运单失败，请仔细检查 %s" % (invoice_order.order_id, e))
