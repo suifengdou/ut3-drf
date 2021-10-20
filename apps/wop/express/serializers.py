@@ -14,18 +14,6 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         model = ExpressWorkOrder
         fields = "__all__"
 
-    def get_platform(self, instance):
-        try:
-            ret = {
-                "id": instance.platform.id,
-                "name": instance.platform.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
 
     def get_company(self, instance):
         try:
@@ -43,14 +31,12 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         order_status = {
             0: "已被取消",
-            1: "创建未提",
-            2: "递交未理",
-            3: "反馈复核",
-            4: "财务审核",
-            5: "工单完结",
-            6: "终审未理",
-            7: "财务审核",
-            8: "工单完结",
+            1: "创建未递",
+            2: "等待处理",
+            3: "等待执行",
+            4: "终审复核",
+            5: "财务审核",
+            6: "工单完结",
         }
         try:
             ret = {
@@ -73,13 +59,36 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
             4: "催派查",
             5: "丢件核",
             6: "纠纷中",
-            7: "其他类",
-            8: "已丢件",
+            7: "需理赔",
+            8: "其他类",
         }
         try:
             ret = {
                 "id": instance.process_tag,
                 "name": process_tag.get(instance.process_tag, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "快递单号错误",
+            2: "处理意见为空",
+            3: "返回的单据无返回单号",
+            4: "丢件必须为已丢失才可以审核",
+            5: "驳回原因为空",
+            6: "无执行内容, 不可以审核",
+
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
             }
         except:
             ret = {
@@ -111,25 +120,8 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
             }
         return ret
 
-    def get_wo_category(self, instance):
-        wo_category = {
-            0: "正向工单",
-            1: "逆向工单",
-        }
-        try:
-            ret = {
-                "id": instance.wo_category,
-                "name": wo_category.get(instance.wo_category, None)
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_mid_handler(self, instance):
-        mid_handler = {
+    def get_handling_status(self, instance):
+        handlings = {
             0: "未处理",
             1: "在处理",
             2: "待核实",
@@ -137,8 +129,8 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         }
         try:
             ret = {
-                "id": instance.mid_handler,
-                "name": mid_handler.get(instance.mid_handler, None)
+                "id": instance.handling_status,
+                "name": handlings.get(instance.handling_status, None)
             }
         except:
             ret = {
@@ -151,14 +143,16 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         ret = super(ExpressWorkOrderSerializer, self).to_representation(instance)
         ret["company"] = self.get_company(instance)
         ret["category"] = self.get_category(instance)
-        ret["wo_category"] = self.get_wo_category(instance)
         ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["order_status"] = self.get_order_status(instance)
-        ret["mid_handler"] = self.get_mid_handler(instance)
+        ret["handling_status"] = self.get_handling_status(instance)
         return ret
 
     def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
+        user = self.context["request"].user
+        validated_data["creator"] = user.username
+        validated_data["is_forward"] = user.is_our
         _q_express_order = self.Meta.model.objects.filter(track_id=validated_data["track_id"])
         if _q_express_order.exists():
             raise serializers.ValidationError("相同快递单号只可创建一次工单！")

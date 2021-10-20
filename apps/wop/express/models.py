@@ -10,11 +10,12 @@ class ExpressWorkOrder(models.Model):
     VERIFY_FIELD = ['express_id', 'information', 'category']
     ORDER_STATUS = (
         (0, '已被取消'),
-        (1, '创建未提'),
-        (2, '递交未理'),
-        (3, '反馈复核'),
-        (4, '财务审核'),
-        (5, '工单完结')
+        (1, '创建未递'),
+        (2, '等待处理'),
+        (3, '等待执行'),
+        (4, '终审复核'),
+        (5, '财务审核'),
+        (6, '工单完结')
     )
     CATEGORY = (
         (0, '截单退回'),
@@ -30,6 +31,10 @@ class ExpressWorkOrder(models.Model):
         (0, '正常'),
         (1, '快递单号错误'),
         (2, '处理意见为空'),
+        (3, '返回的单据无返回单号'),
+        (4, '理赔必须设置需理赔才可以审核'),
+        (5, '驳回原因为空'),
+        (6, '无反馈内容, 不可以审核'),
     )
 
     PROCESSTAG = (
@@ -40,11 +45,11 @@ class ExpressWorkOrder(models.Model):
         (4, '催派查'),
         (5, '丢件核'),
         (6, '纠纷中'),
-        (7, '已丢件'),
-        (8, '其他'),
+        (7, '需理赔'),
+        (8, '其他类'),
 
     )
-    HANDLERS = (
+    HANDLINGS = (
         (0, '未处理'),
         (1, '在处理'),
         (2, '待核实'),
@@ -55,25 +60,25 @@ class ExpressWorkOrder(models.Model):
     category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='工单事项类型', help_text='工单事项类型')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='快递公司', help_text='快递公司')
     information = models.TextField(max_length=600, verbose_name='初始问题信息', help_text='初始问题信息')
-    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间', help_text='客服提交时间')
-    servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服', help_text='客服')
-    services_interval = models.IntegerField(null=True, blank=True, verbose_name='反馈间隔(分钟)', help_text='反馈间隔(分钟)')
+    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间', help_text='处理时间')
+    servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='处理人', help_text='处理人')
+    services_interval = models.IntegerField(null=True, blank=True, verbose_name='处理间隔(分钟)', help_text='处理间隔(分钟)')
     suggestion = models.TextField(null=True, blank=True, max_length=900, verbose_name='处理意见', help_text='处理意见')
-
-    handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='快递处理人', help_text='快递处理人')
-    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='快递处理时间', help_text='快递处理时间')
-    express_interval = models.IntegerField(null=True, blank=True, verbose_name='处理间隔(分钟)', help_text='处理间隔(分钟)')
-    feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='反馈内容', help_text='反馈内容')
+    rejection = models.CharField(null=True, blank=True, max_length=260, verbose_name='驳回原因', help_text='驳回原因')
+    handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='执行人', help_text='执行人')
+    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='执行时间', help_text='执行时间')
+    handle_interval = models.IntegerField(null=True, blank=True, verbose_name='执行间隔(分钟)', help_text='执行间隔(分钟)')
+    feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='执行内容', help_text='执行内容')
     is_losing = models.BooleanField(default=False, verbose_name='是否理赔', help_text='是否理赔')
 
     return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号', help_text='返回单号')
-    is_return = models.BooleanField(default=True, verbose_name='是否返回', help_text='是否返回')
+    is_return = models.BooleanField(default=False, verbose_name='是否返回', help_text='是否返回')
     memo = models.TextField(null=True, blank=True, verbose_name='备注', help_text='备注')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')
 
     is_forward = models.BooleanField(default=False, verbose_name='是否正向', help_text='是否正向')
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签', help_text='处理标签')
-    handling_status = models.SmallIntegerField(choices=HANDLERS, default=0, verbose_name='处理状态', help_text='处理状态')
+    handling_status = models.SmallIntegerField(choices=HANDLINGS, default=0, verbose_name='处理状态', help_text='处理状态')
 
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')

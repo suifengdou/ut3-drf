@@ -1657,8 +1657,9 @@ class InvoiceHandleViewset(viewsets.ModelViewSet):
                     deliver_order.consignee = work_order.sent_consignee
                     deliver_order.address = work_order.sent_address
                     deliver_order.smartphone = work_order.sent_smartphone
-                    deliver_order.province = invoice_order.sent_city.province.name
-                    deliver_order.city = invoice_order.sent_city.name
+                    deliver_order.province = work_order.sent_city.province.name
+                    deliver_order.city = work_order.sent_city.name
+                    deliver_order.district = work_order.sent_district
                     if work_order.nickname:
                         deliver_order.nickname = work_order.nickname
                     else:
@@ -1669,13 +1670,7 @@ class InvoiceHandleViewset(viewsets.ModelViewSet):
                     else:
                         deliver_order.logistics = '申通'
                     deliver_order.remark = deliver_order.logistics
-                    if work_order.sent_district:
-                        _q_district = District.objects.filter(city=work_order.sent_city,
-                                                              name=work_order.sent_district)
-                        if _q_district.exists():
-                            deliver_order.district = _q_district[0].name
-                        else:
-                            deliver_order.district = '其他区'
+
                     _q_invoice_orders = work_order.invoice_set.all()
                     invoice_ids = [invoice.invoice_id for invoice in _q_invoice_orders]
                     invoice_num = len(invoice_ids)
@@ -1691,7 +1686,7 @@ class InvoiceHandleViewset(viewsets.ModelViewSet):
                         deliver_order.creator = work_order.creator
                         deliver_order.save()
                     except Exception as e:
-                        data["error"].append("%s 生成快递运单失败，请仔细检查 %s" % (invoice_order.order_id, e))
+                        data["error"].append("%s 生成快递运单失败，请仔细检查 %s" % (work_order.order_id, e))
                         work_order.invoice_set.all().update(mistake_tag = 2)
                         _work_orders.remove(work_order)
                         continue
