@@ -84,7 +84,7 @@ class PickOutAdress():
             else:
                 _q_city_again = City.objects.filter(name__icontains=words[:2])
                 if _q_city_again.exists():
-                    self.city = _q_city[0]
+                    self.city = _q_city_again[0]
                     if not self.province:
                         self.province = self.city.province
                     if self.switch:

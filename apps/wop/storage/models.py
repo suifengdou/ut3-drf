@@ -39,23 +39,22 @@ class StorageWorkOrder(models.Model):
     )
 
 
-    keyword = models.CharField(unique=True, max_length=100, verbose_name='快递单号', help_text='快递单号')
+    keyword = models.CharField(unique=True, max_length=100, verbose_name='事务关键字', help_text='事务关键字')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='供应商', help_text='供应商')
     information = models.TextField(max_length=600, verbose_name='初始问题信息', help_text='初始问题信息')
-    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='客服提交时间', help_text='客服提交时间')
-    servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='客服', help_text='客服')
-    services_interval = models.IntegerField(null=True, blank=True, verbose_name='反馈间隔(分钟)', help_text='反馈间隔(分钟)')
 
-    handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='处理人', help_text='处理人')
-    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间', help_text='处理时间')
-    express_interval = models.IntegerField(null=True, blank=True, verbose_name='处理间隔(分钟)', help_text='处理间隔(分钟)')
-
+    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间', help_text='处理时间')
+    servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='处理人', help_text='处理人')
+    services_interval = models.IntegerField(null=True, blank=True, verbose_name='处理间隔(分钟)', help_text='处理间隔(分钟)')
     suggestion = models.TextField(null=True, blank=True, max_length=900, verbose_name='处理意见', help_text='处理意见')
+    rejection = models.CharField(null=True, blank=True, max_length=260, verbose_name='驳回原因', help_text='驳回原因')
+    handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='执行人', help_text='执行人')
+    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='执行时间', help_text='执行时间')
+    handle_interval = models.IntegerField(null=True, blank=True, verbose_name='执行时间(分钟)', help_text='执行时间(分钟)')
+    feedback = models.CharField(null=True, blank=True, max_length=200, verbose_name='执行内容', help_text='执行内容')
     is_losing = models.BooleanField(default=False, verbose_name='是否理赔', help_text='是否理赔')
-    goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, null=True, blank=True, verbose_name='理赔货品', help_text='理赔货品')
-    amount = models.FloatField(default=0, verbose_name='理赔金额', help_text='理赔金额')
+    indemnification = models.FloatField(default=0, verbose_name='理赔金额', help_text='理赔金额')
 
-    feedback = models.CharField(null=True, blank=True, max_length=200, verbose_name='反馈内容', help_text='反馈内容')
     memo = models.TextField(null=True, blank=True, verbose_name='备注', help_text='备注')
 
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')

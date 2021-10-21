@@ -44,8 +44,7 @@ class SWOCreateViewset(viewsets.ModelViewSet):
         if user.is_our:
             queryset = StorageWorkOrder.objects.filter(order_status=1, is_forward=user.is_our).order_by("id")
         else:
-            queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=1,
-                                                       is_forward=user.is_our).order_by("id")
+            queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=1, is_forward=user.is_our).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -142,13 +141,14 @@ class SWOHandleViewset(viewsets.ModelViewSet):
     }
 
     def get_queryset(self):
+        user = self.request.user
+        is_forward = bool(1 - user.is_our)
         if not self.request:
             return StorageWorkOrder.objects.none()
-        user = self.request.user
         if user.is_our:
-            queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=False).order_by("id")
+            queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=is_forward).order_by("id")
         else:
-            queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=2, is_forward=True).order_by("id")
+            queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=is_forward, company=user.company).order_by("id")
         return queryset
 
 
@@ -367,104 +367,6 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         data["false"] = len(reject_list) - n
-        return Response(data)
-
-
-class SWOCheckViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定货品明细
-    list:
-        返回货品明细
-    update:
-        更新货品明细
-    destroy:
-        删除货品明细
-    create:
-        创建货品明细
-    partial_update:
-        更新部分货品明细
-    """
-    serializer_class = StorageWorkOrderSerializer
-    filter_class = StorageWorkOrderFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
-    }
-
-    def get_queryset(self):
-        if not self.request:
-            return StorageWorkOrder.objects.none()
-        queryset = StorageWorkOrder.objects.filter(order_status=3).order_by("id")
-        return queryset
-
-
-    @action(methods=['patch'], detail=False)
-    def export(self, request, *args, **kwargs):
-        user = self.request.user
-        if not user.is_our:
-            request.data["creator"] = user.username
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.data
-        f = StorageWorkOrderFilter(params)
-        serializer = StorageWorkOrderSerializer(f.qs, many=True)
-        return Response(serializer.data)
-
-    def get_handle_list(self, params):
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 3
-        if all_select_tag:
-            handle_list = StorageWorkOrderFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=3)
-            else:
-                handle_list = []
-        return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for order in check_list:
-
-                if order.is_losing:
-                    order.order_status = 4
-                else:
-                    order.order_status = 5
-                order.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=2)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
         return Response(data)
 
 

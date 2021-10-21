@@ -31,7 +31,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         order_status = {
             0: "已被取消",
-            1: "创建未递",
+            1: "等待递交",
             2: "等待处理",
             3: "等待执行",
             4: "终审复核",
@@ -148,6 +148,9 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         ret["order_status"] = self.get_order_status(instance)
         ret["handling_status"] = self.get_handling_status(instance)
         return ret
+
+    def to_internal_value(self, data):
+        return super(ExpressWorkOrderSerializer, self).to_internal_value(data)
 
     def create(self, validated_data):
         user = self.context["request"].user

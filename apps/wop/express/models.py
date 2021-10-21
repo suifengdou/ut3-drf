@@ -10,7 +10,7 @@ class ExpressWorkOrder(models.Model):
     VERIFY_FIELD = ['express_id', 'information', 'category']
     ORDER_STATUS = (
         (0, '已被取消'),
-        (1, '创建未递'),
+        (1, '等待递交'),
         (2, '等待处理'),
         (3, '等待执行'),
         (4, '终审复核'),
@@ -60,6 +60,7 @@ class ExpressWorkOrder(models.Model):
     category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='工单事项类型', help_text='工单事项类型')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='快递公司', help_text='快递公司')
     information = models.TextField(max_length=600, verbose_name='初始问题信息', help_text='初始问题信息')
+
     submit_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间', help_text='处理时间')
     servicer = models.CharField(null=True, blank=True, max_length=60, verbose_name='处理人', help_text='处理人')
     services_interval = models.IntegerField(null=True, blank=True, verbose_name='处理间隔(分钟)', help_text='处理间隔(分钟)')
@@ -70,7 +71,7 @@ class ExpressWorkOrder(models.Model):
     handle_interval = models.IntegerField(null=True, blank=True, verbose_name='执行间隔(分钟)', help_text='执行间隔(分钟)')
     feedback = models.TextField(null=True, blank=True, max_length=900, verbose_name='执行内容', help_text='执行内容')
     is_losing = models.BooleanField(default=False, verbose_name='是否理赔', help_text='是否理赔')
-
+    indemnification = models.FloatField(default=0, verbose_name='理赔金额', help_text='理赔金额')
     return_express_id = models.CharField(null=True, blank=True, max_length=100, verbose_name='返回单号', help_text='返回单号')
     is_return = models.BooleanField(default=False, verbose_name='是否返回', help_text='是否返回')
     memo = models.TextField(null=True, blank=True, verbose_name='备注', help_text='备注')
