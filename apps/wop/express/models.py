@@ -7,7 +7,7 @@ from apps.base.goods.models import Goods
 
 
 class ExpressWorkOrder(models.Model):
-    VERIFY_FIELD = ['express_id', 'information', 'category']
+
     ORDER_STATUS = (
         (0, '已被取消'),
         (1, '等待递交'),
@@ -18,14 +18,14 @@ class ExpressWorkOrder(models.Model):
         (6, '工单完结')
     )
     CATEGORY = (
-        (0, '截单退回'),
-        (1, '无人收货'),
-        (2, '客户拒签'),
-        (3, '修改地址'),
-        (4, '催件派送'),
-        (5, '虚假签收'),
-        (6, '丢件破损'),
-        (7, '其他异常'),
+        (1, '截单退回'),
+        (2, '无人收货'),
+        (3, '客户拒签'),
+        (4, '修改地址'),
+        (5, '催件派送'),
+        (6, '虚假签收'),
+        (7, '丢件破损'),
+        (8, '其他异常'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
@@ -105,7 +105,8 @@ class ExpressWorkOrder(models.Model):
 
     @classmethod
     def verify_mandatory(cls, columns_key):
-        for i in cls.VERIFY_FIELD:
+        VERIFY_FIELD = ["track_id", "category", "company", "information", "memo"]
+        for i in VERIFY_FIELD:
             if i not in columns_key:
                 return 'verify_field error, must have mandatory field: "{}""'.format(i)
         else:

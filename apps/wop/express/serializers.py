@@ -99,14 +99,14 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
 
     def get_category(self, instance):
         category = {
-            0: "截单退回",
-            1: "无人收货",
-            2: "客户拒签",
-            3: "修改地址",
-            4: "催件派送",
-            5: "虚假签收",
-            6: "丢件破损",
-            7: "其他异常",
+            1: "截单退回",
+            2: "无人收货",
+            3: "客户拒签",
+            4: "修改地址",
+            5: "催件派送",
+            6: "虚假签收",
+            7: "丢件破损",
+            8: "其他异常",
         }
         try:
             ret = {

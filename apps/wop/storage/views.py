@@ -1,4 +1,5 @@
 import re, datetime, math
+import pandas as pd
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework.authentication import SessionAuthentication
@@ -12,6 +13,7 @@ from rest_framework import serializers
 from .models import StorageWorkOrder
 from .serializers import StorageWorkOrderSerializer
 from .filters import StorageWorkOrderFilter
+from apps.base.company.models import Company
 
 
 class SWOCreateViewset(viewsets.ModelViewSet):
@@ -116,6 +118,132 @@ class SWOCreateViewset(viewsets.ModelViewSet):
         data["successful"] = n
         return Response(data)
 
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+            columns_key_ori = df.columns.values.tolist()
+            filter_fields = ["事务关键字", "工单事项类型", "公司", "初始问题信息", "备注"]
+            INIT_FIELDS_DIC = {
+                "事务关键字": "keyword",
+                "工单事项类型": "category",
+                "公司": "company",
+                "初始问题信息": "information",
+                "备注": "memo"
+            }
+            result_keys = []
+            for keywords in columns_key_ori:
+                if keywords in filter_fields:
+                    result_keys.append(keywords)
+
+            try:
+                df = df[result_keys]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            result_columns = []
+            for keywords in columns_key:
+                result_columns.append(INIT_FIELDS_DIC.get(keywords, None))
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = StorageWorkOrder.verify_mandatory(result_columns)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            ret_columns_key = dict(zip(columns_key, result_columns))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+        error = report_dic["error"].append
+        category_list = {
+            '入库错误': 1,
+            '系统问题': 2,
+            '单据问题': 3,
+            '订单类别': 4,
+            '入库咨询': 5,
+            '出库咨询': 6
+        }
+        user = request.user
+
+        for row in resource:
+
+            order_fields = ["keyword", "category", "company", "information", "memo"]
+            row["category"] = category_list.get(row["category"], None)
+            if not row["category"]:
+                error("%s 单据类型错误" % row["track_id"])
+                report_dic["false"] += 1
+                continue
+            _q_company = Company.objects.filter(name=row["company"])
+            if _q_company.exists():
+                row["company"] = _q_company[0]
+            else:
+                error("%s 公司错误" % row["track_id"])
+                report_dic["false"] += 1
+                continue
+            order = StorageWorkOrder()
+            order.is_forward = user.is_our
+
+            for field in order_fields:
+                setattr(order, field, row[field])
+            order.keyword = re.sub("[!$%&\'()*,./:;<=>?，。?★、…【】《》？“”‘’！[\\]^`{|}~\s]+", "", str(order.keyword).strip())
+
+            try:
+                order.creator = user.username
+                order.save()
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["track_id"])
+                report_dic["false"] += 1
+
+        return report_dic
+
 
 class SWOHandleViewset(viewsets.ModelViewSet):
     """
@@ -158,7 +286,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         user = self.request.user
         if not user.is_our:
             params["is_forward"] = True
-            request.data["creator"] = user.username
+            request.data["company"] = user.company
         else:
             params["is_forward"] = False
         request.data.pop("page", None)
@@ -171,17 +299,18 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def get_handle_list(self, params):
+        user = self.request.user
         params.pop("page", None)
+        is_forward = bool(1 - user.is_our)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 2
-        params["is_forward"] = 1
-        params["is_return"] = 0
+        params["is_forward"] = is_forward
         if all_select_tag:
             handle_list = StorageWorkOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=2, is_forward=1)
+                handle_list = StorageWorkOrder.objects.filter(id__in=order_ids, order_status=2, is_forward=is_forward)
             else:
                 handle_list = []
         return handle_list
@@ -280,7 +409,8 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         params["order_status"] = 3
-        params["company"] = user.company
+        if not user.is_our:
+            params["company"] = user.company
         params["is_forward"] = user.is_our
         f = StorageWorkOrderFilter(params)
         serializer = StorageWorkOrderSerializer(f.qs, many=True)
@@ -291,7 +421,8 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 3
-        params["company"] = user.company
+        if not user.is_our:
+            params["company"] = user.company
         params["is_forward"] = user.is_our
         if all_select_tag:
             handle_list = StorageWorkOrderFilter(params).qs
@@ -402,12 +533,10 @@ class SWOFinanceHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
-        if not user.is_our:
-            request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["order_status"] = 4
         f = StorageWorkOrderFilter(params)
         serializer = StorageWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)

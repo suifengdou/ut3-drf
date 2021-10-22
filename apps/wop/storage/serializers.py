@@ -64,12 +64,12 @@ class StorageWorkOrderSerializer(serializers.ModelSerializer):
 
     def get_category(self, instance):
         category = {
-            0: "入库错误",
-            1: "系统问题",
-            2: "单据问题",
-            3: "订单类别",
-            4: "入库咨询",
-            5: "出库咨询",
+            1: "入库错误",
+            2: "系统问题",
+            3: "单据问题",
+            4: "订单类别",
+            5: "入库咨询",
+            6: "出库咨询",
         }
         try:
             ret = {

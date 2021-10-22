@@ -19,12 +19,12 @@ class StorageWorkOrder(models.Model):
         (6, '工单完结'),
     )
     CATEGORY = (
-        (0, '入库错误'),
-        (1, '系统问题'),
-        (2, '单据问题'),
-        (3, '订单类别'),
-        (4, '入库咨询'),
-        (5, '出库咨询'),
+        (1, '入库错误'),
+        (2, '系统问题'),
+        (3, '单据问题'),
+        (4, '订单类别'),
+        (5, '入库咨询'),
+        (6, '出库咨询'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
@@ -40,7 +40,7 @@ class StorageWorkOrder(models.Model):
 
 
     keyword = models.CharField(unique=True, max_length=100, verbose_name='事务关键字', help_text='事务关键字')
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='供应商', help_text='供应商')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name='公司', help_text='公司')
     information = models.TextField(max_length=600, verbose_name='初始问题信息', help_text='初始问题信息')
 
     submit_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间', help_text='处理时间')
@@ -86,7 +86,7 @@ class StorageWorkOrder(models.Model):
 
     @classmethod
     def verify_mandatory(cls, columns_key):
-        VERIFY_FIELD = ['keyword', 'company', 'information', 'category']
+        VERIFY_FIELD = ['keyword', 'company', 'information', 'category', 'memo']
 
         for i in VERIFY_FIELD:
             if i not in columns_key:
