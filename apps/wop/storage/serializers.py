@@ -42,13 +42,11 @@ class StorageWorkOrderSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         order_status = {
             0: "已被取消",
-            1: "逆向未递",
-            2: "逆向未理",
-            3: "正向未递",
-            4: "仓储未理",
-            5: "复核未理",
-            6: "财务审核",
-            7: "工单完结",
+            1: "工单待递",
+            2: "工单待理",
+            3: "工单待定",
+            4: "财务审核",
+            5: "工单完结",
         }
         try:
             ret = {
@@ -63,18 +61,19 @@ class StorageWorkOrderSerializer(serializers.ModelSerializer):
         return ret
 
     def get_category(self, instance):
-        category = {
-            1: "入库错误",
-            2: "系统问题",
-            3: "单据问题",
-            4: "订单类别",
-            5: "入库咨询",
-            6: "出库咨询",
+        category_list = {
+            1: "常规工作",
+            2: "入库问题",
+            3: "出库问题",
+            4: "单据问题",
+            5: "工厂问题",
+            6: "快递问题",
+            7: "信息咨询",
         }
         try:
             ret = {
                 "id": instance.category,
-                "name": category.get(instance.category, None)
+                "name": category_list.get(instance.category, None)
             }
         except:
             ret = {
@@ -83,15 +82,16 @@ class StorageWorkOrderSerializer(serializers.ModelSerializer):
             }
         return ret
 
-    def get_wo_category(self, instance):
-        wo_category = {
-            0: "正向工单",
-            1: "逆向工单",
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "关键字重复",
+
         }
         try:
             ret = {
-                "id": instance.wo_category,
-                "name": wo_category.get(instance.wo_category, None)
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
             }
         except:
             ret = {
@@ -100,17 +100,36 @@ class StorageWorkOrderSerializer(serializers.ModelSerializer):
             }
         return ret
 
+    def get_handling_status(self, instance):
+        handling_list = {
+            0: "未处理",
+            1: "已处理",
+        }
+        try:
+            ret = {
+                "id": instance.handling_status,
+                "name": handling_list.get(instance.handling_status, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
 
     def to_representation(self, instance):
         ret = super(StorageWorkOrderSerializer, self).to_representation(instance)
         ret["company"] = self.get_company(instance)
         ret["category"] = self.get_category(instance)
-        ret["wo_category"] = self.get_wo_category(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["handling_status"] = self.get_handling_status(instance)
         ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
+        user = self.context["request"].user
+        validated_data["creator"] = user.username
+        validated_data["is_forward"] = user.is_our
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):

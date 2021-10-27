@@ -36,7 +36,7 @@ class SWOCreateViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['storage.view_storageworkorder', ]
     }
 
     def get_queryset(self):
@@ -90,11 +90,10 @@ class SWOCreateViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            for order in check_list:
-                order.servicer = request.user.username
-                order.submit_time = datetime.datetime.now()
-                order.order_status = 2
-                order.save()
+            for obj in check_list:
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -265,7 +264,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['storage.view_storageworkorder', ]
     }
 
     def get_queryset(self):
@@ -278,7 +277,6 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         else:
             queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=is_forward, company=user.company).order_by("id")
         return queryset
-
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
@@ -328,12 +326,14 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         if n:
             for obj in check_list:
                 if not obj.suggestion:
-                    data["error"].append("%s 无反馈内容, 不可以审核" % obj.track_id)
+                    data["error"].append("%s 无处理意见, 不可审核" % obj.keyword)
                     n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
                     continue
 
                 obj.submit_time = datetime.datetime.now()
-                start_time = datetime.datetime.strptime(str(obj.create_time).split(".")[0],
+                start_time = datetime.datetime.strptime(str(obj.update_time).split(".")[0],
                                                         "%Y-%m-%d %H:%M:%S")
                 end_time = datetime.datetime.strptime(str(obj.submit_time).split(".")[0],
                                                       "%Y-%m-%d %H:%M:%S")
@@ -342,7 +342,8 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                 total_seconds = days_seconds + d_value.seconds
                 obj.services_interval = math.floor(total_seconds / 60)
                 obj.servicer = request.user.username
-                obj.is_return = 1
+                obj.order_status = 3
+                obj.mistake_tag = 0
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
@@ -361,7 +362,16 @@ class SWOHandleViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=1)
+            for obj in reject_list:
+                if not obj.rejection:
+                    if not obj.suggestion:
+                        data["error"].append("%s 无驳回原因, 不可驳回" % obj.keyword)
+                        n -= 1
+                        obj.mistake_tag = 2
+                        obj.save()
+                        continue
+                    obj.order_status = 1
+                    obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -388,7 +398,7 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['storage.view_storageworkorder', ]
     }
 
     def get_queryset(self):
@@ -446,17 +456,12 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                if obj.is_forward:
-                    if not obj.memo:
-                        data["error"].append("%s 逆向结单备注不能为空" % obj.track_id)
-                        n -= 1
-                        continue
-                else:
-                    if not obj.feedback:
-                        data["error"].append("%s 正常工单反馈不能为空" % obj.track_id)
-                        n -= 1
-                        continue
-
+                if not obj.feedback:
+                    data["error"].append("%s 无执行内容，不可审核" % obj.keyword)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
 
                 obj.handle_time = datetime.datetime.now()
                 start_time = datetime.datetime.strptime(str(obj.submit_time).split(".")[0],
@@ -466,9 +471,12 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
                 d_value = end_time - start_time
                 days_seconds = d_value.days * 3600
                 total_seconds = days_seconds + d_value.seconds
-                obj.express_interval = math.floor(total_seconds / 60)
+                obj.handle_interval = math.floor(total_seconds / 60)
                 obj.handler = request.user.username
-                obj.order_status = 3
+                if obj.is_losing or obj.indemnification > 0:
+                    obj.order_status = 4
+                else:
+                    obj.order_status = 5
                 obj.mistake_tag = 0
                 obj.save()
         else:
@@ -489,11 +497,15 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
-                if obj.is_forward == 0:
-                    obj.order_status = 1
-                else:
-                    obj.is_return = 0
-                obj.save()
+                if not obj.rejection:
+                    if not obj.suggestion:
+                        data["error"].append("%s 无驳回原因, 不可驳回" % obj.keyword)
+                        n -= 1
+                        obj.mistake_tag = 2
+                        obj.save()
+                        continue
+                    obj.order_status = 2
+                    obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -501,7 +513,7 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-class SWOFinanceHandleViewset(viewsets.ModelViewSet):
+class SWOAuditViewset(viewsets.ModelViewSet):
     """
     retrieve:
         返回指定货品明细
@@ -521,7 +533,7 @@ class SWOFinanceHandleViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['storage.view_audit_storageworkorder', ]
     }
 
     def get_queryset(self):
@@ -529,7 +541,6 @@ class SWOFinanceHandleViewset(viewsets.ModelViewSet):
             return StorageWorkOrder.objects.none()
         queryset = StorageWorkOrder.objects.filter(order_status=4).order_by("id")
         return queryset
-
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
@@ -572,6 +583,32 @@ class SWOFinanceHandleViewset(viewsets.ModelViewSet):
         data["successful"] = n
         return Response(data)
 
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                if not obj.rejection:
+                    data["error"].append("%s 无驳回原因, 不可驳回" % obj.keyword)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                obj.order_status = 3
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        data["false"] = len(reject_list) - n
+        return Response(data)
+
 
 class SWOManageViewset(viewsets.ModelViewSet):
     """
@@ -593,7 +630,7 @@ class SWOManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['storage.view_storageworkorder', ]
     }
 
     def get_queryset(self):

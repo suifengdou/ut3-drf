@@ -4,21 +4,21 @@ import re
 from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import ManualOrder, MOGoods, ManualOrderExport
+from .models import DealerParts, DPGoods
 from apps.base.goods.models import Goods
 from apps.utils.geography.models import District
 from apps.utils.geography.tools import PickOutAdress
+from apps.base.shop.models import Shop
 
 
-
-class ManualOrderSerializer(serializers.ModelSerializer):
+class DealerPartsSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     goods_details = serializers.JSONField(required=False)
 
     class Meta:
-        model = ManualOrder
+        model = DealerParts
         fields = "__all__"
 
     def get_shop(self, instance):
@@ -90,7 +90,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         status = {
             0: "已取消",
             1: "未处理",
-            2: "已导入",
+            2: "已处理",
         }
         try:
             ret = {
@@ -113,7 +113,8 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             7: "集运仓地址",
             8: "14天内重复",
             9: "14天外重复",
-            10: "输出单保存出错"
+            10: "手工单保存出错",
+            11: "手工单货品保存出错"
         }
         try:
             ret = {
@@ -141,7 +142,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         return ret
 
     def get_goods_details(self, instance):
-        goods_details = instance.mogoods_set.all()
+        goods_details = instance.dpgoods_set.all()
         ret = []
         for goods_detail in goods_details:
             data = {
@@ -159,7 +160,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         return ret
 
     def to_representation(self, instance):
-        ret = super(ManualOrderSerializer, self).to_representation(instance)
+        ret = super(DealerPartsSerializer, self).to_representation(instance)
         ret["shop"] = self.get_shop(instance)
         ret["province"] = self.get_province(instance)
         ret["city"] = self.get_city(instance)
@@ -186,10 +187,10 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         if data["id"] == 'n':
             data.pop("id", None)
             data.pop("name", None)
-            goods_detail = MOGoods.objects.create(**data)
+            goods_detail = DPGoods.objects.create(**data)
         else:
             data.pop("name", None)
-            goods_detail = MOGoods.objects.filter(id=data["id"]).update(**data)
+            goods_detail = DPGoods.objects.filter(id=data["id"]).update(**data)
         return goods_detail
 
     def create(self, validated_data):
@@ -199,6 +200,11 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)
         validated_data["department"] = user.department
+        _q_shop = user.company.shop_set.all()
+        if _q_shop.exists():
+            validated_data["shop"] = _q_shop[0]
+        else:
+            validated_data["shop"] = Shop.objects.filter(name="旗舰店供应商")[0]
 
         _spilt_addr = PickOutAdress(validated_data["address"])
         _rt_addr = _spilt_addr.pickout_addr()
@@ -211,15 +217,15 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         if '集运' in str(validated_data["address"]):
             raise serializers.ValidationError("地址是集运仓")
 
-        manual_order = self.Meta.model.objects.create(**validated_data)
+        dealer_parts = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
-            goods_detail['manual_order'] = manual_order
+            goods_detail['dealer_parts'] = dealer_parts
             goods_name = Goods.objects.filter(id=goods_detail["goods_name"])[0]
             goods_detail["goods_name"] = goods_name
             goods_detail["goods_id"] = goods_name.goods_id
             goods_detail.pop("xh")
             self.create_goods_detail(goods_detail)
-        return manual_order
+        return dealer_parts
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
@@ -253,13 +259,13 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         return instance
 
 
-class MOGoodsSerializer(serializers.ModelSerializer):
+class DPGoodsSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
-        model = MOGoods
+        model = DPGoods
         fields = "__all__"
 
     def get_manual_order(self, instance):
@@ -314,15 +320,13 @@ class MOGoodsSerializer(serializers.ModelSerializer):
         return ret
 
     def to_representation(self, instance):
-        ret = super(MOGoodsSerializer, self).to_representation(instance)
+        ret = super(DPGoodsSerializer, self).to_representation(instance)
         ret["goods_name"] = self.get_goods_name(instance)
         ret["order_status"] = self.get_order_status(instance)
         ret["manual_order"] = self.get_manual_order(instance)
         return ret
 
     def create(self, validated_data):
-        user = self.context["request"].user
-        validated_data["creator"] = user.username
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
@@ -330,94 +334,6 @@ class MOGoodsSerializer(serializers.ModelSerializer):
         return instance
 
 
-class ManualOrderExportSerializer(serializers.ModelSerializer):
-
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = ManualOrderExport
-        fields = "__all__"
-
-    def get_shop(self, instance):
-        try:
-            ret = {
-                "id": instance.shop.id,
-                "name": instance.shop.name,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_province(self, instance):
-        try:
-            ret = {
-                "id": instance.province.id,
-                "name": instance.province.name,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_city(self, instance):
-        try:
-            ret = {
-                "id": instance.city.id,
-                "name": instance.city.name,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_district(self, instance):
-        try:
-            ret = {
-                "id": instance.district.id,
-                "name": instance.district.name,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_order_status(self, instance):
-        status = {
-            0: "已取消",
-            1: "未处理",
-            2: "已完成",
-        }
-        try:
-            ret = {
-                "id": instance.order_status,
-                "name": status.get(instance.order_status, None)
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_process_tag(self, instance):
-        process_list = {
-            0: "未处理",
-            1: "已处理"
-        }
-        try:
-            ret = {
-                "id": instance.process_tag,
-                "name": process_list.get(instance.process_tag, None)
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-
-    def to_representation(self, instance):
-        ret = super(ManualOrderExportSerializer, self).to_representation(instance)
-        ret["shop"] = self.get_shop(instance)
-        ret["province"] = self.get_province(instance)
-        ret["city"] = self.get_city(instance)
-        ret["district"] = self.get_district(instance)
-        ret["order_status"] = self.get_order_status(instance)
-        ret["process_tag"] = self.get_process_tag(instance)
-        return ret
 
 
 

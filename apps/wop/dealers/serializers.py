@@ -56,16 +56,16 @@ class DealerWorkOrderSerializer(serializers.ModelSerializer):
             }
         return ret
 
-    def get_wo_category(self, instance):
-        category = {
-            0: '退货',
-            1: '换货',
-            2: '维修',
+    def get_category(self, instance):
+        category_list = {
+            1: '退货',
+            2: '换货',
+            3: '维修',
         }
         try:
             ret = {
-                "id": instance.wo_category,
-                "name": category.get(instance.wo_category, None)
+                "id": instance.category,
+                "name": category_list.get(instance.category, None)
             }
         except:
             ret = {
@@ -75,16 +75,17 @@ class DealerWorkOrderSerializer(serializers.ModelSerializer):
         return ret
 
     def get_mistake_tag(self, instance):
-        process_tag = {
+        mistake_list = {
             0: "正常",
-            1: "返回单号为空",
+            1: "返回单号或快递为空",
             2: "处理意见为空",
-            3: "经销商反馈为空",
+            3: "执行内容为空",
+            4: "驳回原因为空",
         }
         try:
             ret = {
-                "id": instance.process_tag,
-                "name": process_tag.get(instance.process_tag, None)
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
             }
         except:
             ret = {
@@ -96,10 +97,10 @@ class DealerWorkOrderSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         order_status = {
             0: "已被取消",
-            1: "经销未递",
-            2: "客服在理",
-            3: "经销复核",
-            4: "运营对账",
+            1: "等待递交",
+            2: "等待处理",
+            3: "等待执行",
+            4: "等待确认",
             5: "工单完结",
         }
         try:
@@ -119,12 +120,23 @@ class DealerWorkOrderSerializer(serializers.ModelSerializer):
         ret["company"] = self.get_company(instance)
         ret["goods_name"] = self.get_goods_name(instance)
         ret["process_tag"] = self.get_process_tag(instance)
-        ret["wo_category"] = self.get_wo_category(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["category"] = self.get_category(instance)
         ret["order_status"] = self.get_order_status(instance)
         return ret
 
+    def to_internal_value(self, data):
+        return super(DealerWorkOrderSerializer, self).to_internal_value(data)
+
     def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
+        if not validated_data.get("category", None):
+            raise serializers.ValidationError({"category": "单据类型是必填项！"})
+        user = self.context["request"].user
+        validated_data["creator"] = user.username
+        validated_data["company"] = user.company
+        _q_dealer_order = self.Meta.model.objects.filter(order_id=validated_data["order_id"])
+        if _q_dealer_order.exists():
+            raise serializers.ValidationError({"order_id": "相同单号只可创建一次工单！！"})
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):

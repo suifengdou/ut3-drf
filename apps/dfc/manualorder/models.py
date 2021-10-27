@@ -91,7 +91,7 @@ class MOGoods(models.Model):
         (3, '已发货'),
     )
 
-    manual_order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='原始尾货订单')
+    manual_order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='原始订单')
     goods_id = models.CharField(max_length=50, verbose_name='货品编码', db_index=True)
     goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称')
     quantity = models.IntegerField(verbose_name='数量')

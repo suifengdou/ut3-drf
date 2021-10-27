@@ -14,28 +14,28 @@ class StorageWorkOrder(models.Model):
         (1, '工单待递'),
         (2, '工单待理'),
         (3, '工单待定'),
-        (4, '客审复核'),
-        (5, '财务审核'),
-        (6, '工单完结'),
+        (4, '财务审核'),
+        (5, '工单完结'),
     )
     CATEGORY = (
-        (1, '入库错误'),
-        (2, '系统问题'),
-        (3, '单据问题'),
-        (4, '订单类别'),
-        (5, '入库咨询'),
-        (6, '出库咨询'),
+        (1, '常规工作'),
+        (2, '入库问题'),
+        (3, '出库问题'),
+        (4, '单据问题'),
+        (5, '工厂问题'),
+        (6, '快递问题'),
+        (7, '信息咨询'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '快递单号错误'),
+        (1, '无处理意见, 不可审核'),
+        (2, '无驳回原因, 不可驳回'),
+        (3, '无执行内容，不可审核'),
     )
 
     HANDLINGS = (
         (0, '未处理'),
-        (1, '在处理'),
-        (2, '待核实'),
-        (3, '已处理'),
+        (1, '已处理'),
     )
 
 
@@ -50,7 +50,7 @@ class StorageWorkOrder(models.Model):
     rejection = models.CharField(null=True, blank=True, max_length=260, verbose_name='驳回原因', help_text='驳回原因')
     handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='执行人', help_text='执行人')
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='执行时间', help_text='执行时间')
-    handle_interval = models.IntegerField(null=True, blank=True, verbose_name='执行时间(分钟)', help_text='执行时间(分钟)')
+    handle_interval = models.IntegerField(null=True, blank=True, verbose_name='执行间隔(分钟)', help_text='执行间隔(分钟)')
     feedback = models.CharField(null=True, blank=True, max_length=200, verbose_name='执行内容', help_text='执行内容')
     is_losing = models.BooleanField(default=False, verbose_name='是否理赔', help_text='是否理赔')
     indemnification = models.FloatField(default=0, verbose_name='理赔金额', help_text='理赔金额')

@@ -122,7 +122,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                         obj.save()
                         continue
                 else:
-                    order =  ManualOrderExport()
+                    order = ManualOrderExport()
                     order.erp_order_id = obj.erp_order_id
                 if obj.order_category in [1, 2]:
                     if not all([obj.m_sn, obj.broken_part, obj.description]):

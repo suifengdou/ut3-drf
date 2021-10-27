@@ -33,6 +33,7 @@ from apps.wop.woinvoice.router import woinvoice_router
 from apps.wop.dealers.router import wodealer_router
 from apps.wop.express.router import woexpress_router
 from apps.wop.storage.router import wostorage_router
+from apps.wop.dealerparts.router import dealerparts_router
 from apps.sales.advancepayment.router import advance_router
 from apps.sales.tailgoods.router import tailgoods_router
 from apps.crm.order.router import order_router
@@ -48,6 +49,7 @@ from apps.psi.outbound.router import outbound_router
 from apps.psi.inbound.router import inbound_router
 
 
+
 route.registry.extend(group_router.registry)
 route.registry.extend(users_router.registry)
 route.registry.extend(company_router.registry)
@@ -60,6 +62,7 @@ route.registry.extend(woinvoice_router.registry)
 route.registry.extend(wodealer_router.registry)
 route.registry.extend(woexpress_router.registry)
 route.registry.extend(wostorage_router.registry)
+route.registry.extend(dealerparts_router.registry)
 route.registry.extend(advance_router.registry)
 route.registry.extend(tailgoods_router.registry)
 route.registry.extend(order_router.registry)
