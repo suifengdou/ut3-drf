@@ -343,9 +343,10 @@ class DealerPartsSubmitViewset(viewsets.ModelViewSet):
                     continue
                 order_fields = ["nickname", "receiver", "address", "mobile", "m_sn", "broken_part", "description",
                                 "erp_order_id", "shop", "province", "city", "district", "order_id", "order_category",
-                                "department", "creator"]
+                                "creator"]
                 for keyword in order_fields:
                     setattr(order, keyword, getattr(obj, keyword, None))
+                order.department = request.user.department
                 try:
                     order.save()
                 except Exception as e:
