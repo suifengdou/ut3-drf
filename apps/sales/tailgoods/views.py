@@ -11,11 +11,11 @@ from rest_framework import status
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from .serializers import OriTailOrderSerializer, OTOGoodsSerializer, TailOrderSerializer, TOGoodsSerializer, \
-    RefundOrderSerializer, ROGoodsSerializer, AccountInfoSerializer, TailPartsOrderSerializer, TailToExpenseSerializer, \
+    RefundOrderSerializer, ROGoodsSerializer, AccountInfoSerializer, TailToExpenseSerializer, \
     RefundToPrestoreSerializer
 from .filters import OriTailOrderFilter, OTOGoodsFilter, TailOrderFilter, TOGoodsFilter, RefundOrderFilter, \
-    ROGoodsFilter, AccountInfoFilter, TailPartsOrderFilter, TailToExpenseFilter, RefundToPrestoreFilter
-from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, AccountInfo, TailPartsOrder, \
+    ROGoodsFilter, AccountInfoFilter, TailToExpenseFilter, RefundToPrestoreFilter
+from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, AccountInfo, \
     TailToExpense, TailTOAccount, RefundToPrestore, ROGoodsToAccount
 from apps.sales.advancepayment.models import Expense, Account, Statements, VerificationExpenses, ExpendList, Prestore
 from apps.auth.users.models import UserProfile
@@ -2786,56 +2786,6 @@ class AccountInfoViewset(viewsets.ModelViewSet):
         params = request.query_params
         f = AccountInfoFilter(params)
         serializer = AccountInfoSerializer(f.qs, many=True)
-        return Response(serializer.data)
-
-
-class TailPartsOrderViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定公司
-    list:
-        返回公司列表
-    update:
-        更新公司信息
-    destroy:
-        删除公司信息
-    create:
-        创建公司信息
-    partial_update:
-        更新部分公司字段
-    """
-    serializer_class = TailPartsOrderSerializer
-    filter_class = TailPartsOrderFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
-    }
-
-    def get_queryset(self):
-        if not self.request:
-            return TailPartsOrder.objects.none()
-        user = self.request.user
-        if user.is_our:
-            queryset = TailPartsOrder.objects.all().order_by("id")
-        else:
-            queryset = TailPartsOrder.objects.filter(creator=user.username).order_by("id")
-        return queryset
-
-    @action(methods=['get'], detail=False)
-    def export(self, request, *args, **kwargs):
-        # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        user = self.request.user
-        if not user.is_superuser:
-            if user.is_our:
-                request.data["sign_department"] = user.department
-            else:
-                request.data["creator"] = user.username
-        params = request.query_params
-        f = TailPartsOrderFilter(params)
-        serializer = TailPartsOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
 
 

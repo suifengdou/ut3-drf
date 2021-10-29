@@ -6,8 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import ValidationError
 from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, PayBillOrder, PBOGoods, \
-    ArrearsBillOrder, ABOGoods, FinalStatement, FinalStatementGoods, AccountInfo, PBillToAccount, ABillToAccount, \
-    TailPartsOrder, TailToExpense, RefundToPrestore
+    ArrearsBillOrder, ABOGoods, FinalStatement, FinalStatementGoods, AccountInfo, PBillToAccount, ABillToAccount,  TailToExpense, RefundToPrestore
 from apps.base.goods.models import Goods
 
 
@@ -1126,29 +1125,6 @@ class ABillToAccountSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(ABillToAccountSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class TailPartsOrderSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = TailPartsOrder
-        fields = "__all__"
-
-
-    def to_representation(self, instance):
-        ret = super(TailPartsOrderSerializer, self).to_representation(instance)
         return ret
 
     def create(self, validated_data):

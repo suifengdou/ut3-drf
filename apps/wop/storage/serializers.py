@@ -42,9 +42,9 @@ class StorageWorkOrderSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         order_status = {
             0: "已被取消",
-            1: "工单待递",
-            2: "工单待理",
-            3: "工单待定",
+            1: "等待递交",
+            2: "等待处理",
+            3: "等待执行",
             4: "财务审核",
             5: "工单完结",
         }

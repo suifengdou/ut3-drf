@@ -11,9 +11,9 @@ from apps.base.goods.models import Goods
 class StorageWorkOrder(models.Model):
     ORDER_STATUS = (
         (0, '已被取消'),
-        (1, '工单待递'),
-        (2, '工单待理'),
-        (3, '工单待定'),
+        (1, '等待递交'),
+        (2, '等待处理'),
+        (3, '等待执行'),
         (4, '财务审核'),
         (5, '工单完结'),
     )
@@ -58,7 +58,7 @@ class StorageWorkOrder(models.Model):
     memo = models.TextField(null=True, blank=True, verbose_name='备注', help_text='备注')
 
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')
-    category = models.SmallIntegerField(choices=CATEGORY, default=0, verbose_name='工单事项类型', help_text='工单事项类型')
+    category = models.SmallIntegerField(choices=CATEGORY, default=1, verbose_name='工单事项类型', help_text='工单事项类型')
     is_forward = models.BooleanField(default=False, verbose_name='是否正向', help_text='是否正向')
     handling_status = models.SmallIntegerField(choices=HANDLINGS, default=0, verbose_name='处理状态')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')

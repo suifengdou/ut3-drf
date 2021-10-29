@@ -140,6 +140,22 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_assign_express(self, instance):
+        EXPRESS_LIST = {
+            0: "随机",
+            1: "顺丰",
+            2: "申通",
+            3: "韵达",
+        }
+        try:
+            ret = {
+                "id": instance.assign_express,
+                "name": EXPRESS_LIST.get(instance.assign_express, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_goods_details(self, instance):
         goods_details = instance.mogoods_set.all()
         ret = []
@@ -168,6 +184,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["order_category"] = self.get_order_category(instance)
+        ret["assign_express"] = self.get_assign_express(instance)
         ret["order_status"] = self.get_order_status(instance)
         ret["goods_details"] = self.get_goods_details(instance)
         return ret
@@ -226,30 +243,33 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         validated_data["department"] = user.department
 
         validated_data["update_time"] = datetime.datetime.now()
-
-        _spilt_addr = PickOutAdress(validated_data["address"])
-        _rt_addr = _spilt_addr.pickout_addr()
-        if not isinstance(_rt_addr, dict):
-            raise serializers.ValidationError("地址无法提取省市区")
-        cs_info_fields = ["province", "city", "district", "address"]
-        for key_word in cs_info_fields:
-            validated_data[key_word] = _rt_addr.get(key_word, None)
-
-        if '集运' in str(validated_data["address"]):
-            raise serializers.ValidationError("地址是集运仓")
+        address = validated_data.get("address", None)
+        if address:
+            _spilt_addr = PickOutAdress(address)
+            _rt_addr = _spilt_addr.pickout_addr()
+            if not isinstance(_rt_addr, dict):
+                raise serializers.ValidationError("地址无法提取省市区")
+            cs_info_fields = ["province", "city", "district", "address"]
+            for key_word in cs_info_fields:
+                validated_data[key_word] = _rt_addr.get(key_word, None)
+            if '集运' in str(validated_data["address"]):
+                raise serializers.ValidationError("地址是集运仓")
 
         goods_details = validated_data.pop("goods_details", [])
-        self.check_goods_details(goods_details)
+        if goods_details:
+            self.check_goods_details(goods_details)
+
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        instance.mogoods_set.all().delete()
-        for goods_detail in goods_details:
-            goods_detail['manual_order'] = instance
-            _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
-            goods_detail["goods_name"] = _q_goods
-            goods_detail["goods_id"] = _q_goods.goods_id
-            goods_detail["id"] = 'n'
-            goods_detail.pop("xh")
-            self.create_goods_detail(goods_detail)
+        if goods_details:
+            instance.mogoods_set.all().delete()
+            for goods_detail in goods_details:
+                goods_detail['manual_order'] = instance
+                _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
+                goods_detail["goods_name"] = _q_goods
+                goods_detail["goods_id"] = _q_goods.goods_id
+                goods_detail["id"] = 'n'
+                goods_detail.pop("xh")
+                self.create_goods_detail(goods_detail)
         return instance
 
 

@@ -41,7 +41,7 @@ class AccountViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_account',]
     }
 
     @action(methods=['patch'], detail=False)
@@ -81,7 +81,7 @@ class MyAccountViewset(viewsets.ReadOnlyModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_user_account',]
     }
 
     def get_queryset(self):
@@ -112,7 +112,7 @@ class StatementsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_statements',]
     }
 
     def get_queryset(self):
@@ -160,7 +160,7 @@ class PrestoreSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_user_prestore',]
     }
 
     def get_queryset(self):
@@ -262,7 +262,7 @@ class PrestoreCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_handler_prestore',]
     }
 
     def get_queryset(self):
@@ -408,7 +408,7 @@ class PrestoreManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_prestore',]
     }
 
     def get_queryset(self):
@@ -455,7 +455,7 @@ class ExpenseViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_expense', ]
     }
 
     def get_queryset(self):
@@ -502,7 +502,7 @@ class VerificationPrestoreViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_handler_prestore',]
     }
 
     def get_queryset(self):
@@ -549,7 +549,7 @@ class VerificationExpensesViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_handler_prestore',]
     }
 
     def get_queryset(self):
@@ -596,7 +596,7 @@ class ExpendListViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['advancepayment.view_handler_prestore',]
     }
 
     def get_queryset(self):

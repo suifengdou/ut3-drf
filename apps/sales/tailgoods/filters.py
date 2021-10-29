@@ -8,7 +8,7 @@
 import django_filters
 from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, PayBillOrder, PBOGoods, \
     ArrearsBillOrder, ABOGoods, FinalStatement, FinalStatementGoods, AccountInfo, PBillToAccount, ABillToAccount, \
-    TailPartsOrder, TailToExpense, RefundToPrestore
+    TailToExpense, RefundToPrestore
 
 
 class OriTailOrderFilter(django_filters.FilterSet):
@@ -138,15 +138,6 @@ class ABillToAccountFilter(django_filters.FilterSet):
 
     class Meta:
         model = ABillToAccount
-        fields = "__all__"
-
-
-class TailPartsOrderFilter(django_filters.FilterSet):
-    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
-
-    class Meta:
-        model = TailPartsOrder
         fields = "__all__"
 
 

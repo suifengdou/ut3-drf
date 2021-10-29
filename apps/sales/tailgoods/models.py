@@ -108,6 +108,11 @@ class OriTailOrder(models.Model):
         verbose_name = 'SALES-原始尾货订单'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_ori'
+        permissions = (
+            ('view_user_oritailorder',  'Can view user SALES-原始尾货订单'),
+            ('view_handler_oritailorder', 'Can view handler SALES-原始尾货订单'),
+        )
+
 
     def __str__(self):
         return str(self.order_id)
@@ -161,6 +166,10 @@ class OTOGoods(models.Model):
         verbose_name_plural = verbose_name
         unique_together = (('ori_tail_order', 'goods_name'))
         db_table = 'sales_tailgoods_ori_goods'
+        permissions = (
+            ('view_user_otogoods',  'Can view user SALES-原始尾货订单-货品明细'),
+            ('view_handler_otogoods', 'Can view handler SALES-原始尾货订单-货品明细'),
+        )
 
     def __str__(self):
         return self.ori_tail_order.order_id
@@ -251,6 +260,10 @@ class TailOrder(models.Model):
         verbose_name = 'SALES-尾货订单'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods'
+        permissions = (
+            ('view_user_tailorder',  'Can view user SALES-尾货订单'),
+            ('view_handler_tailorder', 'Can view handler SALES-尾货订单'),
+        )
 
     def __str__(self):
         return str(self.order_id)
@@ -297,6 +310,11 @@ class TOGoods(models.Model):
         verbose_name_plural = verbose_name
         unique_together = (['tail_order', 'goods_name'])
         db_table = 'sales_tailgoods_goods'
+        permissions = (
+            ('view_user_togoods',  'Can view user SALES-尾货订单-货品明细'),
+            ('view_handler_togoods', 'Can view handler SALES-尾货订单-货品明细'),
+        )
+
 
     def __str__(self):
         return str(self.tail_order.order_id)
@@ -402,6 +420,10 @@ class RefundOrder(models.Model):
         verbose_name = 'SALES-尾货退货单'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_refund'
+        permissions = (
+            ('view_user_refundorder',  'Can view user SALES-尾货退货单'),
+            ('view_handler_refundorder', 'Can view handler SALES-尾货退货单'),
+        )
 
     def __str__(self):
         return str(self.order_id)
@@ -473,6 +495,10 @@ class ROGoods(models.Model):
         verbose_name = 'SALES-尾货退货单-货品明细'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_refund_goods'
+        permissions = (
+            ('view_user_rogoods',  'Can view user SALES-尾货退货单-货品明细'),
+            ('view_handler_rogoods', 'Can view handler SALES-尾货退货单-货品明细'),
+        )
 
     def __str__(self):
         return self.refund_order.order_id
@@ -545,6 +571,10 @@ class PayBillOrder(models.Model):
         verbose_name = 'SALES-尾货应收结算单'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_paybill'
+        permissions = (
+            ('view_user_paybillorder',  'Can view user SALES-尾货应收结算单'),
+            ('view_handler_paybillorder', 'Can view handler SALES-尾货应收结算单'),
+        )
 
     def __str__(self):
         return str(self.order_id)
@@ -575,6 +605,10 @@ class PBOGoods(models.Model):
         verbose_name = 'SALES-尾货应收结算单-货品明细'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_paybill_goods'
+        permissions = (
+            ('view_user_pbogoods',  'Can view user SALES-尾货应收结算单-货品明细'),
+            ('view_handler_pbogoods', 'Can view handler SALES-尾货应收结算单-货品明细'),
+        )
 
     def __str__(self):
         return self.pb_order.order_id
@@ -646,6 +680,10 @@ class ArrearsBillOrder(models.Model):
         verbose_name = 'SALES-尾货退款结算单'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_arrearsbill'
+        permissions = (
+            ('view_user_arrearsbillorder',  'Can view user SALES-尾货退款结算单'),
+            ('view_handler_arrearsbillorder', 'Can view handler SALES-尾货退款结算单'),
+        )
 
     def __str__(self):
         return str(self.order_id)
@@ -671,6 +709,10 @@ class ABOGoods(models.Model):
         verbose_name = 'SALES-尾货退款结算单-货品明细'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_arrearsbill_goods'
+        permissions = (
+            ('view_user_abogoods',  'Can view user SALES-尾货退款结算单-货品明细'),
+            ('view_handler_abogoods', 'Can view handler SALES-尾货退款结算单-货品明细'),
+        )
 
     def __str__(self):
         return str(self.ab_order.order_id)
@@ -737,6 +779,10 @@ class FinalStatement(models.Model):
         verbose_name = 'SALES-尾货账单'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_final'
+        permissions = (
+            ('view_user_finalstatement',  'Can view user SALES-尾货账单'),
+            ('view_handler_finalstatement', 'Can view handler SALES-尾货账单'),
+        )
 
     def __str__(self):
         return str(self.order_id)
@@ -770,6 +816,10 @@ class FinalStatementGoods(models.Model):
         verbose_name = 'SALES-尾货账单-货品明细'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_final_goods'
+        permissions = (
+            ('view_user_finalstatementgoods',  'Can view user SALES-尾货账单-货品明细'),
+            ('view_handler_finalstatementgoods', 'Can view handler SALES-尾货账单-货品明细'),
+        )
 
     def __str__(self):
         return str(self.fs_order.order_id)
@@ -850,6 +900,14 @@ class AccountInfo(models.Model):
         verbose_name = 'SALES-尾货对账明细'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_account'
+        permissions = (
+            ('view_user_accountinfo',  'Can view user SALES-尾货对账明细'),
+            ('view_handler_accountinfo', 'Can view handler SALES-尾货对账明细'),
+        )
+
+
+    def __str__(self):
+        return str(self.order_id)
 
 
 class PBillToAccount(models.Model):
@@ -880,81 +938,6 @@ class ABillToAccount(models.Model):
         verbose_name = 'SALES-尾货退款对账对照表'
         verbose_name_plural = verbose_name
         db_table = 'sales_tailgoods_a2a'
-
-
-class TailPartsOrder(models.Model):
-    ORDER_STATUS = (
-        (0, '已取消'),
-        (1, '未递交'),
-        (2, '已生成'),
-    )
-    PROCESSTAG = (
-        (0, '未处理'),
-        (1, '待核实'),
-        (2, '已确认'),
-        (3, '待清账'),
-        (4, '已处理'),
-        (5, '驳回'),
-        (6, '特殊订单'),
-    )
-    MISTAKE_LIST = (
-        (0, '正常'),
-        (1, '货品包含整机'),
-        (2, '配件名称错误或未添加'),
-        (3, '没收货人'),
-        (4, '14天内重复'),
-        (5, '14天外重复'),
-        (6, '手机号错误'),
-        (7, '地址是集运仓'),
-        (8, '收货人信息不全'),
-        (9, '城市错误'),
-        (10, '单据生成出错'),
-        (11, '店铺错误'),
-        (12, '电话重复'),
-        (13, '售后配件需要补全sn、部件和描述'),
-
-    )
-    ORDER_CATEGORY = (
-        (1, '质量问题'),
-        (2, '开箱即损'),
-        (3, '礼品赠品'),
-    )
-
-    order_id = models.CharField(max_length=150, null=True, blank=True, verbose_name='配件单号')
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺')
-    sent_consignee = models.CharField(max_length=150, verbose_name='收件人姓名')
-    sent_smartphone = models.CharField(max_length=30, verbose_name='收件人手机')
-    sent_city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='收件城市')
-    sent_district = models.CharField(null=True, blank=True, max_length=30, verbose_name='收件区县')
-    sent_address = models.CharField(max_length=200, verbose_name='收件地址')
-    sign_company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='tailpart_company',
-                                     null=True, blank=True, verbose_name='创建公司')
-    sign_department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='tailpart_department',
-                                        null=True, blank=True, verbose_name='创建部门')
-    parts_info = models.CharField(max_length=300, null=True, blank=True, verbose_name='配件信息')
-    message = models.TextField(null=True, blank=True, verbose_name='备注')
-
-    process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
-    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因')
-    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='订单状态')
-    order_category = models.SmallIntegerField(choices=ORDER_CATEGORY, default=3, verbose_name='单据类型')
-
-    m_sn = models.CharField(null=True, blank=True, max_length=50, verbose_name='机器序列号')
-    broken_part = models.CharField(null=True, blank=True, max_length=50, verbose_name='故障部位')
-    description = models.CharField(null=True, blank=True, max_length=200, verbose_name='故障描述')
-
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
-    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
-    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
-
-    class Meta:
-        verbose_name = 'SALES-尾货配件'
-        verbose_name_plural = verbose_name
-        db_table = 'sales_tailgoods_part'
-
-    def __str__(self):
-        return str(self.order_id)
 
 
 class TailToExpense(models.Model):

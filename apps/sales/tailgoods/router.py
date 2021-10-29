@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from .views import OriTailOrderViewset, OTOGoodsViewset, TailOrderViewset, TOGoodsViewset, RefundOrderSubmitViewset, \
-    RefundOrderCheckViewset, RefundOrderManageViewset, AccountInfoViewset, TailPartsOrderViewset, \
+    RefundOrderCheckViewset, RefundOrderManageViewset, AccountInfoViewset, \
     OriTailOrderSubmitViewset, OriTailOrderCheckViewset, TailOrderCommonViewset, TailOrderSpecialViewset, \
     TailToExpenseViewset, TOGoodsCommonViewset, TOGoodsSpecialViewset, RefundToPrestoreViewset, ROGoodsReceivalViewset, \
     ROGoodsManageViewset
@@ -25,5 +25,4 @@ tailgoods_router.register(r'sales/tailgoods/refundotoprestore', RefundToPrestore
 tailgoods_router.register(r'sales/tailgoods/rogoodsreceival', ROGoodsReceivalViewset, basename='rogoodsreceival')
 tailgoods_router.register(r'sales/tailgoods/rogoodsmanage', ROGoodsManageViewset, basename='rogoodsmanage')
 tailgoods_router.register(r'sales/tailgoods/tgaccount', AccountInfoViewset, basename='tgaccount')
-tailgoods_router.register(r'sales/tailgoods/taiparts', TailPartsOrderViewset, basename='taiparts')
 

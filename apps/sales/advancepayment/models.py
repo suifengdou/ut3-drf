@@ -62,6 +62,7 @@ class Statements(models.Model):
         db_table = 'sales_ap_statements'
         permissions = (
             ('view_user_statement', 'Can view user SALES-预付-流水明细'),
+            ('view_handler_statement', 'Can view handler SALES-预付-流水明细'),
         )
 
     def __str__(self):
@@ -110,6 +111,7 @@ class Prestore(models.Model):
         db_table = 'sales_ap_prestore'
         permissions = (
             ('view_user_prestore', 'Can view user SALES-预付-预存管理'),
+            ('view_handler_prestore', 'Can view handler SALES-预付-预存管理'),
         )
 
     def __str__(self):

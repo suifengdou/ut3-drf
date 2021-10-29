@@ -101,6 +101,11 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                         '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
                         '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
                         '白沙黎族自治县', '中山市', '东莞市']
+        express_list = {
+            1: "顺丰",
+            2: "申通",
+            3: "韵达",
+        }
         if n:
             for obj in check_list:
                 if not obj.erp_order_id:
@@ -211,6 +216,10 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
                 order.ori_order = obj
+                if obj.assign_express:
+                    express = express_list.get(obj.assign_express, None)
+                    if express:
+                        order.cs_memoranda = "%s 指定%s" % (order.cs_memoranda, express)
                 try:
                     order.creator = request.user.username
                     order.save()

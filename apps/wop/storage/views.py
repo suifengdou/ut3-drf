@@ -512,6 +512,24 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
         data["false"] = len(reject_list) - n
         return Response(data)
 
+    @action(methods=['patch'], detail=False)
+    def set_confirm(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            confirm_content = "已确认{%s-%s}" % (self.request.user.username, datetime.date.today())
+            check_list.update(feedback=confirm_content)
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        return Response(data)
+
 
 class SWOAuditViewset(viewsets.ModelViewSet):
     """

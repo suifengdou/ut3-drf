@@ -39,6 +39,12 @@ class ManualOrder(models.Model):
         (2, '驳回'),
         (3, '特殊订单'),
     )
+    EXPRESS_LIST = (
+        (0, '随机'),
+        (1, '顺丰'),
+        (2, '申通'),
+        (3, '韵达'),
+    )
 
     erp_order_id = models.CharField(null=True, blank=True, unique=True, max_length=50, verbose_name='原始单号')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, verbose_name='店铺名称')
@@ -63,6 +69,7 @@ class ManualOrder(models.Model):
     servicer = models.CharField(null=True, blank=True, max_length=50, verbose_name='客服')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误标签')
     process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
+    assign_express = models.SmallIntegerField(choices=EXPRESS_LIST, default=0, verbose_name='指定快递')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
