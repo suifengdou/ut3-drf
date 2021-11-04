@@ -56,8 +56,8 @@ class DealerPartsCreateViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return DealerParts.objects.none()
-        department = self.request.user.department
-        queryset = DealerParts.objects.filter(order_status=1, department=department).order_by("id")
+        user = self.request.user
+        queryset = DealerParts.objects.filter(order_status=1, creator=user.username).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -66,7 +66,7 @@ class DealerPartsCreateViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["department"] = user.department
+        params["creator"] = user.username
         params["order_status"] = 1
         f = DealerPartsFilter(params)
         serializer = DealerPartsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
@@ -76,14 +76,14 @@ class DealerPartsCreateViewset(viewsets.ModelViewSet):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 1
-        department = self.request.user.department
-        params["department"] = department
+        user = self.request.user
+        params["creator"] = user.username
         if all_select_tag:
             handle_list = DealerPartsFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = DealerParts.objects.filter(id__in=order_ids, order_status=1, department=department)
+                handle_list = DealerParts.objects.filter(id__in=order_ids, order_status=1, creator=user.username)
             else:
                 handle_list = []
         return handle_list

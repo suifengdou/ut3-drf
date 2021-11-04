@@ -40,13 +40,14 @@ class PickOutAdress():
             if _q_district_again.exists():
                 self.district = _q_district_again[0]
         self.address = reduce(lambda x, y: str(x) + str(y), self.addr_list[self.addr_index:])
-        self.check_result()
-        result_addr = {
-            "province": self.province,
-            "city": self.city,
-            "district": self.district,
-            "address": self.address
-        }
+        result_addr = self.check_result()
+        if not result_addr:
+            result_addr = {
+                "province": self.province,
+                "city": self.city,
+                "district": self.district,
+                "address": self.address
+            }
         return result_addr
 
     def pickout_province(self, words, index, *args, **kwargs):
@@ -113,11 +114,11 @@ class PickOutAdress():
 
     def check_result(self):
         if not self.city:
-            return False
+            return True
         if self.address.find(str(self.province.name)[:2]) == -1 and self.address.find(str(self.city.name)[:2]) == -1:
-            return False
+            return True
         if self.province != self.city.province:
-            return False
+            return True
 
 
 

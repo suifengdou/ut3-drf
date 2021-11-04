@@ -44,38 +44,40 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_user_oritailorder',]
     }
 
     def get_queryset(self):
         if not self.request:
             return OriTailOrder.objects.none()
         user = self.request.user
-        queryset = OriTailOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = OriTailOrder.objects.filter(sign_company=user.company, order_status=1).order_by("id")
         return queryset
 
-    @action(methods=['get'], detail=False)
+    @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         user = self.request.user
-        request.data["creator"] = user.username
+        request.data["sign_company"] = user.company
         params = request.query_params
         f = OriTailOrderFilter(params)
         serializer = OriTailOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
+        user = self.request.user
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 1
+        params["sign_company"] = user.company
         if all_select_tag:
             handle_list = OriTailOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = OriTailOrder.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = OriTailOrder.objects.filter(id__in=order_ids, sign_company=user.company, order_status=1)
             else:
                 handle_list = []
         return handle_list
@@ -319,7 +321,7 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_handler_oritailorder',]
     }
 
     def get_queryset(self):
@@ -723,7 +725,7 @@ class OriTailOrderViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_oritailorder',]
     }
 
     def get_queryset(self):
@@ -773,7 +775,7 @@ class OTOGoodsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_oritailorder',]
     }
 
     def get_queryset(self):
@@ -823,7 +825,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_user_tailorder',]
     }
 
     def get_queryset(self):
@@ -1294,7 +1296,7 @@ class TOGoodsCommonViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_user_togoods',]
     }
 
     def get_queryset(self):
@@ -1387,7 +1389,7 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_handler_tailorder',]
     }
 
     def get_queryset(self):
@@ -1852,7 +1854,7 @@ class TOGoodsSpecialViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_handler_togoods',]
     }
 
     def get_queryset(self):
@@ -1949,7 +1951,7 @@ class TailOrderViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_tailorder',]
     }
 
     def get_queryset(self):
@@ -1999,7 +2001,7 @@ class TOGoodsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_togoods',]
     }
 
     def get_queryset(self):
@@ -2049,7 +2051,7 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_user_refundorder',]
     }
 
     def get_queryset(self):
@@ -2255,7 +2257,7 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_handler_refundorder',]
     }
 
     def get_queryset(self):
@@ -2515,7 +2517,7 @@ class RefundOrderManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_refundorder',]
     }
 
     def get_queryset(self):
@@ -2565,7 +2567,7 @@ class ROGoodsReceivalViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_check_refundorder',]
     }
 
     def get_queryset(self):
@@ -2709,7 +2711,7 @@ class ROGoodsManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_refundorder',]
     }
 
     def get_queryset(self):
@@ -2759,7 +2761,7 @@ class AccountInfoViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_accountinfo', ]
     }
 
     def get_queryset(self):
@@ -2809,7 +2811,7 @@ class TailToExpenseViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_handler_refundorder',]
     }
 
     def get_queryset(self):
@@ -2850,7 +2852,7 @@ class RefundToPrestoreViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_oriinvoice']
+        "GET": ['tailgoods.view_handler_refundorder',]
     }
 
     def get_queryset(self):

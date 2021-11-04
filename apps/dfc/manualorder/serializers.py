@@ -225,9 +225,6 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         for key_word in cs_info_fields:
             validated_data[key_word] = _rt_addr.get(key_word, None)
 
-        if '集运' in str(validated_data["address"]):
-            raise serializers.ValidationError("地址是集运仓")
-
         manual_order = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
             goods_detail['manual_order'] = manual_order
@@ -253,7 +250,8 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             for key_word in cs_info_fields:
                 validated_data[key_word] = _rt_addr.get(key_word, None)
             if '集运' in str(validated_data["address"]):
-                raise serializers.ValidationError("地址是集运仓")
+                if validated_data["process_tag"] != 3:
+                    raise serializers.ValidationError("地址是集运仓")
 
         goods_details = validated_data.pop("goods_details", [])
         if goods_details:

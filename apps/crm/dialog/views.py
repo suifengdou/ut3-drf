@@ -348,12 +348,6 @@ class DialogTBViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 2
                     obj.save()
                     continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
 
                 order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
                 for field in order_fields:
@@ -748,13 +742,6 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                     for key_word in cs_info_fields:
                         setattr(order, key_word, _rt_addr.get(key_word, None))
 
-                    if '集运' in str(order.address):
-                        data["error"].append("%s 地址是集运仓" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 5
-                        obj.save()
-                        continue
-
                     try:
                         order.department = request.user.department
                         order.creator = request.user.username
@@ -1122,12 +1109,6 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
                     for key_word in cs_info_fields:
                         setattr(order, key_word, _rt_addr.get(key_word, None))
 
-                    if '集运' in str(order.address):
-                        data["error"].append("%s 地址是集运仓" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 5
-                        obj.save()
-                        continue
                     try:
                         order.department = request.user.department
                         order.creator = request.user.username
@@ -1601,12 +1582,6 @@ class DialogTBWordsViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 2
                     obj.save()
                     continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
 
                 order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
                 for field in order_fields:
@@ -1838,12 +1813,6 @@ class DialogJDViewset(viewsets.ModelViewSet):
                     data["error"].append("%s 手机错误" % obj.id)
                     n -= 1
                     obj.mistake_tag = 2
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
                     obj.save()
                     continue
 
@@ -2253,13 +2222,6 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
                     for key_word in cs_info_fields:
                         setattr(order, key_word, _rt_addr.get(key_word, None))
 
-                    if '集运' in str(order.address):
-                        data["error"].append("%s 地址是集运仓" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 5
-                        obj.save()
-                        continue
-
                     try:
                         order.department = request.user.department
                         order.creator = request.user.username
@@ -2613,10 +2575,7 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
             "开箱即损": 2,
             "礼品赠品": 3,
         }
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
+
         if n:
             for obj in check_list:
                 if obj.erp_order_id:
@@ -2686,13 +2645,6 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
                 cs_info_fields = ["province", "city", "district", "address"]
                 for key_word in cs_info_fields:
                     setattr(order, key_word, _rt_addr.get(key_word, None))
-
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 7
-                    obj.save()
-                    continue
 
                 order.nickname = obj.customer
                 order_fields = ["receiver", "m_sn", "broken_part", "description", "servicer"]
@@ -3274,12 +3226,6 @@ class DialogOWDetailSubmitViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 2
                     obj.save()
                     continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
 
                 order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
                 for field in order_fields:
@@ -3513,12 +3459,6 @@ class DialogOWDetailViewset(viewsets.ModelViewSet):
                     data["error"].append("%s 手机错误" % obj.id)
                     n -= 1
                     obj.mistake_tag = 2
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
                     obj.save()
                     continue
 
@@ -3756,12 +3696,7 @@ class DialogOWWordsViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 2
                     obj.save()
                     continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
+
 
                 order_fields = ["shop", "nickname", "receiver", "address", "mobile", "erp_order_id", "order_id"]
                 for field in order_fields:

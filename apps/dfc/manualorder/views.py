@@ -167,11 +167,12 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                     obj.save()
                     continue
                 if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 7
-                    obj.save()
-                    continue
+                    if obj.process_tag != 3:
+                        data["error"].append("%s地址是集运仓" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 7
+                        obj.save()
+                        continue
 
                 order.buyer_remark = "%s 的 %s 创建" % (str(obj.department), str(obj.creator))
                 if obj.servicer:
@@ -203,7 +204,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                     if not export_goods_details:
                         export_goods_details = [goods_detail.goods_name.name, goods_detail.goods_id, goods_detail.quantity]
                     goods_info = "+ %sx%s" % (goods_detail.goods_name.name, goods_detail.quantity)
-                    goods_id_info = "+ %sx%s" % (goods_detail.goods_id, goods_detail.quantity)
+                    goods_id_info = "+ %s x%s" % (goods_detail.goods_id, goods_detail.quantity)
                     order.buyer_remark = str(order.buyer_remark) + goods_info
                     order.cs_memoranda = str(order.cs_memoranda) + goods_id_info
                 if error_tag:

@@ -174,13 +174,6 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
                 for key_word in cs_info_fields:
                     setattr(order, key_word, _rt_addr.get(key_word, None))
 
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 7
-                    obj.save()
-                    continue
-
                 try:
                     order.department = request.user.department
                     order.creator = request.user.username

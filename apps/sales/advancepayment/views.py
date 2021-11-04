@@ -122,7 +122,11 @@ class StatementsViewset(viewsets.ModelViewSet):
         if user.is_our:
             queryset = Statements.objects.all().order_by("id")
         else:
-            queryset = Statements.objects.filter(creator=user.username).order_by("id")
+            try:
+                account = user.account
+                queryset = Statements.objects.filter(account=account).order_by("id")
+            except Exception as e:
+                queryset = Statements.objects.none()
         return queryset
 
     @action(methods=['patch'], detail=False)

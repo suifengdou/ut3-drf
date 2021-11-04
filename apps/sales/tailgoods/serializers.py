@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, PayBillOrder, PBOGoods, \
     ArrearsBillOrder, ABOGoods, FinalStatement, FinalStatementGoods, AccountInfo, PBillToAccount, ABillToAccount,  TailToExpense, RefundToPrestore
 from apps.base.goods.models import Goods
-
+from apps.utils.geography.tools import PickOutAdress
 
 
 class OriTailOrderSerializer(serializers.ModelSerializer):
@@ -213,6 +213,19 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("店铺设置公司，不是经销代理，不可以创建！")
         else:
             raise serializers.ValidationError("店铺没有设置公司，不可以创建！")
+
+        address = validated_data.get("sent_address", None)
+        if address:
+            _spilt_addr = PickOutAdress(address)
+            _rt_addr = _spilt_addr.pickout_addr()
+            if not isinstance(_rt_addr, dict):
+                raise serializers.ValidationError("地址无法提取省市区")
+            validated_data["sent_city"] = _rt_addr["city"]
+            if _rt_addr["district"]:
+                validated_data["sent_district"] = _rt_addr["district"].name
+        else:
+            raise serializers.ValidationError("无法获取地址！")
+
         ori_tail_order = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
             goods_detail['ori_tail_order'] = ori_tail_order
@@ -231,6 +244,16 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
         validated_data["quantity"] = quantity
         create_time = validated_data.pop("create_time", "")
         update_tim = validated_data.pop("update_tim", "")
+        address = validated_data.get("sent_address", None)
+        if address:
+            _spilt_addr = PickOutAdress(address)
+            _rt_addr = _spilt_addr.pickout_addr()
+            if not isinstance(_rt_addr, dict):
+                raise serializers.ValidationError("地址无法提取省市区")
+            validated_data["sent_city"] = _rt_addr["city"]
+            if _rt_addr["district"]:
+                validated_data["sent_district"] = _rt_addr["district"].name
+
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         for goods_detail in goods_details:
             goods_detail['ori_tail_order'] = instance
@@ -431,17 +454,48 @@ class TOGoodsSerializer(serializers.ModelSerializer):
         model = TOGoods
         fields = "__all__"
 
+    def get_shop(self, shop):
+
+        try:
+            ret = {
+                "id": shop.id,
+                "name": shop.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_sent_city(self, sent_city):
+
+        try:
+            ret = {
+                "id": sent_city.id,
+                "name": sent_city.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_sent_province(self, sent_province):
+        try:
+            ret = {
+                "id": sent_province.id,
+                "name": sent_province.name
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
 
     def to_representation(self, instance):
         ret = super(TOGoodsSerializer, self).to_representation(instance)
         fields_str = ['order_id', 'sent_consignee', 'sent_consignee', 'sent_address', 'sent_smartphone', 'message',
-                      'sent_district', 'mode_warehouse']
+                      'sent_district', 'mode_warehouse', 'sent_province', 'sent_city', 'shop']
         for key in fields_str:
             ret[key] = getattr(instance.tail_order, key, None)
 
-        ret["shop"] = getattr(getattr(instance.tail_order, "shop", None), "name", None)
-        ret["sent_province"] = getattr(getattr(instance.tail_order, "sent_province", None), "province", None)
-        ret["sent_city"] = getattr(getattr(instance.tail_order, "sent_city", None), "city", None)
+        ret["shop"] = self.get_shop(ret["shop"])
+        ret["sent_city"] = self.get_sent_city(ret["sent_city"])
+        ret["sent_province"] = self.get_sent_province(ret["sent_province"])
         ret["deliver_condition"] = "款到发货"
         ret["discounts"] = 0
         ret["post_fee"] = 0

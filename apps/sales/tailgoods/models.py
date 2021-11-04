@@ -76,7 +76,7 @@ class OriTailOrder(models.Model):
     mode_warehouse = models.SmallIntegerField(choices=MODE_W, default=0, verbose_name='发货模式')
     sent_consignee = models.CharField(max_length=150, verbose_name='收件人姓名')
     sent_smartphone = models.CharField(max_length=30, verbose_name='收件人手机')
-    sent_city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='收件城市')
+    sent_city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, verbose_name='收件城市')
     sent_district = models.CharField(null=True, blank=True, max_length=30, verbose_name='收件区县')
     sent_address = models.CharField(max_length=200, verbose_name='收件地址')
 
@@ -423,6 +423,7 @@ class RefundOrder(models.Model):
         permissions = (
             ('view_user_refundorder',  'Can view user SALES-尾货退货单'),
             ('view_handler_refundorder', 'Can view handler SALES-尾货退货单'),
+            ('view_check_refundorder', 'Can view check SALES-尾货退货单'),
         )
 
     def __str__(self):
