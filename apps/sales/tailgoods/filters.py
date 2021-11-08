@@ -50,6 +50,8 @@ class TOGoodsFilter(django_filters.FilterSet):
     tail_order__order_id = django_filters.CharFilter(lookup_expr='iexact')
     tail_order__sent_consignee = django_filters.CharFilter(lookup_expr='icontains')
     tail_order__sent_smartphone = django_filters.CharFilter(lookup_expr='icontains')
+    tail_order__order_status = django_filters.NumberFilter(lookup_expr='exact')
+    tail_order__mode_warehouse = django_filters.NumberFilter(lookup_expr='exact')
     tail_order__track_no = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:

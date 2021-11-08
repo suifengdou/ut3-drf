@@ -394,7 +394,7 @@ class DealerPartsSubmitViewset(viewsets.ModelViewSet):
                         break
                 if error_tag:
                     continue
-                obj.order_status = 2
+                obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
         else:

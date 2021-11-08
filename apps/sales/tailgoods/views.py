@@ -1,5 +1,6 @@
 import re, datetime
 import math
+import copy
 import pandas as pd
 import numpy as np
 from django.db.models import Avg,Sum,Max,Min
@@ -57,11 +58,11 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
         user = self.request.user
-        request.data["sign_company"] = user.company
-        params = request.query_params
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
+        params["sign_company"] = user.company
         f = OriTailOrderFilter(params)
         serializer = OriTailOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -348,15 +349,15 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = OriTailOrderFilter(params)
         serializer = OriTailOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -742,15 +743,15 @@ class OriTailOrderViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = OriTailOrderFilter(params)
         serializer = OriTailOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -792,15 +793,15 @@ class OTOGoodsViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = OTOGoodsFilter(params)
         serializer = OTOGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -1129,15 +1130,15 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = TailOrderFilter(params)
         serializer = TailOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -1309,9 +1310,11 @@ class TOGoodsCommonViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.query_params
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
+        params["process_tag"] = 0
+
         f = TOGoodsFilter(params)
         serializer = TOGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -1687,14 +1690,15 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
+                params["creator"] = user.username
         params = request.query_params
         f = TailOrderFilter(params)
         serializer = TailOrderSerializer(f.qs, many=True)
@@ -1867,9 +1871,10 @@ class TOGoodsSpecialViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.query_params
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
+        params["process_tag"] = 0
         f = TOGoodsFilter(params)
         serializer = TOGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -1968,15 +1973,15 @@ class TailOrderViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = TailOrderFilter(params)
         serializer = TailOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2018,15 +2023,15 @@ class TOGoodsViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = TOGoodsFilter(params)
         serializer = TOGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2065,15 +2070,15 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = RefundOrderFilter(params)
         serializer = RefundOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2270,10 +2275,10 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        request.data["order_status"] = 2
-        params = request.query_params
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
+        params["order_status"] = 2
         f = RefundOrderFilter(params)
         serializer = RefundOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2526,12 +2531,12 @@ class RefundOrderAuditViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
-        request.data["creator"] = user.username
-        request.data["order_status"] = 3
-        params = request.query_params
+        params["creator"] = user.username
+        params["order_status"] = 3
         f = RefundOrderFilter(params)
         serializer = RefundOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2604,15 +2609,15 @@ class RefundOrderManageViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = RefundOrderFilter(params)
         serializer = RefundOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2650,15 +2655,15 @@ class ROGoodsReceivalViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = ROGoodsFilter(params)
         serializer = ROGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2797,15 +2802,15 @@ class ROGoodsManageViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = ROGoodsFilter(params)
         serializer = ROGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2841,21 +2846,21 @@ class AccountInfoViewset(viewsets.ModelViewSet):
         if user.is_our:
             queryset = AccountInfo.objects.all().order_by("-id")
         else:
-            queryset = AccountInfo.objects.filter(creator=user.username).order_by("-id")
+            queryset = AccountInfo.objects.filter(sign_company=user.company).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         user = self.request.user
         if not user.is_superuser:
             if user.is_our:
-                request.data["sign_department"] = user.department
+                params["sign_department"] = user.department
             else:
-                request.data["creator"] = user.username
-        params = request.query_params
+                params["creator"] = user.username
         f = AccountInfoFilter(params)
         serializer = AccountInfoSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -2894,9 +2899,9 @@ class TailToExpenseViewset(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.query_params
+        params =  copy.deepcopy(request.query_params)
+        params.pop("page", None)
+        params.pop("allSelectTag", None)
         f = TailToExpenseFilter(params)
         serializer = TailToExpenseSerializer(f.qs, many=True)
         return Response(serializer.data)
