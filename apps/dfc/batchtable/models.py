@@ -38,8 +38,8 @@ class OriginData(models.Model):
     goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称')
     quantity = models.SmallIntegerField(verbose_name='货品数量')
 
-    buyer_remark = models.CharField(max_length=300, verbose_name='买家备注')
-    cs_memoranda = models.CharField(max_length=300, verbose_name='客服备注')
+    buyer_remark = models.CharField(max_length=300, null=True, blank=True, verbose_name='买家备注')
+    cs_memoranda = models.CharField(max_length=300, null=True, blank=True, verbose_name='客服备注')
 
     order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='状态')
     submit_user = models.CharField(null=True, blank=True, max_length=50, verbose_name='处理人')
@@ -56,7 +56,7 @@ class OriginData(models.Model):
     class Meta:
         verbose_name = 'DFC-原始批量赠品单'
         verbose_name_plural = verbose_name
-
+        unique_together = (("order_id", "goods_name"),)
         db_table = 'dfc_origindata'
 
     def __str__(self):

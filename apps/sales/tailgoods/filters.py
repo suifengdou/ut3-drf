@@ -47,8 +47,10 @@ class TailOrderFilter(django_filters.FilterSet):
 
 class TOGoodsFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    t_order_status = django_filters.CharFilter(field_name="tail_order__order_status")
-    t_mode_warehouse = django_filters.CharFilter(field_name="tail_order__mode_warehouse")
+    tail_order__order_id = django_filters.CharFilter(lookup_expr='iexact')
+    tail_order__sent_consignee = django_filters.CharFilter(lookup_expr='icontains')
+    tail_order__sent_smartphone = django_filters.CharFilter(lookup_expr='icontains')
+    tail_order__track_no = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:
         model = TOGoods

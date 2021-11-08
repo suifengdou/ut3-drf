@@ -12,7 +12,8 @@ class DealerParts(models.Model):
     ORDERSTATUS = (
         (0, '已取消'),
         (1, '未处理'),
-        (2, '已处理'),
+        (2, '待递交'),
+        (3, '已递交'),
     )
 
     ORDER_CATEGORY = (

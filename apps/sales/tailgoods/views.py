@@ -51,7 +51,7 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
         if not self.request:
             return OriTailOrder.objects.none()
         user = self.request.user
-        queryset = OriTailOrder.objects.filter(sign_company=user.company, order_status=1).order_by("id")
+        queryset = OriTailOrder.objects.filter(sign_company=user.company, order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -197,8 +197,9 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
                             continue
                 check_name = obj.goods_name()
                 if check_name not in ['无', '多种']:
-                    check_name = check_name.lower().replace(' ', '')
-                    if check_name not in str(obj.message):
+                    check_name = check_name.lower()
+                    contents = str(obj.message).lower()
+                    if check_name not in contents:
                         data["error"].append("%s 发货型号与备注不符" % obj.order_id)
                         obj.mistake_tag = 16
                         obj.save()
@@ -327,7 +328,7 @@ class OriTailOrderCheckViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return OriTailOrder.objects.none()
-        queryset = OriTailOrder.objects.filter(order_status=2).order_by("id")
+        queryset = OriTailOrder.objects.filter(order_status=2).order_by("-id")
         return queryset
 
     def get_handle_list(self, params):
@@ -733,9 +734,9 @@ class OriTailOrderViewset(viewsets.ModelViewSet):
             return OriTailOrder.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = OriTailOrder.objects.all().order_by("id")
+            queryset = OriTailOrder.objects.all().order_by("-id")
         else:
-            queryset = OriTailOrder.objects.filter(creator=user.username).order_by("id")
+            queryset = OriTailOrder.objects.filter(creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -783,9 +784,9 @@ class OTOGoodsViewset(viewsets.ModelViewSet):
             return OTOGoods.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = OTOGoods.objects.all().order_by("id")
+            queryset = OTOGoods.objects.all().order_by("-id")
         else:
-            queryset = OTOGoods.objects.filter(creator=user.username).order_by("id")
+            queryset = OTOGoods.objects.filter(creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -831,7 +832,7 @@ class TailOrderCommonViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return TailOrder.objects.none()
-        queryset = TailOrder.objects.filter(mode_warehouse=1, order_status=1).order_by("id")
+        queryset = TailOrder.objects.filter(mode_warehouse=1, order_status=1).order_by("-id")
         return queryset
 
     def get_handle_list(self, params):
@@ -1302,7 +1303,7 @@ class TOGoodsCommonViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return TOGoods.objects.none()
-        queryset = TOGoods.objects.filter(is_delete=0, tail_order__order_status=1, tail_order__mode_warehouse=1).order_by("id")
+        queryset = TOGoods.objects.filter(is_delete=0, tail_order__order_status=1, tail_order__mode_warehouse=1).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -1395,7 +1396,7 @@ class TailOrderSpecialViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return TailOrder.objects.none()
-        queryset = TailOrder.objects.filter(mode_warehouse=0, order_status=1).order_by("id")
+        queryset = TailOrder.objects.filter(mode_warehouse=0, order_status=1).order_by("-id")
         return queryset
 
 
@@ -1860,7 +1861,7 @@ class TOGoodsSpecialViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return TOGoods.objects.none()
-        queryset = TOGoods.objects.filter(is_delete=0, tail_order__order_status=1, tail_order__mode_warehouse=0).order_by("id")
+        queryset = TOGoods.objects.filter(is_delete=0, tail_order__order_status=1, tail_order__mode_warehouse=0).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -1961,7 +1962,7 @@ class TailOrderViewset(viewsets.ModelViewSet):
         if user.is_our:
             queryset = TailOrder.objects.all().order_by("id")
         else:
-            queryset = TailOrder.objects.filter(creator=user.username).order_by("id")
+            queryset = TailOrder.objects.filter(creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2009,9 +2010,9 @@ class TOGoodsViewset(viewsets.ModelViewSet):
             return TOGoods.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = TOGoods.objects.all().order_by("id")
+            queryset = TOGoods.objects.all().order_by("-id")
         else:
-            queryset = TOGoods.objects.filter(creator=user.username).order_by("id")
+            queryset = TOGoods.objects.filter(creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2058,7 +2059,7 @@ class RefundOrderSubmitViewset(viewsets.ModelViewSet):
         if not self.request:
             return RefundOrder.objects.none()
         user = self.request.user
-        queryset = RefundOrder.objects.filter(creator=user.username, order_status=1).order_by("id")
+        queryset = RefundOrder.objects.filter(creator=user.username, order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2263,7 +2264,7 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return RefundOrder.objects.none()
-        queryset = RefundOrder.objects.filter(order_status=2).order_by("id")
+        queryset = RefundOrder.objects.filter(order_status=2).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2271,12 +2272,7 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
         # raise serializers.ValidationError("看下失败啥样！")
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
-        user = self.request.user
-        if not user.is_superuser:
-            if user.is_our:
-                request.data["sign_department"] = user.department
-            else:
-                request.data["creator"] = user.username
+        request.data["order_status"] = 2
         params = request.query_params
         f = RefundOrderFilter(params)
         serializer = RefundOrderSerializer(f.qs, many=True)
@@ -2290,7 +2286,7 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = RefundOrder.objects.filter(id__in=order_ids)
+                handle_list = RefundOrder.objects.filter(id__in=order_ids, order_status=2)
             else:
                 handle_list = []
         return handle_list
@@ -2497,6 +2493,81 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
+class RefundOrderAuditViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定公司
+    list:
+        返回公司列表
+    update:
+        更新公司信息
+    destroy:
+        删除公司信息
+    create:
+        创建公司信息
+    partial_update:
+        更新部分公司字段
+    """
+    serializer_class = RefundOrderSerializer
+    filter_class = RefundOrderFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['tailgoods.view_user_refundorder',]
+    }
+
+    def get_queryset(self):
+        user = self.request.user
+        if not self.request:
+            return RefundOrder.objects.none()
+        queryset = RefundOrder.objects.filter(order_status=3, creator=user.username).order_by("-id")
+        return queryset
+
+    @action(methods=['get'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        user = self.request.user
+        request.data["creator"] = user.username
+        request.data["order_status"] = 3
+        params = request.query_params
+        f = RefundOrderFilter(params)
+        serializer = RefundOrderSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = RefundOrderFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = RefundOrder.objects.filter(id__in=order_ids, order_status=3)
+            else:
+                handle_list = []
+        return handle_list
+
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(order_status=4)
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        return Response(data)
+
+
 class RefundOrderManageViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -2525,9 +2596,9 @@ class RefundOrderManageViewset(viewsets.ModelViewSet):
             return RefundOrder.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = RefundOrder.objects.all().order_by("id")
+            queryset = RefundOrder.objects.all().order_by("-id")
         else:
-            queryset = RefundOrder.objects.filter(creator=user.username).order_by("id")
+            queryset = RefundOrder.objects.filter(creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2573,7 +2644,7 @@ class ROGoodsReceivalViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ROGoods.objects.none()
-        queryset = ROGoods.objects.filter(order_status=2).order_by("id")
+        queryset = ROGoods.objects.filter(order_status=2).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2690,7 +2761,6 @@ class ROGoodsReceivalViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-
 class ROGoodsManageViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -2719,9 +2789,9 @@ class ROGoodsManageViewset(viewsets.ModelViewSet):
             return ROGoods.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = ROGoods.objects.all().order_by("id")
+            queryset = ROGoods.objects.all().order_by("-id")
         else:
-            queryset = ROGoods.objects.filter(creator=user.username).order_by("id")
+            queryset = ROGoods.objects.filter(creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2769,9 +2839,9 @@ class AccountInfoViewset(viewsets.ModelViewSet):
             return AccountInfo.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = AccountInfo.objects.all().order_by("id")
+            queryset = AccountInfo.objects.all().order_by("-id")
         else:
-            queryset = AccountInfo.objects.filter(creator=user.username).order_by("id")
+            queryset = AccountInfo.objects.filter(creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2818,7 +2888,7 @@ class TailToExpenseViewset(viewsets.ModelViewSet):
         if not self.request:
             return TailToExpense.objects.none()
         user = self.request.user
-        queryset = TailToExpense.objects.all().order_by("id")
+        queryset = TailToExpense.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -2859,7 +2929,7 @@ class RefundToPrestoreViewset(viewsets.ModelViewSet):
         if not self.request:
             return RefundToPrestore.objects.none()
         user = self.request.user
-        queryset = RefundToPrestore.objects.all().order_by("id")
+        queryset = RefundToPrestore.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)

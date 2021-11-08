@@ -3,7 +3,7 @@ from .views import OriTailOrderViewset, OTOGoodsViewset, TailOrderViewset, TOGoo
     RefundOrderCheckViewset, RefundOrderManageViewset, AccountInfoViewset, \
     OriTailOrderSubmitViewset, OriTailOrderCheckViewset, TailOrderCommonViewset, TailOrderSpecialViewset, \
     TailToExpenseViewset, TOGoodsCommonViewset, TOGoodsSpecialViewset, RefundToPrestoreViewset, ROGoodsReceivalViewset, \
-    ROGoodsManageViewset
+    ROGoodsManageViewset, RefundOrderAuditViewset
 
 
 tailgoods_router = DefaultRouter()
@@ -20,6 +20,7 @@ tailgoods_router.register(r'sales/tailgoods/tailorder', TailOrderViewset, basena
 tailgoods_router.register(r'sales/tailgoods/togoods', TOGoodsViewset, basename='togoods')
 tailgoods_router.register(r'sales/tailgoods/refundordersubmit', RefundOrderSubmitViewset, basename='refundordersubmit')
 tailgoods_router.register(r'sales/tailgoods/refundordercheck', RefundOrderCheckViewset, basename='refundordercheck')
+tailgoods_router.register(r'sales/tailgoods/refundorderaudit', RefundOrderAuditViewset, basename='refundorderaudit')
 tailgoods_router.register(r'sales/tailgoods/refundordermanage', RefundOrderManageViewset, basename='refundordermanage')
 tailgoods_router.register(r'sales/tailgoods/refundotoprestore', RefundToPrestoreViewset, basename='refundotoprestore')
 tailgoods_router.register(r'sales/tailgoods/rogoodsreceival', ROGoodsReceivalViewset, basename='rogoodsreceival')

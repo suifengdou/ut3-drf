@@ -90,7 +90,8 @@ class DealerPartsSerializer(serializers.ModelSerializer):
         status = {
             0: "已取消",
             1: "未处理",
-            2: "已处理",
+            2: "待递交",
+            3: "已递交",
         }
         try:
             ret = {
@@ -153,7 +154,6 @@ class DealerPartsSerializer(serializers.ModelSerializer):
                     "name": goods_detail.goods_name.name
                 },
                 "quantity": goods_detail.quantity,
-                "price": goods_detail.price,
                 "memorandum": goods_detail.memorandum
             }
             ret.append(data)
@@ -247,9 +247,9 @@ class DealerPartsSerializer(serializers.ModelSerializer):
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        instance.mogoods_set.all().delete()
+        instance.dpgoods_set.all().delete()
         for goods_detail in goods_details:
-            goods_detail['manual_order'] = instance
+            goods_detail['dealer_parts'] = instance
             _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
             goods_detail["goods_name"] = _q_goods
             goods_detail["goods_id"] = _q_goods.goods_id

@@ -854,7 +854,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             obj.save()
                         order.nickname = obj.dialog.customer
                         for i in range(len(compensation_data)):
-                            compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)|(运费)|(补运费)', '', str(compensation_data[i]))
+                            compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)|(定金)|(运费)|(补运费)', '', str(compensation_data[i]))
                         compensation_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "formula", "order_category"]
                         compensation_dic = dict(zip(compensation_fields, compensation_data))
                         cs_error = 0

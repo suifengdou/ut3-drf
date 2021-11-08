@@ -50,7 +50,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['batchtable.view_origindata', ]
     }
 
     def get_queryset(self):
@@ -258,7 +258,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             columns_key_ori = df.columns.values.tolist()
             filter_fields = ["店铺", "店铺名称", "订单号", "订单编号", "销售订单号", "下单帐号", "买家会员名", "ID",
                              "客户网名", "用户昵称", "网名", "客户姓名", "收货人姓名", "姓名", "顾客姓名", "收件人", "发布平台ID",
-                             "收货人", "客户地址", "收货地址 ", "地址", "送货地址", "收件地址", "派送地址", "家庭地址",
+                             "收货人", "客户地址", "收货地址 ", "收货地址","地址", "送货地址", "收件地址", "派送地址", "家庭地址",
                              "联系电话", "联系手机", "手机号", "顾客联系方式", "手机", "赠品名称", "数量"]
             INIT_FIELDS_DIC = {
                 "店铺": "shop",
@@ -287,7 +287,6 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                 "收件地址": "address",
                 "派送地址": "address",
                 "家庭地址": "address",
-                "联系电话": "mobile",
                 "联系手机": "mobile",
                 "手机号": "mobile",
                 "顾客联系方式": "mobile",
@@ -404,7 +403,7 @@ class OriginDataManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['batchtable.view_origindata', ]
     }
 
     def get_queryset(self):
@@ -446,7 +445,7 @@ class BatchTableSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['batchtable.view_batchtable', ]
     }
 
     def get_queryset(self):
@@ -632,7 +631,7 @@ class BatchTableManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['batchtable.view_batchtable', ]
     }
 
     def get_queryset(self):

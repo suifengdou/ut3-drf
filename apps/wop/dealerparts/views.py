@@ -57,7 +57,7 @@ class DealerPartsCreateViewset(viewsets.ModelViewSet):
         if not self.request:
             return DealerParts.objects.none()
         user = self.request.user
-        queryset = DealerParts.objects.filter(order_status=1, creator=user.username).order_by("id")
+        queryset = DealerParts.objects.filter(order_status=1, creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -239,7 +239,7 @@ class DealerPartsSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return DealerParts.objects.none()
-        queryset = DealerParts.objects.filter(order_status=2).order_by("id")
+        queryset = DealerParts.objects.filter(order_status=2).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -361,7 +361,7 @@ class DealerPartsSubmitViewset(viewsets.ModelViewSet):
                     _q_dp_repeat = DPGoods.objects.filter(dealer_parts__mobile=obj.mobile, goods_id=goods_detail.goods_id).order_by("-create_time")
                     if len(_q_dp_repeat) > 1:
                         if obj.process_tag != 3:
-                            delta_date = (obj.create_time - _q_mo_repeat[1].create_time).days
+                            delta_date = (obj.create_time - _q_dp_repeat[1].create_time).days
                             if int(delta_date) < 14:
                                 error_tag = 1
                                 data["error"].append("%s 14天内重复" % obj.id)
@@ -394,7 +394,7 @@ class DealerPartsSubmitViewset(viewsets.ModelViewSet):
                         break
                 if error_tag:
                     continue
-                obj.order_status = 3
+                obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.save()
         else:
@@ -619,9 +619,9 @@ class DealerPartsManageViewset(viewsets.ModelViewSet):
             return DealerParts.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = DealerParts.objects.all().order_by("id")
+            queryset = DealerParts.objects.all().order_by("-id")
         else:
-            queryset = DealerParts.objects.filter(creator=user.username).order_by("id")
+            queryset = DealerParts.objects.filter(creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)

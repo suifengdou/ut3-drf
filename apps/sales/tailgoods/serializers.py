@@ -527,7 +527,8 @@ class RefundOrderSerializer(serializers.ModelSerializer):
             0: "已取消",
             1: "待递交",
             2: "待处理",
-            3: "已审核",
+            3: "待结算",
+            4: "已完成",
         }
         try:
             ret = {

@@ -2058,8 +2058,6 @@ class DelivermanageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        # raise serializers.ValidationError("看下失败啥样！")
-        request.data["order_status"] = 1
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data

@@ -98,7 +98,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
+                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市', '北屯市',
                         '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
                         '白沙黎族自治县', '中山市', '东莞市']
         express_list = {
@@ -584,8 +584,8 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = ManualOrderExportFilter(params)
-        serializer = ManualOrderExportSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
-        for order in f.qs[:EXPORT_TOPLIMIT]:
+        serializer = ManualOrderExportSerializer(f.qs, many=True)
+        for order in f.qs:
             order.process_tag = 1
             order.save()
         return Response(serializer.data)
