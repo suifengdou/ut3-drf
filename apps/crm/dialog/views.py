@@ -854,7 +854,18 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             obj.save()
                         order.nickname = obj.dialog.customer
                         for i in range(len(compensation_data)):
-                            compensation_data[i] = re.sub('(型号)|(差价)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)|(定金)|(运费)|(补运费)', '', str(compensation_data[i]))
+                            if i ==1:
+                                conpensation_amount = re.findall(r'[\d\.]*$', str(compensation_data[i]))
+                                if conpensation_amount:
+                                    compensation_data[i] = conpensation_amount[0]
+                                else:
+                                    data["error"].append("%s 差价项目无金额" % obj.id)
+                                    compensation_data[i] = 0
+                                    n -= 1
+                                    obj.mistake_tag = 14
+                                    obj.save()
+                            else:
+                                compensation_data[i] = re.sub('(型号)|(姓名)|(支付宝)|(订单号)|(整机：)|(整机:)', '', str(compensation_data[i]))
                         compensation_fields = ["goods_name", "compensation", "name", "alipay_id", "order_id", "formula", "order_category"]
                         compensation_dic = dict(zip(compensation_fields, compensation_data))
                         cs_error = 0
@@ -977,34 +988,44 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
     }
 
     def get_queryset(self):
+        user = self.request.user
+        _q_nick_list = user.servicer_set.all()
+        if _q_nick_list.exists():
+            nick_list = [servicer.name for servicer in _q_nick_list]
+        else:
+            raise serializers.ValidationError({"error": "身份验证失败，你没在客服列表！"})
+
         if not self.request:
             return DialogTBDetail.objects.none()
-        queryset = DialogTBDetail.objects.filter(creator=self.request.user.username,order_status=1).order_by("-id")
+        queryset = DialogTBDetail.objects.filter(sayer__in=nick_list, order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
+        nick_list = [servicer.name for servicer in user.servicer_set.all()]
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
         params["order_status"] = 1
-        params["creator"] = user.username
+        params["sayer__in"] = nick_list
         f = DialogTBDetailFilter(params)
         serializer = DialogTBDetailSerializer(f.qs, many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
+        user = self.request.user
+        nick_list = [servicer.name for servicer in user.servicer_set.all()]
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 1
-        params["creator"] = self.request.user.username
+        params["sayer__in"] = nick_list
         if all_select_tag:
             handle_list = DialogTBDetailFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = DialogTBDetail.objects.filter(id__in=order_ids, creator=self.request.user.username, order_status=1)
+                handle_list = DialogTBDetail.objects.filter(id__in=order_ids, sayer__in=nick_list, order_status=1)
             else:
                 handle_list = []
         return handle_list
@@ -1026,10 +1047,6 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
         rt_shop_list = {}
         for shop in shop_list:
             rt_shop_list[shop.name] = shop
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
         if n:
             for obj in check_list:
                 _check_talk_data = re.match(r'·客服.*', str(obj.content), re.DOTALL)

@@ -420,6 +420,10 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
             if _q_goods.exists():
                 goods_details.goods_name = _q_goods[0]
                 goods_details.goods_id = row["goods_id"]
+            else:
+                report_dic["error"].append("%s UT无此货品" % row["goods_id"])
+                report_dic["false"] += 1
+                continue
             try:
                 goods_details.creator = request.user.username
                 goods_details.save()
@@ -543,7 +547,7 @@ class MOGoodsManageViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = MOGoodsFilter(params)
-        serializer = MOGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        serializer = MOGoodsSerializer(f.qs, many=True)
 
         return Response(serializer.data)
 

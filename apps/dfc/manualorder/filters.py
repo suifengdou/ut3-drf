@@ -17,6 +17,9 @@ class ManualOrderFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
+    province__name = django_filters.CharFilter(lookup_expr='exact')
+    city__name = django_filters.CharFilter(lookup_expr='exact')
+    district__name = django_filters.CharFilter(lookup_expr='exact')
 
     class Meta:
         model = ManualOrder

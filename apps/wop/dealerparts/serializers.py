@@ -243,6 +243,11 @@ class DealerPartsSerializer(serializers.ModelSerializer):
 
         if '集运' in str(validated_data["address"]):
             raise serializers.ValidationError("地址是集运仓")
+        _q_shop = user.company.shop_set.all()
+        if _q_shop.exists():
+            validated_data["shop"] = _q_shop[0]
+        else:
+            validated_data["shop"] = Shop.objects.filter(name="旗舰店供应商")[0]
 
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)

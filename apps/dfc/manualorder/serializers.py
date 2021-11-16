@@ -357,6 +357,16 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
         model = ManualOrderExport
         fields = "__all__"
 
+    def get_ori_order(self, instance):
+        try:
+            ret = {
+                "id": instance.ori_order.id,
+                "name": instance.ori_order.order_id,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_shop(self, instance):
         try:
             ret = {
@@ -376,6 +386,7 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
         except:
             ret = {"id": -1, "name": "显示错误"}
         return ret
+
 
     def get_city(self, instance):
         try:
@@ -435,6 +446,7 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
         ret["district"] = self.get_district(instance)
         ret["order_status"] = self.get_order_status(instance)
         ret["process_tag"] = self.get_process_tag(instance)
+        ret["ori_order"] = self.get_ori_order(instance)
         return ret
 
 

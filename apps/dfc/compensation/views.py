@@ -55,7 +55,7 @@ class CompensationSubmitViewset(viewsets.ModelViewSet):
         user = self.request.user.username
         if not self.request:
             return Compensation.objects.none()
-        queryset = Compensation.objects.filter(order_status=1, creator=user).order_by("id")
+        queryset = Compensation.objects.filter(order_status=1, creator=user).order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -130,7 +130,7 @@ class CompensationCheckViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Compensation.objects.none()
-        queryset = Compensation.objects.filter(order_status=1).order_by("id")
+        queryset = Compensation.objects.filter(order_status=1).order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -329,7 +329,7 @@ class CompensationViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Compensation.objects.none()
-        queryset = Compensation.objects.all().order_by("id")
+        queryset = Compensation.objects.all().order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -368,7 +368,7 @@ class BatchCompensationSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BatchCompensation.objects.none()
-        queryset = BatchCompensation.objects.filter(order_status=1).order_by("id")
+        queryset = BatchCompensation.objects.filter(order_status=1).order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -477,7 +477,7 @@ class BatchCompensationSettleViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BatchCompensation.objects.none()
-        queryset = BatchCompensation.objects.filter(order_status=2).order_by("id")
+        queryset = BatchCompensation.objects.filter(order_status=2).order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -579,7 +579,7 @@ class BatchCompensationViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BatchCompensation.objects.none()
-        queryset = BatchCompensation.objects.all().order_by("id")
+        queryset = BatchCompensation.objects.all().order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -619,7 +619,7 @@ class BCDetailSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BCDetail.objects.none()
-        queryset = BCDetail.objects.filter(order_status=1).order_by("id")
+        queryset = BCDetail.objects.filter(order_status=1).order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -702,7 +702,7 @@ class BCDetailSettleViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BCDetail.objects.none()
-        queryset = BCDetail.objects.filter(order_status=2).order_by("id")
+        queryset = BCDetail.objects.filter(order_status=2).order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -817,17 +817,16 @@ class BCDetailSettleViewset(viewsets.ModelViewSet):
 
                 order = Compensation()
                 detail_fields = ["servicer", "goods_name", "nickname", "order_id", "compensation", "name", "alipay_id",
-                                 "actual_receipts", "receivable", "checking", "memorandum"]
+                                 "actual_receipts", "receivable", "checking", "memorandum", "creator"]
                 for key_word in detail_fields:
                     setattr(order, key_word, getattr(obj, key_word, None))
-                reset_reason = mistake_dic.get(order.process_tag, None)
+                reset_reason = mistake_dic.get(obj.process_tag, None)
                 order.memorandum = "%s #财务中心%s 重置补偿单，重置原因是 %s" % (order.memorandum, user, reset_reason)
                 order.shop = obj.batch_order.shop
-                order.order_category = obj.batch_order.order_category
+                order.order_category = 2
                 reset_list_order = BCDetailResetList()
                 reset_list_order.bcdetail = obj
                 try:
-                    order.creator = request.user.username
                     order.save()
                     reset_list_order.save()
                 except Exception as e:
@@ -896,7 +895,7 @@ class BCDetailViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BCDetail.objects.none()
-        queryset = BCDetail.objects.all().order_by("id")
+        queryset = BCDetail.objects.all().order_by("-update_time")
         return queryset
 
     @action(methods=['patch'], detail=False)

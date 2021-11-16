@@ -67,6 +67,8 @@ class PickOutAdress():
 
     def pickout_city(self, words, index, *args, **kwargs):
         if self.province:
+            if words == "吉林":
+                return False
             _q_city = City.objects.filter(province=self.province, name__icontains=words)
             if _q_city.exists():
                 self.city = _q_city[0]
@@ -108,7 +110,7 @@ class PickOutAdress():
                 self.terminator = 1
 
     def spiltAddress(self, address, *args, **kwargs):
-        rt_address = re.sub("[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", address)
+        rt_address = re.sub("[!$%&\'*+,./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", address)
         seg_list = jieba.lcut(rt_address)
         return seg_list
 

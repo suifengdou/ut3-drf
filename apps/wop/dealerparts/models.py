@@ -85,6 +85,18 @@ class DealerParts(models.Model):
     def __str__(self):
         return str(self.id)
 
+    @classmethod
+    def verify_mandatory(cls, columns_key):
+        VERIFY_FIELD = ['shop', 'order_id', 'nickname', 'receiver', 'address',
+                        'mobile', 'goods_id', 'quantity', 'order_category', 'information',
+                        'm_sn', 'broken_part', 'description']
+
+        for i in VERIFY_FIELD:
+            if i not in columns_key:
+                return 'verify_field error, must have mandatory field: "{}""'.format(i)
+        else:
+            return None
+
 
 class DPGoods(models.Model):
     ORDER_STATUS = (

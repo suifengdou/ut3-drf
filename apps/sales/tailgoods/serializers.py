@@ -239,9 +239,10 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
         goods_details = validated_data.pop("goods_details", [])
-        amount, quantity = self.check_goods_details(goods_details)
-        validated_data["amount"] = amount
-        validated_data["quantity"] = quantity
+        if goods_details:
+            amount, quantity = self.check_goods_details(goods_details)
+            validated_data["amount"] = amount
+            validated_data["quantity"] = quantity
         create_time = validated_data.pop("create_time", "")
         update_tim = validated_data.pop("update_tim", "")
         address = validated_data.get("sent_address", None)
@@ -255,13 +256,17 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
                 validated_data["sent_district"] = _rt_addr["district"].name
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        for goods_detail in goods_details:
-            goods_detail['ori_tail_order'] = instance
-            _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
-            goods_detail["goods_name"] = _q_goods
-            goods_detail["goods_id"] = _q_goods.goods_id
-            goods_detail.pop("xh")
-            self.create_goods_detail(goods_detail)
+        if goods_details:
+            instance.otogoods_set.all().delete()
+            for goods_detail in goods_details:
+                goods_detail['ori_tail_order'] = instance
+                _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
+                goods_detail["goods_name"] = _q_goods
+                goods_detail["goods_id"] = _q_goods.goods_id
+                goods_detail["id"] = 'n'
+                goods_detail.pop("name", None)
+                goods_detail.pop("xh")
+                self.create_goods_detail(goods_detail)
         return instance
 
 
