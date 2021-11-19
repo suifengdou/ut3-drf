@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import datetime
+import hashlib
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework.authentication import SessionAuthentication
@@ -14,6 +16,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from ut3.settings import OSS_CONFIG
 from itertools import islice
+from apps.utils.oss.aliyunoss import AliyunOSS
+
 
 class CompanyViewset(viewsets.ModelViewSet):
     """
@@ -43,17 +47,37 @@ class CompanyViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def excel_import(self, request, *args, **kwargs):
-        file = request.FILES.get('file', None)
+        list = []  # myfile is the key of a multi value dictionary, values are the uploaded files
+        files = request.FILES.getlist("files")
+
+        file = request.FILES["files"]
+        num = len(request.FILES["files"])
         if not file:
         #     data = self.handle_upload_file(request, file)
         # else:
             data = {
                 "error": "上传文件未找到！"
             }
+
+        data = request.data
+        num1 = len(request.data["files"])
+
+
+        prefix = "ut3s1/base/company"
+        a_oss = AliyunOSS(prefix, file)
+        file_urls = a_oss.upload()
+
         auth = oss2.Auth(OSS_CONFIG["AccessKeyId"], OSS_CONFIG["AccessKeySecret"])
         cname = OSS_CONFIG["cname"]
         endpoint = OSS_CONFIG["endpoint"]
         bucket = oss2.Bucket(auth, endpoint, OSS_CONFIG["bucket_name"])
+        c_time = datetime.datetime.now()
+        suffix = str(file.name).split(".")[1]
+        serial_nuber = str(hashlib.md5(suffix[0].encode(encoding='UTF-8')).hexdigest())
+        file_name = '%s%s%s%s' % (c_time.year, c_time.month, c_time.day, serial_nuber)
+        object_name = '%s/%s/%s/%s.%s' % (c_time.year, c_time.month, c_time.day, file_name, suffix)
+        result = bucket.put_object(object_name, file)
+
         for b in islice(oss2.ObjectIterator(bucket), 10):
             print(b.key)
         return Response(data)

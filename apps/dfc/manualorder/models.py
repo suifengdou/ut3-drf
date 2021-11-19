@@ -61,6 +61,7 @@ class ManualOrder(models.Model):
     order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='赠品单状态')
     submit_user = models.CharField(null=True, blank=True, max_length=50, verbose_name='处理人')
     order_category = models.SmallIntegerField(choices=ORDER_CATEGORY, default=3, verbose_name='单据类型')
+    memo = models.CharField(null=True, blank=True, max_length=200, verbose_name='单据备注')
 
     m_sn = models.CharField(null=True, blank=True, max_length=50, verbose_name='机器序列号')
     broken_part = models.CharField(null=True, blank=True, max_length=50, verbose_name='故障部位')

@@ -18,6 +18,7 @@ class ExpressWorkOrderFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     submit_time = django_filters.DateTimeFromToRangeFilter()
     handle_time = django_filters.DateTimeFromToRangeFilter()
+    update_time = django_filters.DateTimeFromToRangeFilter()
     information = django_filters.CharFilter(field_name="information", lookup_expr='icontains')
     suggestion = django_filters.CharFilter(field_name="suggestion", lookup_expr='icontains')
     feedback = django_filters.CharFilter(field_name="feedback", lookup_expr='icontains')

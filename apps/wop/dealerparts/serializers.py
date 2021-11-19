@@ -205,7 +205,8 @@ class DealerPartsSerializer(serializers.ModelSerializer):
             validated_data["shop"] = _q_shop[0]
         else:
             validated_data["shop"] = Shop.objects.filter(name="旗舰店供应商")[0]
-
+        if user.platform.name == '抖音':
+            validated_data["shop"] = Shop.objects.filter(name="小狗吸尘器抖音旗舰店")[0]
         _spilt_addr = PickOutAdress(validated_data["address"])
         _rt_addr = _spilt_addr.pickout_addr()
         if not isinstance(_rt_addr, dict):
@@ -248,6 +249,8 @@ class DealerPartsSerializer(serializers.ModelSerializer):
             validated_data["shop"] = _q_shop[0]
         else:
             validated_data["shop"] = Shop.objects.filter(name="旗舰店供应商")[0]
+        if user.platform.name == '抖音':
+            validated_data["shop"] = Shop.objects.filter(name="小狗吸尘器抖音旗舰店")[0]
 
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)

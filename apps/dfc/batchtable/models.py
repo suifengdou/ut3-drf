@@ -64,7 +64,7 @@ class OriginData(models.Model):
 
     @classmethod
     def verify_mandatory(cls, columns_key):
-        VERIFY_FIELD = ["shop", "order_id", "nickname", "receiver", "address", "mobile", "goods_name", "quantity"]
+        VERIFY_FIELD = ["shop", "order_id", "nickname", "receiver", "address", "mobile", "goods_name", "quantity", "buyer_remark"]
 
         for i in VERIFY_FIELD:
             if i not in columns_key:

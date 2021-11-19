@@ -185,6 +185,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                     setattr(order, field, getattr(obj, field, None))
 
                 try:
+                    order.memo = obj.buyer_remark
                     order.department = request.user.department
                     order.creator = request.user.username
                     order.save()
@@ -259,7 +260,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             filter_fields = ["店铺", "店铺名称", "订单号", "订单编号", "销售订单号", "下单帐号", "买家会员名", "ID",
                              "客户网名", "用户昵称", "网名", "客户姓名", "收货人姓名", "姓名", "顾客姓名", "收件人", "发布平台ID",
                              "收货人", "客户地址", "收货地址 ", "收货地址","地址", "送货地址", "收件地址", "派送地址", "家庭地址",
-                             "联系电话", "联系手机", "手机号", "顾客联系方式", "手机", "赠品名称", "数量"]
+                             "联系电话", "联系手机", "手机号", "顾客联系方式", "手机", "赠品名称", "数量", "买家留言", "买家备注"]
             INIT_FIELDS_DIC = {
                 "店铺": "shop",
                 "店铺名": "shop",
@@ -292,7 +293,9 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                 "顾客联系方式": "mobile",
                 "手机": "mobile",
                 "赠品名称": "goods_name",
-                "数量": "quantity"
+                "数量": "quantity",
+                "买家留言": "buyer_remark",
+                "买家备注": "buyer_remark"
             }
             result_keys = []
             for keywords in columns_key_ori:
@@ -358,7 +361,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             return report_dic
         for row in resource:
 
-            order_fields = ["nickname", "receiver", "address", "mobile", "order_id", "quantity"]
+            order_fields = ["nickname", "receiver", "address", "mobile", "order_id", "quantity", "buyer_remark"]
             order = OriginData()
             for field in order_fields:
                 setattr(order, field, row[field])

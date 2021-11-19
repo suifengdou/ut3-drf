@@ -222,6 +222,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                     if express:
                         order.cs_memoranda = "%s 指定%s" % (order.cs_memoranda, express)
                 try:
+                    order.buyer_remark = "%s%s" % (order.buyer_remark, obj.memo)
                     order.creator = request.user.username
                     order.save()
                 except Exception as e:
@@ -547,7 +548,7 @@ class MOGoodsManageViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = MOGoodsFilter(params)
-        serializer = MOGoodsSerializer(f.qs, many=True)
+        serializer = MOGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
 
         return Response(serializer.data)
 

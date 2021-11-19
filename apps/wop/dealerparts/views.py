@@ -392,7 +392,12 @@ class DealerPartsSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return DealerParts.objects.none()
-        queryset = DealerParts.objects.filter(order_status=2).order_by("-id")
+        user = self.request.user
+        shop = Shop.objects.filter(name="小狗吸尘器抖音旗舰店")[0]
+        if user.platform.name == '抖音':
+            queryset = DealerParts.objects.filter(shop=shop, order_status=2).order_by("-id")
+        else:
+            queryset = DealerParts.objects.filter(order_status=2).exclude(shop=shop).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
