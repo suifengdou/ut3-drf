@@ -69,6 +69,8 @@ class PickOutAdress():
         if self.province:
             if words == "吉林":
                 return False
+            if words == '哈密地区':
+                words = '哈密市'
             _q_city = City.objects.filter(province=self.province, name__icontains=words)
             if _q_city.exists():
                 self.city = _q_city[0]

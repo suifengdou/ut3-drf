@@ -122,3 +122,10 @@ class EWOPhoto(models.Model):
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
+    class Meta:
+        verbose_name = 'WOP-快递工单-图片'
+        verbose_name_plural = verbose_name
+        db_table = 'wop_express_photo'
+
+    def __str__(self):
+        return self.id

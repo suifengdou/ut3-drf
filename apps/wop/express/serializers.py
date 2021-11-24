@@ -1,7 +1,7 @@
 import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import ExpressWorkOrder
+from .models import ExpressWorkOrder, EWOPhoto
 from apps.base.goods.models import Goods
 
 
@@ -80,7 +80,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
             1: "快递单号错误",
             2: "处理意见为空",
             3: "返回的单据无返回单号",
-            4: "丢件必须为已丢失才可以审核",
+            4: "丢件必须为需理赔才可以审核",
             5: "驳回原因为空",
             6: "无执行内容, 不可以审核",
 
@@ -139,6 +139,17 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
             }
         return ret
 
+    def get_photo_details(self, instance):
+        photo_details = instance.ewophoto_set.all()
+        ret = []
+        for photo_detail in photo_details:
+            data = {
+                "id": photo_detail.id,
+                "name": photo_detail.url,
+            }
+            ret.append(data)
+        return ret
+
     def to_representation(self, instance):
         ret = super(ExpressWorkOrderSerializer, self).to_representation(instance)
         ret["company"] = self.get_company(instance)
@@ -147,6 +158,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["order_status"] = self.get_order_status(instance)
         ret["handling_status"] = self.get_handling_status(instance)
+        ret["photo_details"] = self.get_photo_details(instance)
         return ret
 
     def to_internal_value(self, data):

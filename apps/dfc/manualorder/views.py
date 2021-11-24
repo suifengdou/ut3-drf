@@ -589,8 +589,8 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = ManualOrderExportFilter(params)
-        serializer = ManualOrderExportSerializer(f.qs, many=True)
-        for order in f.qs:
+        serializer = ManualOrderExportSerializer(f.qs[:4000], many=True)
+        for order in f.qs[:4000]:
             order.process_tag = 1
             order.save()
         return Response(serializer.data)

@@ -39,7 +39,7 @@ class AliyunOSS(object):
 
     def create_object_name(self, file):
         c_time = datetime.datetime.now()
-        file_name, suffix = str(file.name).split(".")[1]
+        file_name, suffix = str(file.name).split(".")
         serial_number = re.sub("[- .:]", "", str(c_time))
         file_name = str(hashlib.md5(file_name.encode(encoding='UTF-8')).hexdigest())
         file_name = '%s%s' % (file_name, serial_number[:10])

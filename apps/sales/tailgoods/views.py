@@ -2860,7 +2860,7 @@ class AccountInfoViewset(viewsets.ModelViewSet):
             if user.is_our:
                 params["sign_department"] = user.department
             else:
-                params["creator"] = user.username
+                params["sign_company"] = user.company
         f = AccountInfoFilter(params)
         serializer = AccountInfoSerializer(f.qs, many=True)
         return Response(serializer.data)

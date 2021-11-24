@@ -11,11 +11,15 @@ from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
-from .models import ExpressWorkOrder
+from .models import ExpressWorkOrder, EWOPhoto
 from .serializers import ExpressWorkOrderSerializer
 from .filters import ExpressWorkOrderFilter
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.base.company.models import Company
+import oss2
+from ut3.settings import OSS_CONFIG
+from itertools import islice
+from apps.utils.oss.aliyunoss import AliyunOSS
 
 
 class EWOCreateViewset(viewsets.ModelViewSet):
@@ -253,6 +257,37 @@ class EWOCreateViewset(viewsets.ModelViewSet):
 
         return report_dic
 
+    @action(methods=['patch'], detail=False)
+    def photo_import(self, request, *args, **kwargs):
+        files = request.FILES.getlist("files", None)
+        id = request.data.get('id', None)
+        if id:
+            work_order = ExpressWorkOrder.objects.filter(id=id)[0]
+        else:
+            data = {
+                "error": "系统错误联系管理员，无法回传单据ID！"
+            }
+            return Response(data)
+        if files:
+            prefix = "ut3s1/workorder/express"
+            a_oss = AliyunOSS(prefix, files)
+            file_urls = a_oss.upload()
+            for url in file_urls["urls"]:
+                photo_order = EWOPhoto()
+                photo_order.url = url
+                photo_order.workorder = work_order
+                photo_order.creator = request.user.username
+                photo_order.save()
+            data = {
+                "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
+                "error": file_urls["error"]
+            }
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+        return Response(data)
+
 
 
 class EWOHandleViewset(viewsets.ModelViewSet):
@@ -437,6 +472,38 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         data["false"] = len(reject_list) - n
         return Response(data)
 
+    @action(methods=['patch'], detail=False)
+    def photo_import(self, request, *args, **kwargs):
+        files = request.FILES.getlist("files", None)
+        id = request.data.get('id', None)
+        if id:
+            work_order = ExpressWorkOrder.objects.filter(id=id)[0]
+        else:
+            data = {
+                "error": "系统错误联系管理员，无法回传单据ID！"
+            }
+            return Response(data)
+        if files:
+            prefix = "ut3s1/workorder/express"
+            a_oss = AliyunOSS(prefix, files)
+            file_urls = a_oss.upload()
+            for url in file_urls["urls"]:
+                photo_order = EWOPhoto()
+                photo_order.url = url
+                photo_order.workorder = work_order
+                photo_order.creator = request.user.username
+                photo_order.save()
+            data = {
+                "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
+                "error": file_urls["error"]
+            }
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+        return Response(data)
+
+
 
 class EWOExecuteViewset(viewsets.ModelViewSet):
     """
@@ -582,6 +649,38 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
         data["successful"] = n
         data["false"] = len(reject_list) - n
         return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def photo_import(self, request, *args, **kwargs):
+        files = request.FILES.getlist("files", None)
+        id = request.data.get('id', None)
+        if id:
+            work_order = ExpressWorkOrder.objects.filter(id=id)[0]
+        else:
+            data = {
+                "error": "系统错误联系管理员，无法回传单据ID！"
+            }
+            return Response(data)
+        if files:
+            prefix = "ut3s1/workorder/express"
+            a_oss = AliyunOSS(prefix, files)
+            file_urls = a_oss.upload()
+            for url in file_urls["urls"]:
+                photo_order = EWOPhoto()
+                photo_order.url = url
+                photo_order.workorder = work_order
+                photo_order.creator = request.user.username
+                photo_order.save()
+            data = {
+                "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
+                "error": file_urls["error"]
+            }
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+        return Response(data)
+
 
 
 class EWOCheckViewset(viewsets.ModelViewSet):
