@@ -1,7 +1,5 @@
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
-from rest_framework.authentication import SessionAuthentication
-from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .serializers import DepartmentSerializer
