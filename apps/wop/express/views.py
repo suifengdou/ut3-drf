@@ -270,9 +270,9 @@ class EWOCreateViewset(viewsets.ModelViewSet):
             prefix = "ut3s1/workorder/express"
             a_oss = AliyunOSS(prefix, files)
             file_urls = a_oss.upload()
-            for url in file_urls["urls"]:
+            for obj in file_urls["urls"]:
                 photo_order = EWOPhoto()
-                photo_order.url = url
+                photo_order.url = obj["url"]
                 photo_order.workorder = work_order
                 photo_order.creator = request.user.username
                 photo_order.save()
@@ -663,9 +663,9 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
             prefix = "ut3s1/workorder/express"
             a_oss = AliyunOSS(prefix, files)
             file_urls = a_oss.upload()
-            for url in file_urls["urls"]:
+            for obj in file_urls["urls"]:
                 photo_order = EWOPhoto()
-                photo_order.url = url
+                photo_order.url = obj["url"]
                 photo_order.workorder = work_order
                 photo_order.creator = request.user.username
                 photo_order.save()

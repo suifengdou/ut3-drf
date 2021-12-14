@@ -7,6 +7,7 @@
 
 from rest_framework.permissions import DjangoModelPermissions
 
+
 class Permissions(DjangoModelPermissions):
 
     def get_custom_perms(self, view, method):
@@ -22,12 +23,10 @@ class Permissions(DjangoModelPermissions):
             return True
 
         if not request.user or (
-           not request.user.is_authenticated and self.authenticated_users_only):
+                not request.user.is_authenticated and self.authenticated_users_only):
             return False
 
         queryset = self._queryset(view)
         perms = self.get_required_permissions(request.method, queryset.model)
         perms.extend(self.get_custom_perms(view, request.method))
         return request.user.has_perms(perms)
-
-

@@ -6,21 +6,29 @@
 # @Software: PyCharm
 
 import django_filters
-from .models import Department, Center
+from .models import Currency, IntAccount
 
-class DepartmentFilter(django_filters.FilterSet):
+class CurrencyFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
     create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
-        model = Department
+        model = Currency
         fields = "__all__"
 
 
-class CenterFilter(django_filters.FilterSet):
+class IntAccountFilter(django_filters.FilterSet):
+    currency__name = django_filters.CharFilter(lookup_expr='icontains')
+    coompany__name = django_filters.CharFilter(lookup_expr='icontains')
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
     create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
-        model = Center
+        model = IntAccount
         fields = "__all__"
+
+
+
+
+
+

@@ -10,6 +10,7 @@ from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
+from ut3.settings import EXPORT_TOPLIMIT
 
 
 class IntDistributorMyselfViewset(viewsets.ModelViewSet):
@@ -39,7 +40,7 @@ class IntDistributorMyselfViewset(viewsets.ModelViewSet):
         if not self.request:
             return IntDistributor.objects.none()
         user = self.request.user
-        queryset = user.intdistributor_set.all()
+        queryset = IntDistributor.objects.filter(department=user.department).order_by("id")
         return queryset
 
 
@@ -48,8 +49,9 @@ class IntDistributorMyselfViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["department"] = request.user.department
         f =ContactModeFilter(params)
-        serializer = ContactModeSerializer(f.qs[:2000], many=True)
+        serializer = ContactModeSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     @action(methods=['patch'], detail=False)
@@ -220,7 +222,6 @@ class IntDistributorViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return IntDistributor.objects.none()
-        user = self.request.user
         queryset = IntDistributor.objects.all().order_by("id")
         return queryset
 
@@ -231,7 +232,7 @@ class IntDistributorViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f =ContactModeFilter(params)
-        serializer = ContactModeSerializer(f.qs[:2000], many=True)
+        serializer = ContactModeSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     @action(methods=['patch'], detail=False)
@@ -413,7 +414,7 @@ class ContactsMyselfViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = ContactsFilter(params)
-        serializer = ContactsSerializer(f.qs[:2000], many=True)
+        serializer = ContactsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     @action(methods=['patch'], detail=False)
@@ -464,7 +465,7 @@ class ContactsMyselfViewset(viewsets.ModelViewSet):
                     columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
 
             # 验证一下必要的核心字段是否存在
-            _ret_verify_field = Goods.verify_mandatory(columns_key)
+            _ret_verify_field = Contacts.verify_mandatory(columns_key)
             if _ret_verify_field is not None:
                 return _ret_verify_field
 
@@ -595,7 +596,7 @@ class ContactsViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = ContactsFilter(params)
-        serializer = ContactsSerializer(f.qs[:2000], many=True)
+        serializer = ContactsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     @action(methods=['patch'], detail=False)

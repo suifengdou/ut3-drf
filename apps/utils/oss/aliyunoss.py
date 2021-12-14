@@ -27,7 +27,7 @@ class AliyunOSS(object):
             object_name = self.create_object_name(file)
             try:
                 result = bucket.put_object(object_name, file)
-                self.urls.append(result.resp.response.url)
+                self.urls.append({ "name": file.name, "url": result.resp.response.url })
             except Exception as e:
                 self.errors["上传失败"] = "%s 上传失败" % str(file.name)
         result_urls = {

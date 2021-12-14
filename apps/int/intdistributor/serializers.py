@@ -33,8 +33,8 @@ class IntDistributorSerializer(serializers.ModelSerializer):
 
     def get_order_status(self, instance):
         status_list = {
-            1: "已取消",
-            2: "正常",
+            0: "已取消",
+            1: "正常",
         }
         try:
             ret = {
@@ -87,6 +87,11 @@ class IntDistributorSerializer(serializers.ModelSerializer):
         validated_data["creator"] = user.username
         validated_data["department"] = user.department
         instance = self.Meta.model.objects.create(**validated_data)
+        number = int(instance.id) + 1000000
+        profix = str(instance.nationality.abbreviation)
+        mid = '0%s' % str(instance.category)
+        instance.d_id = '%s%s%s' % (profix, mid, str(number)[-6:])
+        instance.save()
         return instance
 
     def update(self, instance, validated_data):
@@ -99,10 +104,41 @@ class ContactsSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    contact_details = serializers.JSONField(required=False)
 
     class Meta:
         model = Contacts
         fields = "__all__"
+
+    def get_distributor(self, instance):
+        try:
+            ret = {
+                "id": instance.distributor.id,
+                "name": instance.distributor.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_gender(self, instance):
+        gender_list = {
+            1: "男",
+            2: "女"
+        }
+        try:
+            ret = {
+                "id": instance.gender,
+                "name": gender_list.get(instance.gender, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
 
     def get_contact_details(self, instance):
         contact_details = instance.contactmode_set.all()
@@ -111,7 +147,8 @@ class ContactsSerializer(serializers.ModelSerializer):
             data = {
                 "id": contact_detail.id,
                 "name": contact_detail.name,
-                "content": contact_detail.content
+                "content": contact_detail.content,
+                "memo": contact_detail.memo
             }
             ret.append(data)
         return ret
@@ -119,22 +156,26 @@ class ContactsSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(ContactsSerializer, self).to_representation(instance)
         ret["contact_details"] = self.get_contact_details(instance)
+        ret["distributor"] = self.get_distributor(instance)
+        ret["gender"] = self.get_gender(instance)
         return ret
+
+    def check_contact_details(self, contact_details):
+        for contact_detail in contact_details:
+            if not all([contact_detail.get("name", None), contact_detail.get("content", None)]):
+                raise serializers.ValidationError("明细中联系方式、内容为必填项！")
 
     def create_contact_detail(self, data):
         data["creator"] = self.context["request"].user.username
-        if data["id"] == 'n':
-            contact_detail = ContactMode.objects.create(**data)
-        else:
-            data.pop("name", None)
-            id = data.pop("id", None)
-            contact_detail = ContactMode.objects.filter(id=id).update(**data)
+        id = data.pop("id", None)
+        contact_detail = ContactMode.objects.create(**data)
         return contact_detail
 
     def create(self, validated_data):
         user = self.context["request"].user
         validated_data["creator"] = user.username
         contact_details = validated_data.pop("contact_details", [])
+        self.check_contact_details(contact_details)
         instance = self.Meta.model.objects.create(**validated_data)
         for contact_detail in contact_details:
             contact_detail['contacts'] = instance
@@ -145,6 +186,7 @@ class ContactsSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         validated_data["update_time"] = datetime.datetime.now()
         contact_details = validated_data.pop("contact_details", [])
+        self.check_contact_details(contact_details)
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         if contact_details:
             instance.contactmode_set.all().delete()
@@ -185,6 +227,7 @@ class ContactModeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["creator"] = self.context["request"].user.username
         instance = self.Meta.model.objects.create(**validated_data)
+
         return instance
 
     def update(self, instance, validated_data):

@@ -2,7 +2,7 @@ import re, datetime
 import math
 import pandas as pd
 import numpy as np
-from django.db.models import Avg,Sum,Max,Min
+from django.db.models import Avg, Sum, Max, Min
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -100,7 +100,6 @@ class InventoryViewset(viewsets.ModelViewSet):
         except Exception as e:
             raise serializers.ValidationError("店铺未关联公司！")
 
-
         if n:
             for obj in check_list:
 
@@ -117,7 +116,7 @@ class InventoryViewset(viewsets.ModelViewSet):
                     n -= 1
                     continue
                 _q_repeated_order = Inventory.objects.filter(sent_consignee=obj.sent_consignee,
-                                                                order_status__in=[2, 3, 4])
+                                                             order_status__in=[2, 3, 4])
                 if _q_repeated_order.exists():
                     if obj.process_tag != 10:
                         data["error"].append("%s 重复提交的订单" % obj.order_id)
@@ -126,7 +125,7 @@ class InventoryViewset(viewsets.ModelViewSet):
                         n -= 1
                         continue
                 _q_repeated_order = Inventory.objects.filter(sent_smartphone=obj.sent_smartphone,
-                                                                order_status__in=[2, 3, 4])
+                                                             order_status__in=[2, 3, 4])
                 if _q_repeated_order.exists():
                     if obj.process_tag != 10:
                         data["error"].append("%s 重复提交的订单" % obj.order_id)

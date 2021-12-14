@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class IntpurchaseConfig(AppConfig):
-    name = 'intpurchase'
+    name = 'apps.int.intpurchase'

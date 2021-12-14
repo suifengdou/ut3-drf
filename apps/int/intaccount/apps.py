@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class IntaccountConfig(AppConfig):
-    name = 'intaccount'
+    name = 'apps.int.intaccount'

@@ -18,6 +18,7 @@ class ContactModeFilter(django_filters.FilterSet):
 
 
 class ContactsFilter(django_filters.FilterSet):
+    distributor__name = django_filters.CharFilter(lookup_expr='icontains')
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
     create_time = django_filters.DateTimeFromToRangeFilter()
 
