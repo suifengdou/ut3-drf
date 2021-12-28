@@ -69,7 +69,11 @@ class IntReceiptSerializer(serializers.ModelSerializer):
 
         mistake_list = {
             0: "正常",
-            1: "反馈信息为空",
+            1: "流水号重复",
+            2: "收款金额为零",
+            3: "收款单未认领",
+            4: "非认领人不可审核",
+            5: "未到账不可审核",
 
         }
         try:

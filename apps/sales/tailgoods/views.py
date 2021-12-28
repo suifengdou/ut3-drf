@@ -1306,6 +1306,8 @@ class TOGoodsCommonViewset(viewsets.ModelViewSet):
         params.pop("page", None)
         params.pop("allSelectTag", None)
         params["process_tag"] = 0
+        params["tail_order__mode_warehouse"] = 1
+        params["tail_order__order_status"] = 1
 
         f = TOGoodsFilter(params)
         serializer = TOGoodsSerializer(f.qs, many=True)
@@ -1867,6 +1869,8 @@ class TOGoodsSpecialViewset(viewsets.ModelViewSet):
         params.pop("page", None)
         params.pop("allSelectTag", None)
         params["process_tag"] = 0
+        params["tail_order__mode_warehouse"] = 0
+        params["tail_order__order_status"] = 1
         f = TOGoodsFilter(params)
         serializer = TOGoodsSerializer(f.qs, many=True)
         return Response(serializer.data)

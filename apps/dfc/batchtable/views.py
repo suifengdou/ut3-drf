@@ -148,9 +148,9 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                         order = ManualOrder()
                 else:
                     order =  ManualOrder()
-                    _prefix = "BO"
+                    _prefix = "SSBO"
                     serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
+                    obj.erp_order_id = _prefix + serial_number + str(obj.id)
                 order.order_category = 3
 
                 _spilt_addr = PickOutAdress(str(obj.address))

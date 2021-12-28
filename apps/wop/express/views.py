@@ -95,7 +95,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                if not re.match(r'^[SF0-9]+$', obj.track_id):
+                if not re.match(r'^[SFYT0-9]+$', obj.track_id):
                     obj.mistake_tag = 1
                     obj.save()
                     data["error"].append("%s 快递单号错误" % obj.track_id)
@@ -325,8 +325,6 @@ class EWOHandleViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        if not user.is_our:
-            request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
@@ -485,9 +483,9 @@ class EWOHandleViewset(viewsets.ModelViewSet):
             prefix = "ut3s1/workorder/express"
             a_oss = AliyunOSS(prefix, files)
             file_urls = a_oss.upload()
-            for url in file_urls["urls"]:
+            for obj in file_urls["urls"]:
                 photo_order = EWOPhoto()
-                photo_order.url = url
+                photo_order.url = obj["url"]
                 photo_order.workorder = work_order
                 photo_order.creator = request.user.username
                 photo_order.save()
@@ -847,6 +845,26 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
         return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                obj.order_status = 4
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
 
 
 class EWOManageViewset(viewsets.ModelViewSet):

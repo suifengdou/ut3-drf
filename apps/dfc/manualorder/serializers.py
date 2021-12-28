@@ -113,7 +113,10 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             7: "集运仓地址",
             8: "14天内重复",
             9: "14天外重复",
-            10: "输出单保存出错"
+            10: "输出单保存出错",
+            11: "货品数量错误",
+            12: "无收件人",
+            13: "此类型不可发整机"
         }
         try:
             ret = {
@@ -144,7 +147,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         EXPRESS_LIST = {
             0: "随机",
             1: "顺丰",
-            2: "申通",
+            2: "圆通",
             3: "韵达",
         }
         try:
@@ -296,6 +299,7 @@ class MOGoodsSerializer(serializers.ModelSerializer):
                 "address": instance.manual_order.address,
                 "mobile": instance.manual_order.mobile,
                 "order_id": instance.manual_order.order_id,
+                "department": instance.manual_order.department.name,
                 "order_category": category_status.get(instance.manual_order.order_category, None),
                 "m_sn": instance.manual_order.m_sn,
                 "broken_part": instance.manual_order.broken_part,

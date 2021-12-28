@@ -13,7 +13,8 @@ class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
 class CustomerFilter(django_filters.FilterSet):
-    name__in = NumberInFilter(field_name="mobile", lookup_expr="in")
+    name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
+    name__in = NumberInFilter(field_name='name', lookup_expr='in')
 
     class Meta:
         model = Customer

@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from ut3.permissions import Permissions
@@ -101,7 +102,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                         '白沙黎族自治县', '中山市', '东莞市']
         express_list = {
             1: "顺丰",
-            2: "申通",
+            2: "圆通",
             3: "韵达",
         }
         if n:
@@ -171,6 +172,12 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 7
                         obj.save()
                         continue
+                if not obj.receiver:
+                    data["error"].append("%s 无收件人" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 12
+                    obj.save()
+                    continue
 
                 order.buyer_remark = "%s 的 %s 创建" % (str(obj.department), str(obj.creator))
                 if obj.servicer:
@@ -178,6 +185,27 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                 error_tag = 0
                 export_goods_details = []
                 all_goods_details = obj.mogoods_set.all()
+                if not all_goods_details:
+                    data["error"].append("%s 无货品不可审核" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 11
+                    obj.save()
+                    continue
+                _q_complete_machine = all_goods_details.filter(goods_name__category=1)
+                if _q_complete_machine.exists():
+                    if not re.match('^SS', obj.erp_order_id):
+                        data["error"].append("%s 此类型不可发整机" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 13
+                        obj.save()
+                        continue
+                total = all_goods_details.values("quantity").annotate(sum_quantity=Sum("quantity"))[0]["sum_quantity"]
+                if total < 1:
+                    data["error"].append("%s 货品数量错误" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 11
+                    obj.save()
+                    continue
                 if len(all_goods_details) > 1:
                     order.cs_memoranda = "#"
                 for goods_detail in all_goods_details:

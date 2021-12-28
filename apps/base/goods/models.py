@@ -37,6 +37,8 @@ class Goods(models.Model):
     width = models.IntegerField(null=True, blank=True, verbose_name='长', help_text='长')
     height = models.IntegerField(null=True, blank=True, verbose_name='宽', help_text='宽')
     depth = models.IntegerField(null=True, blank=True, verbose_name='高', help_text='高')
+    price = models.FloatField(default=0, verbose_name='单价', help_text='单价')
+    cost = models.FloatField(default=0, verbose_name='成本', help_text='成本')
     weight = models.IntegerField(null=True, blank=True, verbose_name='重量', help_text='重量')
     catalog_num = models.CharField(null=True, blank=True, max_length=230, verbose_name='爆炸图号', help_text='爆炸图号')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')

@@ -21,6 +21,9 @@ class IntReceipt(models.Model):
         (0, '正常'),
         (1, '流水号重复'),
         (2, '收款金额为零'),
+        (3, '收款单未认领'),
+        (4, '非认领人不可审核'),
+        (5, '未到账不可审核'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -44,7 +47,7 @@ class IntReceipt(models.Model):
 
     information = models.CharField(null=True, blank=True, max_length=200, verbose_name='信息说明', help_text='信息说明')
     suggestion = models.TextField(null=True, blank=True, max_length=900, verbose_name='处理意见', help_text='处理意见')
-    feedback = models.CharField(max_length=150, blank=True, null=True, verbose_name='反馈内容', help_text='反馈内容')
+    rejection = models.CharField(max_length=150, blank=True, null=True, verbose_name='反馈内容', help_text='反馈内容')
 
     handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='认领人', help_text='认领人')
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='认领时间', help_text='认领时间')

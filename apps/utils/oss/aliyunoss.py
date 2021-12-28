@@ -27,7 +27,7 @@ class AliyunOSS(object):
             object_name = self.create_object_name(file)
             try:
                 result = bucket.put_object(object_name, file)
-                self.urls.append({ "name": file.name, "url": result.resp.response.url })
+                self.urls.append({ "name": file.name, "url": result.resp.response.url, "suffix": str(file.name).split(".")[-1] })
             except Exception as e:
                 self.errors["上传失败"] = "%s 上传失败" % str(file.name)
         result_urls = {
@@ -39,7 +39,7 @@ class AliyunOSS(object):
 
     def create_object_name(self, file):
         c_time = datetime.datetime.now()
-        file_name, suffix = str(file.name).split(".")
+        file_name, *middle, suffix = str(file.name).split(".")
         serial_number = re.sub("[- .:]", "", str(c_time))
         file_name = str(hashlib.md5(file_name.encode(encoding='UTF-8')).hexdigest())
         file_name = '%s%s' % (file_name, serial_number[:10])
