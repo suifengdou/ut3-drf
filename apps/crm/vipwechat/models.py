@@ -15,7 +15,7 @@ class Specialist(models.Model):
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
     class Meta:
-        verbose_name = 'WOP-用户体验工单-专属客服'
+        verbose_name = 'CRM-VIP-微信服务-专属客服'
         verbose_name_plural = verbose_name
         db_table = 'crm_vipwebchat_specialist'
 

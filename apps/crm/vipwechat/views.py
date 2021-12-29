@@ -39,7 +39,7 @@ class SpecialistViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['vipwechat.view_specialist']
     }
 
     def get_queryset(self):
@@ -140,7 +140,7 @@ class VIPWechatMyselfViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['vipwechat.view_vipwechat']
     }
 
     def get_queryset(self):
@@ -359,7 +359,7 @@ class VIPWechatManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['vipwechat.view_vipwechat']
     }
 
     def get_queryset(self):

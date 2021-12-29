@@ -45,7 +45,7 @@ class OSWOCreateViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_orisatisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -567,7 +567,7 @@ class OSWOHandleViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_handle_orisatisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -1082,7 +1082,7 @@ class OSWOManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_orisatisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -1124,7 +1124,7 @@ class OSWOFilesViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_orisatisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -1239,7 +1239,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_satisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -1689,7 +1689,7 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_satisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -2014,7 +2014,7 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_handler_satisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -2339,7 +2339,7 @@ class SWOManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_satisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -2359,7 +2359,7 @@ class SWOManageViewset(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-# 体验进程单创建处理
+# 体验执行单创建处理
 class SWOPCreateViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -2380,7 +2380,7 @@ class SWOPCreateViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_swoprogress']
     }
 
     def get_queryset(self):
@@ -2635,7 +2635,7 @@ class SWOPFilesViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_swoprogress']
     }
 
     def get_queryset(self):
@@ -2750,7 +2750,7 @@ class ServiceMyselfViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_serviceworkorder']
     }
 
     def get_queryset(self):
@@ -3161,7 +3161,7 @@ class ServiceHandleViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_serviceworkorder']
     }
 
     def get_queryset(self):
@@ -3572,7 +3572,7 @@ class ServiceManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_serviceworkorder']
     }
 
     def get_queryset(self):
@@ -3983,7 +3983,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_invoiceworkorder']
     }
 
     def get_queryset(self):
@@ -4410,7 +4410,7 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_handler_invoiceworkorder']
     }
 
     def get_queryset(self):
@@ -4853,7 +4853,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['satisfaction.view_invoiceworkorder']
     }
 
     def get_queryset(self):

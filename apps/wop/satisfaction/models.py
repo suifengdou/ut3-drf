@@ -84,6 +84,11 @@ class OSWOFiles(models.Model):
         verbose_name = 'WOP-原始用户体验工单-文档'
         verbose_name_plural = verbose_name
         db_table = 'wop_satisfaction_ori_files'
+        permissions = (
+            # (权限，权限描述),
+            ('view_handle_orisatisfactionworkorder', 'Can view handle WOP-原始用户体验工单-综合处理'),
+
+        )
 
     def __str__(self):
         return str(self.id)
@@ -175,9 +180,9 @@ class SatisfactionWorkOrder(models.Model):
 
         permissions = (
             # (权限，权限描述),
-            ('view_user_expressworkorder', 'Can view user WOP-用户体验工单-用户'),
-            ('view_handler_expressworkorder', 'Can view handler WOP-用户体验工单-处理'),
-            ('view_check_expressworkorder', 'Can view check WOP-用户体验工单-审核'),
+            ('view_user_satisfactionworkorder', 'Can view user WOP-用户体验工单-用户'),
+            ('view_handler_satisfactionworkorder', 'Can view handler WOP-用户体验工单-处理'),
+            ('view_check_satisfactionworkorder', 'Can view check WOP-用户体验工单-审核'),
         )
 
     def __str__(self):
@@ -221,10 +226,10 @@ class SWOProgress(models.Model):
 
         permissions = (
             # (权限，权限描述),
-            ('view_user_expressworkorder', 'Can view user WOP-用户体验工单-执行单-用户'),
-            ('view_handler_expressworkorder', 'Can view handler WOP-用户体验工单-执行单-处理'),
-            ('view_check_expressworkorder', 'Can view check WOP-用户体验工单-执行单-审核'),
-            ('view_audit_expressworkorder', 'Can view audit WOP-用户体验工单-执行单-结算'),
+            ('view_user_swoprogress', 'Can view user WOP-用户体验工单-执行单-用户'),
+            ('view_handler_swoprogress', 'Can view handler WOP-用户体验工单-执行单-处理'),
+            ('view_check_swoprogress', 'Can view check WOP-用户体验工单-执行单-审核'),
+            ('view_audit_swoprogress', 'Can view audit WOP-用户体验工单-执行单-结算'),
         )
 
     def __str__(self):
