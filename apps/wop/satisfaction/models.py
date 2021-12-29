@@ -100,8 +100,7 @@ class SatisfactionWorkOrder(models.Model):
         (0, '已被取消'),
         (1, '等待领取'),
         (2, '等待处理'),
-        (3, '等待审核'),
-        (4, '事务完结'),
+        (3, '事务完结'),
     )
 
     MISTAKE_LIST = (
@@ -169,7 +168,7 @@ class SatisfactionWorkOrder(models.Model):
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
-
+    cost = models.FloatField(default=0, verbose_name='服务金额', help_text='服务金额')
     suggestion = models.TextField(null=True, blank=True, max_length=900, verbose_name='处理意见', help_text='处理意见')
     rejection = models.CharField(null=True, blank=True, max_length=260, verbose_name='驳回原因', help_text='驳回原因')
 
@@ -260,17 +259,15 @@ class ServiceWorkOrder(models.Model):
 
     ORDER_STATUS = (
         (0, '已被取消'),
-        (1, '等待领取'),
-        (2, '等待处理'),
-        (3, '等待审核'),
-        (4, '事务完结'),
+        (1, '服务执行'),
+        (2, '服务完成'),
     )
 
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '快递单号错误'),
-        (2, '处理意见为空'),
-        (3, '返回的单据无返回单号'),
+        (1, '存在未完结发货单'),
+        (2, '费用为零不可审核'),
+        (3, '不存在费用单不可以审核'),
         (4, '理赔必须设置需理赔才可以审核'),
         (5, '驳回原因为空'),
         (6, '无反馈内容, 不可以审核'),
@@ -302,7 +299,8 @@ class ServiceWorkOrder(models.Model):
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签', help_text='处理标签')
 
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')
-
+    cost = models.FloatField(default=0, verbose_name='服务金额', help_text='服务金额')
+    quantity = models.IntegerField(default=0, verbose_name='货品总数', help_text='货品总数')
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -332,8 +330,7 @@ class InvoiceWorkOrder(models.Model):
         (0, '已被取消'),
         (1, '等待递交'),
         (2, '等待审核'),
-        (3, '等待结算'),
-        (4, '事务完结'),
+        (3, '递交成功'),
     )
 
     MISTAKE_LIST = (
@@ -345,6 +342,8 @@ class InvoiceWorkOrder(models.Model):
         (5, '已存在已发货订单'),
         (6, '创建手工单出错'),
         (7, '创建手工单货品出错'),
+        (8, '无货品不可审核'),
+        (9, '不可重复递交'),
     )
 
     PROCESSTAG = (
@@ -365,7 +364,8 @@ class InvoiceWorkOrder(models.Model):
     receiver = models.CharField(max_length=150, verbose_name='客户姓名', help_text='客户姓名')
     address = models.CharField(max_length=150, verbose_name='客户地址', help_text='客户地址')
     mobile = models.CharField(max_length=60, db_index=True, verbose_name='手机', help_text='手机')
-
+    cost = models.FloatField(default=0, verbose_name='服务金额', help_text='服务金额')
+    quantity = models.IntegerField(default=0, verbose_name='货品总数', help_text='货品总数')
     province = models.ForeignKey(Province, on_delete=models.CASCADE, null=True, blank=True, verbose_name='省')
     city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, verbose_name='市')
     district = models.ForeignKey(District, on_delete=models.CASCADE, null=True, blank=True, verbose_name='区')
@@ -432,8 +432,24 @@ class IWOGoods(models.Model):
         return str(self.goods_id)
 
 
+class CheckInvoice(models.Model):
+    swo_order = models.ForeignKey(ServiceWorkOrder, on_delete=models.CASCADE, verbose_name='服务单', help_text='服务单')
+    invoice = models.OneToOneField(InvoiceWorkOrder, on_delete=models.CASCADE, verbose_name='发货单', help_text='发货单')
+    cost = models.FloatField(default=0, verbose_name='服务金额', help_text='服务金额')
+    quantity = models.IntegerField(default=0, verbose_name='货品总数', help_text='货品总数')
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
 
+    class Meta:
+        verbose_name = 'WOP-用户体验工单-服务单-发货单-验证'
+        verbose_name_plural = verbose_name
+        db_table = 'wop_satisfaction_service_invoice_check'
+
+    def __str__(self):
+        return str(self.id)
 
 
 

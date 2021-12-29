@@ -2929,7 +2929,8 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
                 i = 0
                 for content in contents:
                     i += 1
-                    if order.servicer[:3] in content[:3] or order.customer[:3] in content[:3]:
+
+                    if str(order.servicer)[:3] in str(content)[:3] or str(order.customer)[:3] in str(content)[:3]:
                         if len(dialog_content) == 3:
                             dialog_contents.append(dialog_content)
                             dialog_content = []
@@ -2951,6 +2952,7 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
                             dialog_content = []
                         else:
                             dialog_content = []
+
                 previous_time = datetime.datetime.strptime(str(dialog_contents[0][1]), '%Y-%m-%d %H:%M:%S')
 
                 for dialog_content in dialog_contents:

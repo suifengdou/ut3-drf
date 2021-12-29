@@ -1,9 +1,11 @@
 import datetime
 import re
+from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import OriSatisfactionWorkOrder, OSWOFiles, SatisfactionWorkOrder, SWOProgress, SWOPFiles, ServiceWorkOrder, InvoiceWorkOrder , IWOGoods
 from apps.base.goods.models import Goods
+from apps.base.department.models import Department
 from apps.utils.geography.tools import PickOutAdress
 
 
@@ -267,7 +269,8 @@ class SWOSerializer(serializers.ModelSerializer):
         order_status = {
             0: "已被取消",
             1: "等待递交",
-            2: "递交完成",
+            2: "等待处理",
+            3: "事务完结",
         }
         try:
             ret = {
@@ -502,6 +505,7 @@ class SWOProgressSerializer(serializers.ModelSerializer):
         profix = "SWOP"
         instance.process_id = '%s%s%s' % (today, profix, str(number)[-7:])
         instance.order.stage = instance.stage
+        instance.order.appointment = instance.appointment
         instance.order.save()
         instance.save()
 
@@ -514,7 +518,6 @@ class SWOProgressSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"权限错误": "只有创建人才可以修改"})
         create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-
         return instance
 
 
@@ -626,8 +629,8 @@ class ServiceWorkOrderSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         order_status = {
             0: "已被取消",
-            1: "等待递交",
-            2: "递交完成",
+            1: "服务执行",
+            2: "服务完成",
         }
         try:
             ret = {
@@ -663,9 +666,9 @@ class ServiceWorkOrderSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "已存在已执行服务单，不可创建",
-            2: "创建服务单错误",
-            3: "地址无法提取省市区",
+            1: "存在未完结发货单",
+            2: "费用为零不可审核",
+            3: "不存在费用单不可以审核",
             4: "创建体验单错误",
             5: "初始化体验单失败",
             6: "初始化体验单资料失败",
@@ -799,8 +802,7 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
             0: "已被取消",
             1: "等待递交",
             2: "等待审核",
-            3: "等待结算",
-            4: "事务完结",
+            3: "递交成功",
         }
         try:
             ret = {
@@ -821,7 +823,8 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
             5: "已存在已发货订单",
             6: "创建手工单出错",
             7: "创建手工单货品出错",
-            8: "无驳回内容",
+            8: "无货品不可审核",
+            9: "不可重复递交",
         }
         try:
             ret = {
@@ -910,7 +913,8 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
         validated_data["creator"] = user.username
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)
-        validated_data["department"] = user.department
+        department = Department.objects.filter(name="服务中心-管理")[0]
+        validated_data["department"] = department
         validated_data["order_id"] = validated_data["swo_order"].order_id
 
         _spilt_addr = PickOutAdress(validated_data["address"])
@@ -935,11 +939,29 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
             goods_detail["goods_id"] = goods_name.goods_id
             goods_detail.pop("xh")
             self.create_goods_detail(goods_detail)
+        all_goods_details = invoice.iwogoods_set.all()
+        goods_expense = all_goods_details.filter(category__in=[1, 3])
+        if goods_expense.exists():
+            expense_list = list(map(lambda x: float(x.price) * int(x.quantity), list(goods_expense)))
+            expense = reduce(lambda x, y: x + y, expense_list)
+        else:
+            expense = 0
+        goods_revenue = all_goods_details.filter(category__in=[2, 4])
+        if goods_revenue.exists():
+            revenue_list = list(map(lambda x: float(x.price) * int(x.quantity), list(goods_revenue)))
+            revenue = reduce(lambda x, y: x + y, revenue_list)
+        else:
+            revenue = 0
+        invoice.cost = round(float(expense) - float(revenue), 2)
+        quantity_list = list(map(lambda x: int(x.quantity), list(all_goods_details)))
+        invoice.quantity = reduce(lambda x, y: x + y, quantity_list)
+        invoice.save()
         return invoice
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        validated_data["department"] = user.department
+        department = Department.objects.filter(name="服务中心-管理")[0]
+        validated_data["department"] = department
 
         validated_data["update_time"] = datetime.datetime.now()
         address = validated_data.get("address", None)
@@ -958,8 +980,6 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
         goods_details = validated_data.pop("goods_details", [])
         if goods_details:
             self.check_goods_details(goods_details)
-
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         if goods_details:
             instance.iwogoods_set.all().delete()
             for goods_detail in goods_details:
@@ -970,6 +990,24 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
                 goods_detail["id"] = 'n'
                 goods_detail.pop("xh")
                 self.create_goods_detail(goods_detail)
+
+        all_goods_details = instance.iwogoods_set.all()
+        goods_expense = all_goods_details.filter(category__in=[1, 3])
+        if goods_expense.exists():
+            expense_list = list(map(lambda x: float(x.price) * int(x.quantity), list(goods_expense)))
+            expense = reduce(lambda x, y: x + y, expense_list)
+        else:
+            expense = 0
+        goods_revenue = all_goods_details.filter(category__in=[2, 4])
+        if goods_revenue.exists():
+            revenue_list = list(map(lambda x: float(x.price) * int(x.quantity), list(goods_revenue)))
+            revenue = reduce(lambda x, y: x + y, revenue_list)
+        else:
+            revenue = 0
+        validated_data["cost"] = round(float(expense) - float(revenue), 2)
+        quantity_list = list(map(lambda x: int(x.quantity), all_goods_details))
+        validated_data["quantity"] = reduce(lambda x, y: x + y, quantity_list)
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
 

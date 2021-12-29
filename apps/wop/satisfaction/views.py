@@ -1,6 +1,8 @@
 import re, math
 import datetime
 import pandas as pd
+from functools import reduce
+from django.db.models import Avg,Sum,Max,Min
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -9,7 +11,7 @@ from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
-from .models import OriSatisfactionWorkOrder, OSWOFiles, SatisfactionWorkOrder, SWOProgress, SWOPFiles, ServiceWorkOrder, InvoiceWorkOrder, IWOGoods
+from .models import OriSatisfactionWorkOrder, OSWOFiles, SatisfactionWorkOrder, SWOProgress, SWOPFiles, ServiceWorkOrder, InvoiceWorkOrder, IWOGoods, CheckInvoice
 from .serializers import OriSatisfactionWorkOrderSerializer, OSWOFilesSerializer, SWOSerializer, \
     SWOProgressSerializer, ServiceWorkOrderSerializer, InvoiceWorkOrderSerializer, SWOPFilesSerializer
 from .filters import OriSatisfactionWorkOrderFilter, OSWOFilesFilter, SWOFilter, SWOProgressFilter, \
@@ -17,6 +19,7 @@ from .filters import OriSatisfactionWorkOrderFilter, OSWOFilesFilter, SWOFilter,
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.base.company.models import Company
 from apps.crm.customers.models import Customer, ContactAccount, Satisfaction, Money, Interaction
+from apps.crm.vipwechat.models import VIPWechat
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.base.shop.models import Shop
 from apps.utils.oss.aliyunoss import AliyunOSS
@@ -1307,7 +1310,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                     if order.order_status != 0:
                         obj.mistake_tag = 1
                         data["error"].append("%s 重复提交，点击修复工单" % obj.order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     else:
@@ -1322,7 +1325,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                     if _q_swo.filter(order_status__in=[1, 2, 3]).exists():
                         obj.mistake_tag = 2
                         data["error"].append("%s 已存在未完结工单，联系处理同学追加问题" % obj.address)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     elif _q_swo.filter(order_status=4).exists():
@@ -1343,7 +1346,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                 if not isinstance(_rt_addr, dict):
                     obj.mistake_tag = 3
                     data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
 
@@ -1363,7 +1366,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 4
                     data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 order.swoprogress_set.all().delete()
@@ -1384,7 +1387,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 5
                     data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 all_files = obj.oswofiles_set.all()
@@ -1404,7 +1407,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                 if error_tag:
                     obj.mistake_tag = 6
                     data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 obj.order_status = 2
@@ -1696,7 +1699,7 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
         if not self.request:
             return SatisfactionWorkOrder.objects.none()
         user = self.request.user
-        queryset = SatisfactionWorkOrder.objects.filter(order_status=2, creator=user.username).order_by("id")
+        queryset = SatisfactionWorkOrder.objects.filter(order_status=2, handler=user.username).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1742,9 +1745,20 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
                 if obj.stage != 5:
                     obj.mistake_tag = 3
                     data["error"].append("%s 体验单未完成不可审核" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
+                if obj.is_friend:
+                    vipwechat = VIPWechat()
+                    vipwechat.specialist = obj.specialist
+                    vipwechat.customer = obj.customer
+                    vipwechat.cs_wechat = obj.cs_wechat
+                    vipwechat.memo = "来源于 %s" % str(obj.order_id)
+                    try:
+                        vipwechat.creator = request.user.username
+                        vipwechat.save()
+                    except Exception as e:
+                        pass
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
@@ -1953,7 +1967,7 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
                     else:
                         obj.mistake_tag = 1
                         data["error"].append("%s 已存在已执行服务单，不可创建" % obj.order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                 except Exception as e:
@@ -1981,7 +1995,7 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 2
                     data["error"].append("%s 创建服务单错误" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 obj.process_tag = 3
@@ -2021,17 +2035,16 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
         if not self.request:
             return SatisfactionWorkOrder.objects.none()
         user = self.request.user
-        queryset = SatisfactionWorkOrder.objects.filter(order_status=2, creator=user.username).order_by("id")
+        queryset = SatisfactionWorkOrder.objects.filter(order_status=2).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 1
+        params["order_status"] = 2
         f = SWOFilter(params)
         serializer = SWOSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -2067,9 +2080,20 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
                 if obj.stage != 5:
                     obj.mistake_tag = 3
                     data["error"].append("%s 体验单未完成不可审核" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
+                if obj.is_friend:
+                    vipwechat = VIPWechat()
+                    vipwechat.specialist = obj.specialist
+                    vipwechat.customer = obj.customer
+                    vipwechat.cs_wechat = obj.cs_wechat
+                    vipwechat.memo = "来源于 %s" % str(obj.order_id)
+                    try:
+                        vipwechat.creator = request.user.username
+                        vipwechat.save()
+                    except Exception as e:
+                        pass
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
@@ -2278,7 +2302,7 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
                     else:
                         obj.mistake_tag = 1
                         data["error"].append("%s 已存在已执行服务单，不可创建" % obj.order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                 except Exception as e:
@@ -2306,7 +2330,7 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 2
                     data["error"].append("%s 创建服务单错误" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 obj.process_tag = 3
@@ -2449,7 +2473,7 @@ class SWOPCreateViewset(viewsets.ModelViewSet):
                     if order.order_status != 0:
                         obj.mistake_tag = 1
                         data["error"].append("%s 重复提交，点击修复工单" % obj.order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     else:
@@ -2464,7 +2488,7 @@ class SWOPCreateViewset(viewsets.ModelViewSet):
                     if _q_swo.filter(order_status__in=[1, 2, 3]).exists():
                         obj.mistake_tag = 2
                         data["error"].append("%s 已存在未完结工单，联系处理同学追加问题" % obj.address)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     elif _q_swo.filter(order_status=4).exists():
@@ -2485,7 +2509,7 @@ class SWOPCreateViewset(viewsets.ModelViewSet):
                 if not isinstance(_rt_addr, dict):
                     obj.mistake_tag = 3
                     data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
 
@@ -2505,7 +2529,7 @@ class SWOPCreateViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 4
                     data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 order.swoprogress_set.all().delete()
@@ -2526,7 +2550,7 @@ class SWOPCreateViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 5
                     data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 all_files = obj.oswofiles_set.all()
@@ -2546,7 +2570,7 @@ class SWOPCreateViewset(viewsets.ModelViewSet):
                 if error_tag:
                     obj.mistake_tag = 6
                     data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 obj.order_status = 2
@@ -2729,7 +2753,7 @@ class SWOPFilesViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-# 体验服务单处理
+# 服务单处理
 class ServiceMyselfViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -2800,144 +2824,31 @@ class ServiceMyselfViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-
-                _q_customer = Customer.objects.filter(name=obj.smartphone)
-                vipwechat = None
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def fix(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for obj in check_list:
-                if obj.mistake_tag != 1:
-                    data["error"].append("%s 非重复提交状态，不可修复" % obj.order_id)
-                    data["false"] += 1
-                    continue
-
-                _q_customer = Customer.objects.filter(name=obj.smartphone)
-                vipwechat = None
-                if _q_customer.exists():
-                    customer = _q_customer[0]
-                    try:
-                        vipwechat = customer.vipwechat
-                    except Exception as e:
-                        vipwechat = None
-                else:
-                    customer = Customer()
-                    customer.name = obj.smartphone
-                    customer.save()
-
-                try:
-                    order = obj.satisfactionworkorder
-                    if order.order_status > 1:
-                        obj.mistake_tag = 7
-                        data["error"].append("%s 体验单已操作无法修复，驳回体验单到待领取重复递交后再修复" % obj.order_id)
-                        data["false"] += 1
+                all_invoice = obj.invoiceworkorder_set.all()
+                if all_invoice.exists():
+                    if all_invoice.filter(order_status__in=[1, 2]).exists():
+                        obj.mistake_tag = 1
+                        data["error"].append("%s 存在未完结发货单" % obj.order_id)
+                        n -= 1
+                        obj.save()
+                        continue
+                    cost = all_invoice.aggregate(Sum("cost"))["cost__sum"]
+                    if cost == 0:
+                        obj.mistake_tag = 2
+                        data["error"].append("%s 费用为零不可审核" % obj.order_id)
+                        n -= 1
                         obj.save()
                         continue
                     else:
-                        order.order_status = 1
-                except Exception as e:
-                    order = SatisfactionWorkOrder()
-
-                order.customer = customer
-
-                _q_swo = SatisfactionWorkOrder.objects.filter(smartphone=obj.smartphone).order_by("-id")
-                if _q_swo.exists():
-                    if _q_swo.filter(order_status=4).exists():
-                        if vipwechat:
-                            order.is_friend = True
-                            order.cs_wechat = vipwechat.cs_wechat
-                            order.specialist = vipwechat.specialist
-                        tag_time = _q_swo[0].create_time
-                        today = datetime.datetime.now()
-                        check_days = (today - tag_time).days
-                        if check_days < 31:
-                            order.process_tag = 1
-                        else:
-                            order.process_tag = 2
-
-                _spilt_addr = PickOutAdress(str(obj.address))
-                _rt_addr = _spilt_addr.pickout_addr()
-                if not isinstance(_rt_addr, dict):
+                        obj.cost = cost
+                else:
                     obj.mistake_tag = 3
-                    data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    data["error"].append("%s 不存在费用单不可以审核" % obj.order_id)
+                    n -= 1
+                    obj.save()
                     continue
-
-                cs_info_fields = ["province", "city", "district", "address"]
-                for key_word in cs_info_fields:
-                    setattr(order, key_word, _rt_addr.get(key_word, None))
-
-                order_info_fields = ["order_id", "title", "nickname", "smartphone", "purchase_time", "memo",
-                                     "purchase_interval", "goods_name", "quantity", "m_sn", "name"]
-                for key_word in order_info_fields:
-                    setattr(order, key_word, getattr(obj, key_word, None))
-
-                try:
-                    order.ori_order = obj
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    obj.mistake_tag = 4
-                    data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
-                    continue
-                order.swoprogress_set.all().delete()
-                progress_order = SWOProgress()
-                progress_order.title = "初始执行进度"
-                progress_order.action = "初始化"
-                progress_order.content = obj.information
-                try:
-                    progress_order.order = order
-                    progress_order.creator = request.user.username
-                    progress_order.save()
-
-                    today = re.sub('[- :\.]', '', str(datetime.datetime.now()))[:8]
-                    number = int(progress_order.id) + 10000000
-                    profix = "SWOP"
-                    progress_order.process_id = '%s%s%s' % (today, profix, str(number)[-7:])
-                    progress_order.save()
-                except Exception as e:
-                    obj.mistake_tag = 5
-                    data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
-                    continue
-                progress_order.swopfiles_set.all().delete()
-                all_files = obj.oswofiles_set.all()
-                error_tag = 0
-                for file in all_files:
-                    file_order = SWOPFiles()
-                    file_order.workorder = progress_order
-                    file_fields = ["name", "suffix", "url"]
-                    for key_word in file_fields:
-                        setattr(file_order, key_word, getattr(file, key_word, None))
-                    try:
-                        file_order.creator = request.user.username
-                        file_order.save()
-                    except Exception as e:
-                        error_tag = 1
-                        break
-                if error_tag:
-                    obj.mistake_tag = 6
-                    data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
-                    continue
+                obj.swo_order.cost = obj.cost
+                obj.swo_order.save()
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.save()
@@ -3140,7 +3051,7 @@ class ServiceMyselfViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-# 体验服务单综合处理
+# 服务单综合处理
 class ServiceHandleViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -3168,13 +3079,11 @@ class ServiceHandleViewset(viewsets.ModelViewSet):
         if not self.request:
             return ServiceWorkOrder.objects.none()
         user = self.request.user
-        queryset = ServiceWorkOrder.objects.filter(order_status=1, creator=user.username).order_by("id")
+        queryset = ServiceWorkOrder.objects.filter(order_status=1).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
-        request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
@@ -3211,144 +3120,31 @@ class ServiceHandleViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-
-                _q_customer = Customer.objects.filter(name=obj.smartphone)
-                vipwechat = None
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def fix(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for obj in check_list:
-                if obj.mistake_tag != 1:
-                    data["error"].append("%s 非重复提交状态，不可修复" % obj.order_id)
-                    data["false"] += 1
-                    continue
-
-                _q_customer = Customer.objects.filter(name=obj.smartphone)
-                vipwechat = None
-                if _q_customer.exists():
-                    customer = _q_customer[0]
-                    try:
-                        vipwechat = customer.vipwechat
-                    except Exception as e:
-                        vipwechat = None
-                else:
-                    customer = Customer()
-                    customer.name = obj.smartphone
-                    customer.save()
-
-                try:
-                    order = obj.satisfactionworkorder
-                    if order.order_status > 1:
-                        obj.mistake_tag = 7
-                        data["error"].append("%s 体验单已操作无法修复，驳回体验单到待领取重复递交后再修复" % obj.order_id)
-                        data["false"] += 1
+                all_invoice = obj.invoiceworkorder_set.all()
+                if all_invoice.exist():
+                    if all_invoice.filter(order_status__in=[1, 2]).exists():
+                        obj.mistake_tag = 1
+                        data["error"].append("%s 存在未完结发货单" % obj.order_id)
+                        n -= 1
+                        obj.save()
+                        continue
+                    cost = all_invoice.aggregate(Sum("cost"))["cost__sum"]
+                    if cost == 0:
+                        obj.mistake_tag = 2
+                        data["error"].append("%s 费用为零不可审核" % obj.order_id)
+                        n -= 1
                         obj.save()
                         continue
                     else:
-                        order.order_status = 1
-                except Exception as e:
-                    order = SatisfactionWorkOrder()
-
-                order.customer = customer
-
-                _q_swo = SatisfactionWorkOrder.objects.filter(smartphone=obj.smartphone).order_by("-id")
-                if _q_swo.exists():
-                    if _q_swo.filter(order_status=4).exists():
-                        if vipwechat:
-                            order.is_friend = True
-                            order.cs_wechat = vipwechat.cs_wechat
-                            order.specialist = vipwechat.specialist
-                        tag_time = _q_swo[0].create_time
-                        today = datetime.datetime.now()
-                        check_days = (today - tag_time).days
-                        if check_days < 31:
-                            order.process_tag = 1
-                        else:
-                            order.process_tag = 2
-
-                _spilt_addr = PickOutAdress(str(obj.address))
-                _rt_addr = _spilt_addr.pickout_addr()
-                if not isinstance(_rt_addr, dict):
+                        obj.cost = cost
+                else:
                     obj.mistake_tag = 3
-                    data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    data["error"].append("%s 不存在费用单不可以审核" % obj.order_id)
+                    n -= 1
+                    obj.save()
                     continue
-
-                cs_info_fields = ["province", "city", "district", "address"]
-                for key_word in cs_info_fields:
-                    setattr(order, key_word, _rt_addr.get(key_word, None))
-
-                order_info_fields = ["order_id", "title", "nickname", "smartphone", "purchase_time", "memo",
-                                     "purchase_interval", "goods_name", "quantity", "m_sn", "name"]
-                for key_word in order_info_fields:
-                    setattr(order, key_word, getattr(obj, key_word, None))
-
-                try:
-                    order.ori_order = obj
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    obj.mistake_tag = 4
-                    data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
-                    continue
-                order.swoprogress_set.all().delete()
-                progress_order = SWOProgress()
-                progress_order.title = "初始执行进度"
-                progress_order.action = "初始化"
-                progress_order.content = obj.information
-                try:
-                    progress_order.order = order
-                    progress_order.creator = request.user.username
-                    progress_order.save()
-
-                    today = re.sub('[- :\.]', '', str(datetime.datetime.now()))[:8]
-                    number = int(progress_order.id) + 10000000
-                    profix = "SWOP"
-                    progress_order.process_id = '%s%s%s' % (today, profix, str(number)[-7:])
-                    progress_order.save()
-                except Exception as e:
-                    obj.mistake_tag = 5
-                    data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
-                    continue
-                progress_order.swopfiles_set.all().delete()
-                all_files = obj.oswofiles_set.all()
-                error_tag = 0
-                for file in all_files:
-                    file_order = SWOPFiles()
-                    file_order.workorder = progress_order
-                    file_fields = ["name", "suffix", "url"]
-                    for key_word in file_fields:
-                        setattr(file_order, key_word, getattr(file, key_word, None))
-                    try:
-                        file_order.creator = request.user.username
-                        file_order.save()
-                    except Exception as e:
-                        error_tag = 1
-                        break
-                if error_tag:
-                    obj.mistake_tag = 6
-                    data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
-                    continue
+                obj.swo_order.cost = obj.cost
+                obj.swo_order.save()
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.save()
@@ -3357,6 +3153,7 @@ class ServiceHandleViewset(viewsets.ModelViewSet):
         data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
+
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
@@ -3551,7 +3348,7 @@ class ServiceHandleViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-# 体验服务单查询
+# 服务单查询
 class ServiceManageViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -3578,18 +3375,14 @@ class ServiceManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ServiceWorkOrder.objects.none()
-        user = self.request.user
-        queryset = ServiceWorkOrder.objects.filter(order_status=1, creator=user.username).order_by("id")
+        queryset = ServiceWorkOrder.objects.all().order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
-        request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 1
         f = ServiceWorkOrderFilter(params)
         serializer = ServiceWorkOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -3648,7 +3441,7 @@ class ServiceManageViewset(viewsets.ModelViewSet):
             for obj in check_list:
                 if obj.mistake_tag != 1:
                     data["error"].append("%s 非重复提交状态，不可修复" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
 
                 _q_customer = Customer.objects.filter(name=obj.smartphone)
@@ -3669,7 +3462,7 @@ class ServiceManageViewset(viewsets.ModelViewSet):
                     if order.order_status > 1:
                         obj.mistake_tag = 7
                         data["error"].append("%s 体验单已操作无法修复，驳回体验单到待领取重复递交后再修复" % obj.order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     else:
@@ -3699,7 +3492,7 @@ class ServiceManageViewset(viewsets.ModelViewSet):
                 if not isinstance(_rt_addr, dict):
                     obj.mistake_tag = 3
                     data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    n -= 1
                     continue
 
                 cs_info_fields = ["province", "city", "district", "address"]
@@ -3718,7 +3511,7 @@ class ServiceManageViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 4
                     data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 order.swoprogress_set.all().delete()
                 progress_order = SWOProgress()
@@ -3738,7 +3531,7 @@ class ServiceManageViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 5
                     data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 progress_order.swopfiles_set.all().delete()
                 all_files = obj.oswofiles_set.all()
@@ -3758,7 +3551,7 @@ class ServiceManageViewset(viewsets.ModelViewSet):
                 if error_tag:
                     obj.mistake_tag = 6
                     data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 obj.order_status = 2
                 obj.mistake_tag = 0
@@ -4036,20 +3829,20 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
                 if not obj.erp_order_id:
                     obj.mistake_tag = 4
                     data["error"].append("%s 无UT单号" % obj.id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 if not re.match("^[0-9]+$", obj.mobile):
                     obj.mistake_tag = 1
                     data["error"].append("%s 电话错误" % obj.id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
 
                 if not obj.receiver:
                     obj.mistake_tag = 2
                     data["error"].append("%s 无收件人" % obj.id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
 
@@ -4058,7 +3851,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
                 if not isinstance(_rt_addr, dict):
                     obj.mistake_tag = 3
                     data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
 
@@ -4089,7 +3882,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
             for obj in check_list:
                 if obj.mistake_tag != 1:
                     data["error"].append("%s 非重复提交状态，不可修复" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
 
                 _q_customer = Customer.objects.filter(name=obj.mobile)
@@ -4110,7 +3903,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
                     if order.order_status > 1:
                         obj.mistake_tag = 7
                         data["error"].append("%s 体验单已操作无法修复，驳回体验单到待领取重复递交后再修复" % obj.order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     else:
@@ -4140,7 +3933,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
                 if not isinstance(_rt_addr, dict):
                     obj.mistake_tag = 3
                     data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    n -= 1
                     continue
 
                 cs_info_fields = ["province", "city", "district", "address"]
@@ -4159,7 +3952,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 4
                     data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 order.swoprogress_set.all().delete()
                 progress_order = SWOProgress()
@@ -4179,7 +3972,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 5
                     data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 progress_order.swopfiles_set.all().delete()
                 all_files = obj.oswofiles_set.all()
@@ -4199,7 +3992,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
                 if error_tag:
                     obj.mistake_tag = 6
                     data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 obj.order_status = 2
                 obj.mistake_tag = 0
@@ -4457,6 +4250,15 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
+                try:
+                    if obj.checkinvoice:
+                        obj.mistake_tag = 9
+                        data["error"].append("%s 不可重复递交" % obj.erp_order_id)
+                        n -= 1
+                        obj.save()
+                        continue
+                except Exception as e:
+                    pass
                 _q_manul = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
                 if _q_manul.exists():
                     order = _q_manul[0]
@@ -4465,7 +4267,7 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
                     else:
                         obj.mistake_tag = 5
                         data["error"].append("%s 已存在已发货订单" % obj.erp_order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                 else:
@@ -4477,6 +4279,7 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
 
                 order.shop = shop
                 order.order_category = 3
+
                 try:
                     order.ori_order = obj
                     order.creator = request.user.username
@@ -4484,12 +4287,33 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 6
                     data["error"].append("%s 创建手工单出错" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 order.mogoods_set.all().delete()
                 error_tag = 0
                 all_goods_details = obj.iwogoods_set.all()
+                if not all_goods_details.exists():
+                    obj.mistake_tag = 6
+                    data["error"].append("%s 无货品不可审核" % obj.order_id)
+                    n -= 1
+                    obj.save()
+                    continue
+                goods_expense = all_goods_details.filter(category__in=[1, 3])
+                if goods_expense.exists():
+                    expense_list = list(map(lambda x: float(x.price) * int(x.quantity), list(goods_expense)))
+                    expense = reduce(lambda x, y: x + y, expense_list)
+                else:
+                    expense = 0
+                goods_revenue = all_goods_details.filter(category__in=[2, 4])
+                if goods_revenue.exists():
+                    revenue_list = list(map(lambda x: float(x.price) * int(x.quantity), list(goods_revenue)))
+                    revenue = reduce(lambda x, y: x + y, revenue_list)
+                else:
+                    revenue = 0
+                obj.cost = round(float(expense) - float(revenue), 2)
+                quantity_list = list(map(lambda x: int(x.quantity), list(all_goods_details)))
+                obj.quantity = reduce(lambda x, y: x + y, quantity_list)
                 for goods_detail in all_goods_details:
                     if goods_detail.category == 1:
                         mo_goods = MOGoods()
@@ -4506,12 +4330,29 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
                 if error_tag:
                     obj.mistake_tag = 7
                     data["error"].append("%s 创建手工单货品出错" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
+                    obj.save()
+                    continue
+                try:
+                    check_invoice = CheckInvoice()
+                    check_invoice.invoice = obj
+                    check_invoice.swo_order = obj.swo_order
+                    check_invoice.cost = obj.cost
+                    check_invoice.quantity = obj.quantity
+                    check_invoice.creator = request.user.username
+                    check_invoice.save()
+                except Exception as e:
+                    obj.mistake_tag = 9
+                    data["error"].append("%s 不可重复递交" % obj.erp_order_id)
+                    n -= 1
                     obj.save()
                     continue
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
+                obj.swo_order.cost = obj.swo_order.cost + obj.cost
+                obj.swo_order.quantity = obj.swo_order.quantity + obj.quantity
+                obj.swo_order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -4523,6 +4364,7 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
+        shop = Shop.objects.filter(name='小狗吸尘器官方旗舰店')[0]
         data = {
             "successful": 0,
             "false": 0,
@@ -4530,123 +4372,96 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                if obj.mistake_tag != 1:
-                    data["error"].append("%s 非重复提交状态，不可修复" % obj.order_id)
-                    data["false"] += 1
+                if obj.mistake_tag != 9:
+                    obj.mistake_tag = 9
+                    data["error"].append("%s 只能修复错误为：重复递交订单" % obj.erp_order_id)
+                    n -= 1
+                    obj.save()
                     continue
-
-                _q_customer = Customer.objects.filter(name=obj.mobile)
-                vipwechat = None
-                if _q_customer.exists():
-                    customer = _q_customer[0]
-                    try:
-                        vipwechat = customer.vipwechat
-                    except Exception as e:
-                        vipwechat = None
-                else:
-                    customer = Customer()
-                    customer.name = obj.mobile
-                    customer.save()
-
-                try:
-                    order = obj.satisfactionworkorder
-                    if order.order_status > 1:
-                        obj.mistake_tag = 7
-                        data["error"].append("%s 体验单已操作无法修复，驳回体验单到待领取重复递交后再修复" % obj.order_id)
-                        data["false"] += 1
+                _q_manul = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
+                if _q_manul.exists():
+                    order = _q_manul[0]
+                    if order.order_status < 2:
+                        order.order_status = 1
+                    else:
+                        obj.mistake_tag = 5
+                        data["error"].append("%s 存在已发货订单" % obj.erp_order_id)
+                        n -= 1
                         obj.save()
                         continue
-                    else:
-                        order.order_status = 1
-                except Exception as e:
-                    order = SatisfactionWorkOrder()
-
-                order.customer = customer
-
-                _q_swo = SatisfactionWorkOrder.objects.filter(customer=customer).order_by("-id")
-                if _q_swo.exists():
-                    if _q_swo.filter(order_status=4).exists():
-                        if vipwechat:
-                            order.is_friend = True
-                            order.cs_wechat = vipwechat.cs_wechat
-                            order.specialist = vipwechat.specialist
-                        tag_time = _q_swo[0].create_time
-                        today = datetime.datetime.now()
-                        check_days = (today - tag_time).days
-                        if check_days < 31:
-                            order.process_tag = 1
-                        else:
-                            order.process_tag = 2
-
-                _spilt_addr = PickOutAdress(str(obj.address))
-                _rt_addr = _spilt_addr.pickout_addr()
-                if not isinstance(_rt_addr, dict):
-                    obj.mistake_tag = 3
-                    data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
-                    continue
-
-                cs_info_fields = ["province", "city", "district", "address"]
-                for key_word in cs_info_fields:
-                    setattr(order, key_word, _rt_addr.get(key_word, None))
-
-                order_info_fields = ["order_id", "title", "nickname", "mobile", "purchase_time", "memo",
-                                     "purchase_interval", "goods_name", "quantity", "m_sn", "name"]
+                else:
+                    order = ManualOrder()
+                order_info_fields = ["order_id", "receiver", "mobile", "address", "nickname", "memo", "erp_order_id",
+                                     "province", "city", "district", "creator", "department"]
                 for key_word in order_info_fields:
                     setattr(order, key_word, getattr(obj, key_word, None))
+
+                order.shop = shop
+                order.order_category = 3
 
                 try:
                     order.ori_order = obj
                     order.creator = request.user.username
                     order.save()
                 except Exception as e:
-                    obj.mistake_tag = 4
-                    data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
-                    continue
-                order.swoprogress_set.all().delete()
-                progress_order = SWOProgress()
-                progress_order.title = "初始执行进度"
-                progress_order.action = "初始化"
-                progress_order.content = obj.information
-                try:
-                    progress_order.order = order
-                    progress_order.creator = request.user.username
-                    progress_order.save()
-
-                    today = re.sub('[- :\.]', '', str(datetime.datetime.now()))[:8]
-                    number = int(progress_order.id) + 10000000
-                    profix = "SWOP"
-                    progress_order.process_id = '%s%s%s' % (today, profix, str(number)[-7:])
-                    progress_order.save()
-                except Exception as e:
-                    obj.mistake_tag = 5
-                    data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
-                    continue
-                progress_order.swopfiles_set.all().delete()
-                all_files = obj.oswofiles_set.all()
-                error_tag = 0
-                for file in all_files:
-                    file_order = SWOPFiles()
-                    file_order.workorder = progress_order
-                    file_fields = ["name", "suffix", "url"]
-                    for key_word in file_fields:
-                        setattr(file_order, key_word, getattr(file, key_word, None))
-                    try:
-                        file_order.creator = request.user.username
-                        file_order.save()
-                    except Exception as e:
-                        error_tag = 1
-                        break
-                if error_tag:
                     obj.mistake_tag = 6
-                    data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
+                    data["error"].append("%s 创建手工单出错" % obj.order_id)
+                    n -= 1
+                    obj.save()
                     continue
-                obj.order_status = 2
+                order.mogoods_set.all().delete()
+                error_tag = 0
+                all_goods_details = obj.iwogoods_set.all()
+                if not all_goods_details.exists():
+                    obj.mistake_tag = 6
+                    data["error"].append("%s 无货品不可审核" % obj.order_id)
+                    n -= 1
+                    obj.save()
+                    continue
+                goods_expense = all_goods_details.filter(category__in=[1, 3])
+                if goods_expense.exists():
+                    expense_list = list(map(lambda x: float(x.price) * int(x.quantity), list(goods_expense)))
+                    expense = reduce(lambda x, y: x + y, expense_list)
+                else:
+                    expense = 0
+                goods_revenue = all_goods_details.filter(category__in=[2, 4])
+                if goods_revenue.exists():
+                    revenue_list = list(map(lambda x: float(x.price) * int(x.quantity), list(goods_revenue)))
+                    revenue = reduce(lambda x, y: x + y, revenue_list)
+                else:
+                    revenue = 0
+                obj.cost = round(float(expense) - float(revenue), 2)
+                quantity_list = list(map(lambda x: int(x.quantity), list(all_goods_details)))
+                obj.quantity = reduce(lambda x, y: x + y, quantity_list)
+                for goods_detail in all_goods_details:
+                    if goods_detail.category == 1:
+                        mo_goods = MOGoods()
+                        mo_goods.manual_order = order
+                        mo_goods.goods_id = goods_detail.goods_name.goods_id
+                        mo_goods.quantity = goods_detail.quantity
+                        mo_goods.goods_name = goods_detail.goods_name
+                        mo_goods.creator = order.creator
+                        try:
+                            mo_goods.save()
+                        except Exception as e:
+                            error_tag = 1
+                            break
+                if error_tag:
+                    obj.mistake_tag = 7
+                    data["error"].append("%s 创建手工单货品出错" % obj.order_id)
+                    n -= 1
+                    obj.save()
+                    continue
+
+                obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
+                swo_all_invoice = obj.swo_order.checkinvoice_set.all()
+                swo_cost = swo_all_invoice.aggregate(Sum("cost"))["cost__sum"]
+                swo_quantiy = swo_all_invoice.aggregate(Sum("quantity"))["quantity__sum"]
+                obj.swo_order.cost = swo_cost
+                obj.swo_order.quantity = swo_quantiy
+                obj.swo_order.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -4921,7 +4736,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                     if order.order_status != 0:
                         obj.mistake_tag = 1
                         data["error"].append("%s 重复提交，点击修复工单" % obj.order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     else:
@@ -4936,7 +4751,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                     if _q_swo.filter(order_status__in=[1, 2, 3]).exists():
                         obj.mistake_tag = 2
                         data["error"].append("%s 已存在未完结工单，联系处理同学追加问题" % obj.address)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     elif _q_swo.filter(order_status=4).exists():
@@ -4957,7 +4772,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                 if not isinstance(_rt_addr, dict):
                     obj.mistake_tag = 3
                     data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
 
@@ -4977,7 +4792,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 4
                     data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 order.swoprogress_set.all().delete()
@@ -4998,7 +4813,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 5
                     data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 all_files = obj.oswofiles_set.all()
@@ -5018,7 +4833,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                 if error_tag:
                     obj.mistake_tag = 6
                     data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     obj.save()
                     continue
                 obj.order_status = 2
@@ -5044,7 +4859,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
             for obj in check_list:
                 if obj.mistake_tag != 1:
                     data["error"].append("%s 非重复提交状态，不可修复" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
 
                 _q_customer = Customer.objects.filter(name=obj.mobile)
@@ -5065,7 +4880,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                     if order.order_status > 1:
                         obj.mistake_tag = 7
                         data["error"].append("%s 体验单已操作无法修复，驳回体验单到待领取重复递交后再修复" % obj.order_id)
-                        data["false"] += 1
+                        n -= 1
                         obj.save()
                         continue
                     else:
@@ -5095,7 +4910,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                 if not isinstance(_rt_addr, dict):
                     obj.mistake_tag = 3
                     data["error"].append("%s 地址无法提取省市区" % obj.address)
-                    data["false"] += 1
+                    n -= 1
                     continue
 
                 cs_info_fields = ["province", "city", "district", "address"]
@@ -5114,7 +4929,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 4
                     data["error"].append("%s 创建体验单错误" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 order.swoprogress_set.all().delete()
                 progress_order = SWOProgress()
@@ -5134,7 +4949,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                 except Exception as e:
                     obj.mistake_tag = 5
                     data["error"].append("%s 初始化体验单失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 progress_order.swopfiles_set.all().delete()
                 all_files = obj.oswofiles_set.all()
@@ -5154,7 +4969,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
                 if error_tag:
                     obj.mistake_tag = 6
                     data["error"].append("%s 初始化体验单资料失败" % obj.order_id)
-                    data["false"] += 1
+                    n -= 1
                     continue
                 obj.order_status = 2
                 obj.mistake_tag = 0
