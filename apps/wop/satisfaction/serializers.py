@@ -331,6 +331,8 @@ class SWOSerializer(serializers.ModelSerializer):
             1: "已存在已执行服务单，不可创建",
             2: "创建服务单错误",
             3: "体验单未完成不可审核",
+            4: "体验单无体验指数",
+            5: "创建客户体验指数错误",
         }
         try:
             ret = {
@@ -908,9 +910,16 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
         return goods_detail
 
     def create(self, validated_data):
-
+        today = datetime.datetime.now()
+        if validated_data["swo_order"].expiration_date:
+            check_date = validated_data["swo_order"].expiration_date
+            if (check_date - today).days < 0:
+                raise serializers.ValidationError("服务单已过期！")
+        else:
+            raise serializers.ValidationError("无失效时间，不可创建！")
         user = self.context["request"].user
         validated_data["creator"] = user.username
+
         goods_details = validated_data.pop("goods_details", [])
         self.check_goods_details(goods_details)
         department = Department.objects.filter(name="服务中心-管理")[0]
@@ -926,7 +935,7 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
             validated_data[key_word] = _rt_addr.get(key_word, None)
 
         invoice = self.Meta.model.objects.create(**validated_data)
-        today = datetime.datetime.now()
+
         today = re.sub('[- :\.]', '', str(today))[:8]
         number = int(invoice.id) + 10000000
         profix = "SSPI"

@@ -18,7 +18,7 @@ from .filters import OriSatisfactionWorkOrderFilter, OSWOFilesFilter, SWOFilter,
     ServiceWorkOrderFilter, InvoiceWorkOrderFilter, SWOPFilesFilter
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.base.company.models import Company
-from apps.crm.customers.models import Customer, ContactAccount, Satisfaction, Money, Interaction
+from apps.crm.customers.models import Customer, Satisfaction, Money, Interaction
 from apps.crm.vipwechat.models import VIPWechat
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.base.shop.models import Shop
@@ -55,7 +55,7 @@ class OSWOCreateViewset(viewsets.ModelViewSet):
         if not self.request:
             return OriSatisfactionWorkOrder.objects.none()
         user = self.request.user
-        queryset = OriSatisfactionWorkOrder.objects.filter(order_status=1, creator=user.username).order_by("id")
+        queryset = OriSatisfactionWorkOrder.objects.filter(order_status=1, creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -577,7 +577,7 @@ class OSWOHandleViewset(viewsets.ModelViewSet):
         if not self.request:
             return OriSatisfactionWorkOrder.objects.none()
         user = self.request.user
-        queryset = OriSatisfactionWorkOrder.objects.filter(order_status=1).order_by("id")
+        queryset = OriSatisfactionWorkOrder.objects.filter(order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1092,7 +1092,7 @@ class OSWOManageViewset(viewsets.ModelViewSet):
         if not self.request:
             return OriSatisfactionWorkOrder.objects.none()
         user = self.request.user
-        queryset = OriSatisfactionWorkOrder.objects.all().order_by("id")
+        queryset = OriSatisfactionWorkOrder.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1133,7 +1133,7 @@ class OSWOFilesViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return OSWOFiles.objects.none()
-        queryset = OSWOFiles.objects.all().order_by("id")
+        queryset = OSWOFiles.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1248,7 +1248,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return SatisfactionWorkOrder.objects.none()
-        queryset = SatisfactionWorkOrder.objects.filter(order_status=1).order_by("id")
+        queryset = SatisfactionWorkOrder.objects.filter(order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1699,7 +1699,7 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
         if not self.request:
             return SatisfactionWorkOrder.objects.none()
         user = self.request.user
-        queryset = SatisfactionWorkOrder.objects.filter(order_status=2, handler=user.username).order_by("id")
+        queryset = SatisfactionWorkOrder.objects.filter(order_status=2, handler=user.username).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1748,6 +1748,12 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
                     n -= 1
                     obj.save()
                     continue
+                if obj.feeling_index == 0:
+                    obj.mistake_tag = 4
+                    data["error"].append("%s 体验单无体验指数" % obj.order_id)
+                    n -= 1
+                    obj.save()
+                    continue
                 if obj.is_friend:
                     vipwechat = VIPWechat()
                     vipwechat.specialist = obj.specialist
@@ -1759,6 +1765,23 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
                         vipwechat.save()
                     except Exception as e:
                         pass
+                _q_satisfaction = Satisfaction.objects.filter(source_id=obj.order_id)
+                if _q_satisfaction.exists():
+                    order = _q_satisfaction[0]
+                else:
+                    order = Satisfaction()
+                order.customer = obj.customer
+                order.source_id = obj.order_id
+                order.index = obj.feeling_index
+                try:
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    obj.mistake_tag = 5
+                    data["error"].append("%s 创建客户体验指数错误" % obj.order_id)
+                    n -= 1
+                    obj.save()
+                    continue
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
@@ -1915,7 +1938,7 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
 
         return report_dic
 
-    @action(methods=['patch'], detail=False)
+    @action(methods=['put'], detail=False)
     def photo_import(self, request, *args, **kwargs):
         files = request.FILES.getlist("files", None)
         id = request.data.get('id', None)
@@ -1958,6 +1981,7 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        today = datetime.datetime.now()
         if n:
             for obj in check_list:
                 try:
@@ -1980,13 +2004,13 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
                     setattr(order, key_word, getattr(obj, key_word, None))
                 order.title = '%s-服务单' % order.title
 
-
+                interval = datetime.timedelta(days=7)
+                order.expiration_date = today + interval
 
                 try:
                     order.swo_order = obj
                     order.creator = request.user.username
                     order.save()
-                    today = datetime.datetime.now()
                     today = re.sub('[- :\.]', '', str(today))[:8]
                     number = int(order.id) + 10000000
                     profix = "SS"
@@ -2035,7 +2059,7 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
         if not self.request:
             return SatisfactionWorkOrder.objects.none()
         user = self.request.user
-        queryset = SatisfactionWorkOrder.objects.filter(order_status=2).order_by("id")
+        queryset = SatisfactionWorkOrder.objects.filter(order_status=2).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -2083,6 +2107,12 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
                     n -= 1
                     obj.save()
                     continue
+                if obj.feeling_index == 0:
+                    obj.mistake_tag = 4
+                    data["error"].append("%s 体验单无体验指数" % obj.order_id)
+                    n -= 1
+                    obj.save()
+                    continue
                 if obj.is_friend:
                     vipwechat = VIPWechat()
                     vipwechat.specialist = obj.specialist
@@ -2094,6 +2124,23 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
                         vipwechat.save()
                     except Exception as e:
                         pass
+                _q_satisfaction = Satisfaction.objects.filter(source_id=obj.order_id)
+                if _q_satisfaction.exists():
+                    order = _q_satisfaction[0]
+                else:
+                    order = Satisfaction()
+                order.customer = obj.customer
+                order.source_id = obj.order_id
+                order.index = obj.feeling_index
+                try:
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    obj.mistake_tag = 5
+                    data["error"].append("%s 创建客户体验指数错误" % obj.order_id)
+                    n -= 1
+                    obj.save()
+                    continue
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
@@ -2250,7 +2297,7 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
 
         return report_dic
 
-    @action(methods=['patch'], detail=False)
+    @action(methods=['put'], detail=False)
     def photo_import(self, request, *args, **kwargs):
         files = request.FILES.getlist("files", None)
         id = request.data.get('id', None)
@@ -2293,6 +2340,7 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        today = datetime.datetime.now()
         if n:
             for obj in check_list:
                 try:
@@ -2315,13 +2363,14 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
                     setattr(order, key_word, getattr(obj, key_word, None))
                 order.title = '%s-服务单' % order.title
 
-
+                interval = datetime.timedelta(days=7)
+                order.expiration_date = today + interval
 
                 try:
                     order.swo_order = obj
                     order.creator = request.user.username
                     order.save()
-                    today = datetime.datetime.now()
+
                     today = re.sub('[- :\.]', '', str(today))[:8]
                     number = int(order.id) + 10000000
                     profix = "SS"
@@ -2369,7 +2418,7 @@ class SWOManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return SatisfactionWorkOrder.objects.none()
-        queryset = SatisfactionWorkOrder.objects.all().order_by("id")
+        queryset = SatisfactionWorkOrder.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -2411,7 +2460,7 @@ class SWOPCreateViewset(viewsets.ModelViewSet):
         if not self.request:
             return SWOProgress.objects.none()
         user = self.request.user
-        queryset = SWOProgress.objects.all().order_by("id")
+        queryset = SWOProgress.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -2665,7 +2714,7 @@ class SWOPFilesViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return SWOPFiles.objects.none()
-        queryset = SWOPFiles.objects.all().order_by("id")
+        queryset = SWOPFiles.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -2753,7 +2802,7 @@ class SWOPFilesViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-# 服务单处理
+# 服务单个人处理
 class ServiceMyselfViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -2781,7 +2830,7 @@ class ServiceMyselfViewset(viewsets.ModelViewSet):
         if not self.request:
             return ServiceWorkOrder.objects.none()
         user = self.request.user
-        queryset = ServiceWorkOrder.objects.filter(order_status=1, creator=user.username).order_by("id")
+        queryset = ServiceWorkOrder.objects.filter(order_status=1, creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -3079,7 +3128,7 @@ class ServiceHandleViewset(viewsets.ModelViewSet):
         if not self.request:
             return ServiceWorkOrder.objects.none()
         user = self.request.user
-        queryset = ServiceWorkOrder.objects.filter(order_status=1).order_by("id")
+        queryset = ServiceWorkOrder.objects.filter(order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -3375,7 +3424,7 @@ class ServiceManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ServiceWorkOrder.objects.none()
-        queryset = ServiceWorkOrder.objects.all().order_by("id")
+        queryset = ServiceWorkOrder.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -3783,7 +3832,7 @@ class InvoiceCreateViewset(viewsets.ModelViewSet):
         if not self.request:
             return InvoiceWorkOrder.objects.none()
         user = self.request.user
-        queryset = InvoiceWorkOrder.objects.filter(order_status=1, creator=user.username).order_by("id")
+        queryset = InvoiceWorkOrder.objects.filter(order_status=1, creator=user.username).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -4209,7 +4258,7 @@ class InvoiceCheckViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return InvoiceWorkOrder.objects.none()
-        queryset = InvoiceWorkOrder.objects.filter(order_status=2).order_by("id")
+        queryset = InvoiceWorkOrder.objects.filter(order_status=2).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -4674,7 +4723,7 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return InvoiceWorkOrder.objects.none()
-        queryset = InvoiceWorkOrder.objects.all().order_by("id")
+        queryset = InvoiceWorkOrder.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)

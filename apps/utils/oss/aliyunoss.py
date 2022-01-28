@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import oss2
+from oss2.models import BucketCors, CorsRule
 import datetime
 import re
 from ut3.settings import OSS_CONFIG
@@ -23,6 +24,11 @@ class AliyunOSS(object):
     def upload(self, *args, **kwargs):
         auth = oss2.Auth(self.AccessKeyId, self.AccessKeySecret)
         bucket = oss2.Bucket(auth, self.endpoint, self.bucket_name)
+        rule = CorsRule(allowed_origins=['*'],
+                        allowed_methods=['POST', 'HEAD', 'PUT', 'GET'],
+                        allowed_headers=['*'],
+                        max_age_seconds=1000)
+        bucket.put_bucket_cors(BucketCors([rule]))
         for file in self.files:
             object_name = self.create_object_name(file)
             try:

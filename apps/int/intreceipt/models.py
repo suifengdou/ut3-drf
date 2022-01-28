@@ -3,15 +3,15 @@ from apps.auth.users.models import UserProfile
 import django.utils.timezone as timezone
 from apps.int.intaccount.models import IntAccount, Currency
 
-
 class IntReceipt(models.Model):
     ORDER_STATUS = (
         (0, '已取消'),
-        (1, '待认领'),
-        (2, '待审核'),
-        (3, '待关联'),
-        (4, '待结算'),
-        (5, '已完成'),
+        (1, '待提交'),
+        (2, '待认领'),
+        (3, '待审核'),
+        (4, '待关联'),
+        (5, '待结算'),
+        (6, '已完成'),
     )
     CATEGORY = (
         (1, '存入'),
@@ -24,6 +24,7 @@ class IntReceipt(models.Model):
         (3, '收款单未认领'),
         (4, '非认领人不可审核'),
         (5, '未到账不可审核'),
+        (6, '可分配金额有余额'),
     )
     PROCESS_TAG = (
         (0, '未处理'),

@@ -74,7 +74,7 @@ class ContactAccount(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='客户', help_text='客户')
     source_id = models.CharField(unique=True, max_length=150, verbose_name='来源单号', help_text='来源单号')
     source = models.SmallIntegerField(choices=S_SOURCE, default=1, verbose_name='来源', help_text='来源')
-    name = models.CharField(null=True, blank=True, max_length=150, verbose_name='名称', help_text='名称')
+    name = models.CharField(max_length=150, db_index=True, verbose_name='名称', help_text='名称')
     category = models.SmallIntegerField(choices=CATEGORY, default=1, verbose_name='账号类型', help_text='账号类型')
 
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')

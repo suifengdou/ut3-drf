@@ -20,7 +20,7 @@ class IntStatement(models.Model):
     account = models.ForeignKey(IntAccount, on_delete=models.CASCADE, verbose_name='收款账户', help_text='收款账户')
     actual_amount = models.FloatField(default=0, verbose_name='实收金额', help_text='实收金额')
     virtual_amount = models.FloatField(default=0, verbose_name='销减金额', help_text='销减金额')
-    memorandum = models.CharField(max_length=200, verbose_name='备注', help_text='备注')
+    memorandum = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注', help_text='备注')
 
     order_status = models.IntegerField(choices=ORDER_STATUS, default=1, verbose_name='状态', help_text='状态')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -30,6 +30,7 @@ class IntStatement(models.Model):
 
     class Meta:
         verbose_name = 'INT-收款结算单'
+        unique_together = (("ipo", "receipt"),)
         verbose_name_plural = verbose_name
         db_table = 'int_statement'
         permissions = (

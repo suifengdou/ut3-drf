@@ -215,8 +215,12 @@ class BatchCompensationSerializer(serializers.ModelSerializer):
         ret["process_tag"] = self.get_process_tag(instance)
 
         compensation_details = instance.bcdetail_set.all()
-        ret["amount"] = round(compensation_details.aggregate(amount=Sum("compensation"))["amount"], 2)
-        ret["paid_amount"] = round(compensation_details.aggregate(paid_amount=Sum("paid_amount"))["paid_amount"], 2)
+        if compensation_details:
+            ret["amount"] = round(compensation_details.aggregate(amount=Sum("compensation"))["amount"], 2)
+            ret["paid_amount"] = round(compensation_details.aggregate(paid_amount=Sum("paid_amount"))["paid_amount"], 2)
+        else:
+            ret["amount"] = 0
+            ret["paid_amount"] = 0
         if ret["amount"] == None:
             ret["amount"] = 0
         if ret["paid_amount"] == None:

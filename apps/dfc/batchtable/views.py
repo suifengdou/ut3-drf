@@ -94,17 +94,15 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            for order in check_list:
-                if order.src_tids:
-                    if not all([order.return_express_company, order.return_express_id]):
-                        order.mistake_tag = 1
-                        data["error"].append("%s 返回单号或快递为空" % order.order_id)
-                        order.save()
-                        n -= 1
-                        continue
-                order.order_status = 2
-                order.mistake_tag = 0
-                order.save()
+            for obj in check_list:
+                if obj.mistake_tag != 4:
+                    data["error"].append("%s 不是重复递交的单据不可修复" % obj.erp_order_id)
+                    obj.save()
+                    n -= 1
+                    continue
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -305,8 +303,6 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             except Exception as e:
                 report_dic["error"].append("必要字段不全或者错误")
                 return report_dic
-
-            # 获取表头，对表头进行转换成数据库字段名
             columns_key = df.columns.values.tolist()
             result_columns = []
             for keywords in columns_key:
@@ -321,26 +317,31 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             ret_columns_key = dict(zip(columns_key, result_columns))
             df.rename(columns=ret_columns_key, inplace=True)
 
-            # 更改一下DataFrame的表名称
-            num_end = 0
-            step = 300
-            step_num = int(len(df) / step) + 2
-            i = 1
-            while i < step_num:
-                num_start = num_end
-                num_end = step * i
-                intermediate_df = df.iloc[num_start: num_end]
+            shop_list = df["shop"].drop_duplicates().values.tolist()
 
-                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
-                _ret_list = intermediate_df.to_dict(orient='records')
-                intermediate_report_dic = self.save_resources(request, _ret_list)
-                for k, v in intermediate_report_dic.items():
-                    if k == "error":
-                        if intermediate_report_dic["error"]:
-                            report_dic[k].append(v)
-                    else:
-                        report_dic[k] += v
-                i += 1
+            for shop_name in shop_list:
+                df_tag = df[ df["shop"] == shop_name ]
+            # 获取表头，对表头进行转换成数据库字段名
+                # 更改一下DataFrame的表名称
+                num_end = 0
+                step = 300
+                step_num = int(len(df_tag) / step) + 2
+                i = 1
+                while i < step_num:
+                    num_start = num_end
+                    num_end = step * i
+                    intermediate_df = df_tag.iloc[num_start: num_end]
+
+                    # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                    _ret_list = intermediate_df.to_dict(orient='records')
+                    intermediate_report_dic = self.save_resources(request, _ret_list)
+                    for k, v in intermediate_report_dic.items():
+                        if k == "error":
+                            if intermediate_report_dic["error"]:
+                                report_dic[k].append(v)
+                        else:
+                            report_dic[k] += v
+                    i += 1
             return report_dic
 
         else:

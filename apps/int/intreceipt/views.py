@@ -3,7 +3,8 @@ import re
 import pandas as pd
 from decimal import Decimal
 import numpy as np
-
+from functools import reduce
+from django.db.models import Q, Count, Sum, Max, Min, Avg
 import jieba
 import jieba.posseg as pseg
 import jieba.analyse
@@ -28,6 +29,7 @@ from apps.utils.geography.tools import PickOutAdress
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.int.intstatement.models import IntStatement
+from apps.int.intpurchase.models import IntPurchaseOrder
 from apps.utils.oss.aliyunoss import AliyunOSS
 
 
@@ -765,23 +767,28 @@ class IntReceiptExecuteViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return IntReceipt.objects.none()
-        queryset = IntReceipt.objects.filter(order_status=4).order_by("-id")
+        user = self.request.user
+        queryset = IntReceipt.objects.filter(order_status=4, handler=user.username).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
+        user = request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
         params["order_status"] = 4
+        params["handler"] = user.username
         f = IntReceiptFilter(params)
         serializer = IntReceiptSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
+        user = self.request.user
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 4
+        params["handler"] = user.username
         if all_select_tag:
             handle_list = IntReceiptFilter(params).qs
         else:
@@ -802,125 +809,34 @@ class IntReceiptExecuteViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
         if n:
             for obj in check_list:
-                _q_mo_repeat = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
-                if _q_mo_repeat.exists():
-                    order = _q_mo_repeat[0]
-                    if order.order_status in [0, 1]:
-                        order.order_status = 1
-                        order.mogoods_set.all().delete()
-                    else:
-                        data["error"].append("%s重复递交" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 1
-                        obj.save()
-                        continue
-                else:
-                    order = ManualOrder()
-                    order.erp_order_id = obj.erp_order_id
+                statement_details = obj.intstatement_set.filter(order_status=1)
+                try:
+                    associated_amount = statement_details.aggregate(Sum("actual_amount"))["actual_amount__sum"]
+                except Exception as e:
+                    associated_amount = 0
+                if not associated_amount:
+                    associated_amount = 0
 
-                if obj.order_category in [1, 2]:
-                    if not all([obj.m_sn, obj.broken_part, obj.description]):
-                        data["error"].append("%s售后配件需要补全sn、部件和描述" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 2
-                        obj.save()
-                        continue
-                if not obj.department:
-                    data["error"].append("%s无部门" % str(obj.id))
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
-                if not all([obj.province, obj.city]):
-                    data["error"].append("%s省市不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if obj.city.name not in special_city and not obj.district:
-                    data["error"].append("%s 区县不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[3456789]\d{9}))$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                if not obj.shop:
-                    data["error"].append("%s 无店铺" % obj.id)
+                if obj.remaining != associated_amount:
+                    data["error"].append("%s 可分配金额有余额，不可审核" % obj.id)
                     n -= 1
                     obj.mistake_tag = 6
                     obj.save()
                     continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 7
-                    obj.save()
-                    continue
-                order_fields = ["nickname", "receiver", "address", "mobile", "m_sn", "broken_part", "description",
-                                "erp_order_id", "shop", "province", "city", "district", "order_id", "order_category",
-                                "creator"]
-                for keyword in order_fields:
-                    setattr(order, keyword, getattr(obj, keyword, None))
-                order.department = request.user.department
-                try:
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s 手工单保存出错" % obj.order_id)
-                    n -= 1
-                    obj.mistake_tag = 10
-                    obj.save()
-                    continue
-                error_tag = 0
-                all_goods_details = obj.dpgoods_set.all()
-                for goods_detail in all_goods_details:
-                    _q_dp_repeat = DPGoods.objects.filter(dealer_parts__mobile=obj.mobile, goods_id=goods_detail.goods_id).order_by("-create_time")
-                    if len(_q_dp_repeat) > 1:
-                        if obj.process_tag != 3:
-                            delta_date = (obj.create_time - _q_dp_repeat[1].create_time).days
-                            if int(delta_date) < 14:
-                                error_tag = 1
-                                data["error"].append("%s 14天内重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 8
-                                obj.save()
-                                break
-                            else:
-                                error_tag = 1
-                                data["error"].append("%s 14天外重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 9
-                                obj.save()
-                                break
-                    mo_detail = MOGoods()
-                    mo_detail.manual_order = order
-                    detail_goods_fields = ["goods_name", "goods_id", "quantity", "creator"]
-                    for keyword in detail_goods_fields:
-                        setattr(mo_detail, keyword, getattr(goods_detail, keyword, None))
-                    try:
-                        mo_detail.save()
-                        goods_detail.order_status = 2
-                        goods_detail.save()
-                    except Exception as e:
-                        error_tag = 1
-                        data["error"].append("%s 手工单货品保存出错" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 11
-                        obj.save()
-                        break
-                if error_tag:
-                    continue
-                obj.order_status = 3
+                obj.remaining = 0
+                for statement in statement_details:
+                    statement.ipo.actual_amount = statement.actual_amount
+                    statement.ipo.virtual_amount = statement.virtual_amount
+                    if statement.ipo.virtual_amount < statement.ipo.amount:
+                        statement.ipo.collection_status = 1
+                    else:
+                        statement.ipo.collection_status = 2
+                    statement.ipo.save()
+                    statement.order_status = 2
+                    statement.save()
+                obj.order_status = 5
                 obj.mistake_tag = 0
                 obj.save()
         else:
@@ -941,45 +857,77 @@ class IntReceiptExecuteViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
-                obj.order_status = 1
+                obj.order_status = 3
                 obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
 
-    @action(methods=['patch'], detail=False)
-    def set_special(self, request, *args, **kwargs):
-        params = request.data
-        set_list = self.get_handle_list(params)
-        n = len(set_list)
+    def check_statements(self, statements):
+        for statement in statements:
+            if not all([statement.get("ipo", None), statement.get("actual_amount", None), statement.get("virtual_amount", None)]):
+                raise serializers.ValidationError("明细中采购单、实收金额和销减金额为必填项！")
+        ipo_list = list(map(lambda x: x["ipo"], statements))
+        ipo_check = set(ipo_list)
+        if len(ipo_list) != len(ipo_check):
+            raise serializers.ValidationError("明细中采购单重复, 一张收款单不可重复关联一个采购单！")
+        actual_amount_list = list(map(lambda x: x['actual_amount'], statements))
+        virtual_amount_list = list(map(lambda x: x['virtual_amount'], statements))
         data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
+            "actual_amount_total": reduce(lambda x, y: x + y, actual_amount_list),
+            "virtual_amount_total": reduce(lambda x, y: x + y, virtual_amount_list)
         }
-        if n:
-            set_list.update(process_tag=3)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
+        return data
 
     @action(methods=['patch'], detail=False)
-    def reset_tag(self, request, *args, **kwargs):
-        params = request.data
-        set_list = self.get_handle_list(params)
-        n = len(set_list)
+    def create_statement(self, request, *args, **kwargs):
         data = {
             "successful": 0,
             "false": 0,
             "error": []
         }
-        if n:
-            set_list.update(process_tag=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
+        receipt = request.data
+        total_amount = self.check_statements(receipt["statements"])
+        if int(total_amount["actual_amount_total"]) > int(receipt["remaining"]):
+            raise serializers.ValidationError({"金额错误": "采购单实收金额超过收款单可拆金额！"})
+        receipt_order = IntReceipt.objects.filter(id=receipt["id"])[0]
+        account = IntAccount.objects.filter(id=receipt["account"])[0]
+        r_currency = receipt["currency"]
+        for statement in receipt["statements"]:
+            ipo = IntPurchaseOrder.objects.filter(id=statement["ipo"])[0]
+            if r_currency["id"] != ipo.currency.id:
+                raise serializers.ValidationError({"采购单币种错误": "采购单和收款单币种不同！"})
+            if (ipo.amount - ipo.virtual_amount) < int(statement["virtual_amount"]):
+                raise serializers.ValidationError({"结算单金额错误": "销账金额超出采购单合同金额！"})
+            if statement.actual_amount / statement.virtual_amount < 0.9:
+                raise serializers.ValidationError({"结算单金额错误": "销账金额和实收金额比例错误！"})
+            _q_statement = IntStatement.objects.filter(ipo=ipo, receipt=receipt_order)
+            if _q_statement.exists():
+                check_order = _q_statement[0]
+                if check_order.order_status in [0, 1]:
+                    order = check_order
+                else:
+                    data["error"].append("%s 收款单已关联过此采购单！" % ipo.order_id)
+                    data["false"] += 1
+                    continue
+            else:
+                order = IntStatement()
+
+            order.ipo = ipo
+            order.receipt = receipt_order
+            order.account = account
+            order_fields = ["actual_amount", "virtual_amount", "memorandum"]
+            for keyword in order_fields:
+                setattr(order, keyword, statement.get(keyword, None))
+            order.creator = request.user.username
+            try:
+                order.save()
+                data["successful"] += 1
+            except Exception as e:
+                data["error"].append("结算单创建出错：%s " % e)
+                data["false"] += 1
+                continue
         return Response(data)
 
 
@@ -1009,7 +957,7 @@ class IntReceiptBalanceViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return IntReceipt.objects.none()
-        queryset = IntReceipt.objects.filter(order_status=3).order_by("-id")
+        queryset = IntReceipt.objects.filter(order_status=5).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1017,7 +965,7 @@ class IntReceiptBalanceViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 2
+        params["order_status"] = 5
         f = IntReceiptFilter(params)
         serializer = IntReceiptSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -1025,7 +973,7 @@ class IntReceiptBalanceViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 2
+        params["order_status"] = 5
         if all_select_tag:
             handle_list = IntReceiptFilter(params).qs
         else:
@@ -1185,180 +1133,12 @@ class IntReceiptBalanceViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
-                obj.order_status = 1
+                obj.order_status = 4
                 obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def set_special(self, request, *args, **kwargs):
-        params = request.data
-        set_list = self.get_handle_list(params)
-        n = len(set_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            set_list.update(process_tag=3)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reset_tag(self, request, *args, **kwargs):
-        params = request.data
-        set_list = self.get_handle_list(params)
-        n = len(set_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            set_list.update(process_tag=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def excel_import(self, request, *args, **kwargs):
-        file = request.FILES.get('file', None)
-        if file:
-            data = self.handle_upload_file(request, file)
-        else:
-            data = {
-                "error": "上传文件未找到！"
-            }
-
-        return Response(data)
-
-    def handle_upload_file(self, request, _file):
-        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
-        INIT_FIELDS_DIC = {
-            '店铺': 'shop',
-            '客户网名': 'nickname',
-            '收件人': 'receiver',
-            '地址': 'address',
-            '手机': 'mobile',
-            '货品编码': 'goods_id',
-            '数量': 'quantity',
-            '单据类型': 'order_category',
-            '机器序列号': 'm_sn',
-            '故障部位': 'broken_part',
-            '故障描述': 'description',
-        }
-
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
-        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
-            df = pd.read_excel(_file, sheet_name=0, dtype=str)
-
-            FILTER_FIELDS = ["店铺", "客户网名", "收件人", "地址", "手机", "货品编码", "货品名称", "数量", "单据类型",
-                             "机器序列号", "故障部位", "故障描述"]
-
-            try:
-                df = df[FILTER_FIELDS]
-            except Exception as e:
-                report_dic["error"].append("必要字段不全或者错误")
-                return report_dic
-
-            # 获取表头，对表头进行转换成数据库字段名
-            columns_key = df.columns.values.tolist()
-            for i in range(len(columns_key)):
-                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
-                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
-
-            # 验证一下必要的核心字段是否存在
-            _ret_verify_field = ManualOrder.verify_mandatory(columns_key)
-            if _ret_verify_field is not None:
-                return _ret_verify_field
-
-            # 更改一下DataFrame的表名称
-            columns_key_ori = df.columns.values.tolist()
-            ret_columns_key = dict(zip(columns_key_ori, columns_key))
-            df.rename(columns=ret_columns_key, inplace=True)
-
-            # 更改一下DataFrame的表名称
-            num_end = 0
-            step = 300
-            step_num = int(len(df) / step) + 2
-            i = 1
-            while i < step_num:
-                num_start = num_end
-                num_end = step * i
-                intermediate_df = df.iloc[num_start: num_end]
-
-                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
-                _ret_list = intermediate_df.to_dict(orient='records')
-                intermediate_report_dic = self.save_resources(request, _ret_list)
-                for k, v in intermediate_report_dic.items():
-                    if k == "error":
-                        if intermediate_report_dic["error"]:
-                            report_dic[k].append(v)
-                    else:
-                        report_dic[k] += v
-                i += 1
-            return report_dic
-
-        else:
-            report_dic["error"].append('只支持excel文件格式！')
-            return report_dic
-
-    @staticmethod
-    def save_resources(request, resource):
-        # 设置初始报告
-        category_dic = {
-            '质量问题': 1,
-            '开箱即损': 2,
-            '礼品赠品': 3
-        }
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
-        for row in resource:
-
-            order_fields = ["nickname", "receiver", "address", "mobile", "m_sn", "broken_part", "description"]
-            order = ManualOrder()
-            for field in order_fields:
-                setattr(order, field, row[field])
-            order.order_category = category_dic.get(row["order_category"], None)
-            _q_shop =  Shop.objects.filter(name=row["shop"])
-            if _q_shop.exists():
-                order.shop = _q_shop[0]
-
-            _spilt_addr = PickOutAdress(str(order.address))
-            _rt_addr = _spilt_addr.pickout_addr()
-            if not isinstance(_rt_addr, dict):
-                report_dic["error"].append("%s 地址无法提取省市区" % order.address)
-                report_dic["false"] += 1
-                continue
-            cs_info_fields = ["province", "city", "district", "address"]
-            for key_word in cs_info_fields:
-                setattr(order, key_word, _rt_addr.get(key_word, None))
-
-            try:
-                order.creator = request.user.username
-                order.save()
-                report_dic["successful"] += 1
-            except Exception as e:
-                report_dic['error'].append("%s 保存出错" % row["nickname"])
-                report_dic["false"] += 1
-            goods_details = MOGoods()
-            goods_details.manual_order = order
-            goods_details.quantity = row["quantity"]
-            _q_goods = Goods.objects.filter(goods_id=row["goods_id"])
-            if _q_goods.exists():
-                goods_details.goods_name = _q_goods[0]
-                goods_details.goods_id = row["goods_id"]
-            try:
-                goods_details.creator = request.user.username
-                goods_details.save()
-            except Exception as e:
-                report_dic['error'].append("%s 保存明细出错" % row["nickname"])
-        return report_dic
 
 
 class IntReceiptManageViewset(viewsets.ModelViewSet):

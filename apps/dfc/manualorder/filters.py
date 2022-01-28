@@ -20,6 +20,7 @@ class ManualOrderFilter(django_filters.FilterSet):
     province__name = django_filters.CharFilter(lookup_expr='exact')
     city__name = django_filters.CharFilter(lookup_expr='exact')
     district__name = django_filters.CharFilter(lookup_expr='exact')
+    mobile = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:
         model = ManualOrder

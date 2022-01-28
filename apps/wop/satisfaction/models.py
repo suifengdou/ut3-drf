@@ -1,10 +1,10 @@
 
 from django.db import models
 import django.utils.timezone as timezone
-
+from django.core.validators import MaxValueValidator, MinValueValidator
 from apps.base.company.models import Company
 from apps.base.goods.models import Goods
-from apps.crm.customers.models import Customer, Address, ContactAccount, Money, Interaction
+from apps.crm.customers.models import Customer, Address, Money, Interaction
 from apps.utils.geography.models import Province, City, District
 from apps.base.department.models import Department
 from apps.auth.users.models import UserProfile
@@ -108,6 +108,8 @@ class SatisfactionWorkOrder(models.Model):
         (1, '已存在已执行服务单，不可创建'),
         (2, '创建服务单错误'),
         (3, '体验单未完成不可审核'),
+        (4, '体验单无体验指数'),
+        (5, '创建客户体验指数错误'),
     )
 
     PROCESSTAG = (
@@ -171,6 +173,7 @@ class SatisfactionWorkOrder(models.Model):
     cost = models.FloatField(default=0, verbose_name='服务金额', help_text='服务金额')
     suggestion = models.TextField(null=True, blank=True, max_length=900, verbose_name='处理意见', help_text='处理意见')
     rejection = models.CharField(null=True, blank=True, max_length=260, verbose_name='驳回原因', help_text='驳回原因')
+    feeling_index = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)], verbose_name='体验指数', help_text='体验指数')
 
     class Meta:
         verbose_name = 'WOP-用户体验工单'
@@ -271,6 +274,7 @@ class ServiceWorkOrder(models.Model):
         (4, '理赔必须设置需理赔才可以审核'),
         (5, '驳回原因为空'),
         (6, '无反馈内容, 不可以审核'),
+        (7, '服务单已失效'),
     )
 
     PROCESSTAG = (
@@ -307,6 +311,8 @@ class ServiceWorkOrder(models.Model):
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+
+    expiration_date = models.DateTimeField(null=True, blank=True, verbose_name='失效时间', help_text='失效时间')
 
     class Meta:
         verbose_name = 'WOP-用户体验工单-服务单'

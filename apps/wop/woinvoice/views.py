@@ -1138,7 +1138,11 @@ class OriInvoiceHandleViewset(viewsets.ModelViewSet):
                             goods_order.goods_id = goods.goods_id
                             goods_order.quantity = detail[0]
                             goods_order.price = detail[1]
-                            goods_order.memorandum = '来源 %s 的第 %s 张发票' % (work_order.order_id, invoice_num + 1)
+                            ori_goods = _q_goods.filter(goods_name=goods)[0]
+                            if ori_goods.memorandum:
+                                goods_order.memorandum = '来源 %s 的第 %s 张发票， 源备注：%s' % (work_order.order_id, invoice_num + 1, ori_goods.memorandum)
+                            else:
+                                goods_order.memorandum = '来源 %s 的第 %s 张发票' % (work_order.order_id, invoice_num + 1)
 
                             try:
                                 goods_order.creator = work_order.creator

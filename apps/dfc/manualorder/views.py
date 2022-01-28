@@ -490,11 +490,9 @@ class ManualOrderManageViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
-        user = self.request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["company"] = user.company
         f = ManualOrderFilter(params)
         serializer = ManualOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
