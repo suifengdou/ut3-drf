@@ -900,7 +900,7 @@ class IntReceiptExecuteViewset(viewsets.ModelViewSet):
                 raise serializers.ValidationError({"采购单币种错误": "采购单和收款单币种不同！"})
             if (ipo.amount - ipo.virtual_amount) < int(statement["virtual_amount"]):
                 raise serializers.ValidationError({"结算单金额错误": "销账金额超出采购单合同金额！"})
-            if statement.actual_amount / statement.virtual_amount < 0.9:
+            if float(statement["actual_amount"]) / float(statement["virtual_amount"]) < 0.9:
                 raise serializers.ValidationError({"结算单金额错误": "销账金额和实收金额比例错误！"})
             _q_statement = IntStatement.objects.filter(ipo=ipo, receipt=receipt_order)
             if _q_statement.exists():
