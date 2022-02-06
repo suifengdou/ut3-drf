@@ -46,7 +46,7 @@ class IntPurchaseOrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['manualorder.view_manualorder']
+        "GET": ['intpurchase.view_intpurchaseorder',]
     }
 
     def get_queryset(self):
@@ -279,7 +279,7 @@ class IntPurchaseOrderCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['manualorder.view_manualorder']
+        "GET": ['intpurchase.view_intpurchaseorder',]
     }
 
     def get_queryset(self):
@@ -327,142 +327,15 @@ class IntPurchaseOrderCheckViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市', '北屯市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
-        express_list = {
-            1: "顺丰",
-            2: "申通",
-            3: "韵达",
-        }
         if n:
             for obj in check_list:
-                if not obj.erp_order_id:
-                    _prefix = "MO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                    obj.save()
-                _q_mo_exp_repeat = IntPurchaseOrder.objects.filter(ori_order=obj)
-                if _q_mo_exp_repeat.exists():
-                    order = _q_mo_exp_repeat[0]
-                    if order.order_status in [0, 1]:
-                        order.order_status = 1
-                        order.buyer_remark = ""
-                        order.cs_memoranda = ""
-                    else:
-                        data["error"].append("%s重复递交" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 1
-                        obj.save()
-                        continue
-                else:
-                    order = IntPurchaseOrder()
-                    order.erp_order_id = obj.erp_order_id
-                if obj.order_category in [1, 2]:
-                    if not all([obj.m_sn, obj.broken_part, obj.description]):
-                        data["error"].append("%s售后配件需要补全sn、部件和描述" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 2
-                        obj.save()
-                        continue
-                if not obj.department:
-                    data["error"].append("%s无部门" % str(obj.id))
+                if obj.sign != 5:
+                    data["error"].append("%s 采购单未完成不可审核" % str(obj.id))
                     n -= 1
-                    obj.mistake_tag = 3
+                    obj.mistake_tag = 2
                     obj.save()
                     continue
-                if not all([obj.province, obj.city]):
-                    data["error"].append("%s省市不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if obj.city.name not in special_city and not obj.district:
-                    data["error"].append("%s 区县不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[3456789]\d{9}))$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                if not obj.shop:
-                    data["error"].append("%s 无店铺" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 6
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    if obj.process_tag != 3:
-                        data["error"].append("%s地址是集运仓" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 7
-                        obj.save()
-                        continue
-
-                order.buyer_remark = "%s 的 %s 创建" % (str(obj.department), str(obj.creator))
-                if obj.servicer:
-                    order.buyer_remark = "%s来自%s" % (order.buyer_remark, str(obj.servicer))
-                error_tag = 0
-                export_goods_details = []
-                all_goods_details = obj.mogoods_set.all()
-                if len(all_goods_details) > 1:
-                    order.cs_memoranda = "#"
-                for goods_detail in all_goods_details:
-                    _q_mo_repeat = IPOGoods.objects.filter(manual_order__mobile=obj.mobile, goods_id=goods_detail.goods_id).order_by("-create_time")
-                    if len(_q_mo_repeat) > 1:
-                        if obj.process_tag != 3:
-                            delta_date = (obj.create_time - _q_mo_repeat[1].create_time).days
-                            if int(delta_date) < 14:
-                                error_tag = 1
-                                data["error"].append("%s 14天内重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 8
-                                obj.save()
-                                break
-                            else:
-                                error_tag = 1
-                                data["error"].append("%s 14天外重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 9
-                                obj.save()
-                                break
-                    if not export_goods_details:
-                        export_goods_details = [goods_detail.goods_name.name, goods_detail.goods_id, goods_detail.quantity]
-                    goods_info = "+ %sx%s" % (goods_detail.goods_name.name, goods_detail.quantity)
-                    goods_id_info = "+ %s x%s" % (goods_detail.goods_id, goods_detail.quantity)
-                    order.buyer_remark = str(order.buyer_remark) + goods_info
-                    order.cs_memoranda = str(order.cs_memoranda) + goods_id_info
-                if error_tag:
-                    continue
-                export_goods_fields = ["goods_name", "goods_id", "quantity"]
-                for i in range(len(export_goods_details)):
-                    setattr(order, export_goods_fields[i], export_goods_details[i])
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "province", "city", "district", "erp_order_id"]
-
-                for field in order_fields:
-                    setattr(order, field, getattr(obj, field, None))
-                order.ori_order = obj
-                if obj.assign_express:
-                    express = express_list.get(obj.assign_express, None)
-                    if express:
-                        order.cs_memoranda = "%s 指定%s" % (order.cs_memoranda, express)
-                try:
-                    order.buyer_remark = "%s%s" % (order.buyer_remark, obj.memo)
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 10
-                    obj.save()
-                    continue
-
-                obj.order_status = 2
+                obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
         else:
@@ -543,13 +416,56 @@ class IntPurchaseOrderManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['manualorder.view_manualorder']
+        "GET": ['intpurchase.view_intpurchaseorder',]
     }
 
     def get_queryset(self):
         if not self.request:
             return IntPurchaseOrder.objects.none()
-        queryset = IntPurchaseOrder.objects.all().order_by("id")
+        department = self.request.user.department
+        queryset = IntPurchaseOrder.objects.filter(department=department).order_by("id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["company"] = user.company
+        f = IntPurchaseOrderFilter(params)
+        serializer = IntPurchaseOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+
+class IntPurchaseOrderAllManageViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = IntPurchaseOrderSerializer
+    filter_class =IntPurchaseOrderFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['intpurchase.view_handler_intpurchaseorder']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return IntPurchaseOrder.objects.none()
+        center = self.request.user.department.center
+        queryset = IntPurchaseOrder.objects.filter(department__center=center).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -584,14 +500,14 @@ class ExceptionIPOCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['manualorder.view_manualorder']
+        "GET": ['intpurchase.view_intpurchaseorder',]
     }
 
     def get_queryset(self):
         if not self.request:
             return ExceptionIPO.objects.none()
         department = self.request.user.department
-        queryset = ExceptionIPO.objects.filter(order_status=2, department=department).order_by("id")
+        queryset = ExceptionIPO.objects.filter(order_status=1, department=department).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -617,7 +533,7 @@ class ExceptionIPOCheckViewset(viewsets.ModelViewSet):
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ExceptionIPO.objects.filter(id__in=order_ids, order_status=2, department=department)
+                handle_list = ExceptionIPO.objects.filter(id__in=order_ids, order_status=1, department=department)
             else:
                 handle_list = []
         return handle_list
@@ -632,141 +548,14 @@ class ExceptionIPOCheckViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市', '北屯市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
-        express_list = {
-            1: "顺丰",
-            2: "申通",
-            3: "韵达",
-        }
         if n:
             for obj in check_list:
-                if not obj.erp_order_id:
-                    _prefix = "MO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                    obj.save()
-                _q_mo_exp_repeat = IntPurchaseOrder.objects.filter(ori_order=obj)
-                if _q_mo_exp_repeat.exists():
-                    order = _q_mo_exp_repeat[0]
-                    if order.order_status in [0, 1]:
-                        order.order_status = 1
-                        order.buyer_remark = ""
-                        order.cs_memoranda = ""
-                    else:
-                        data["error"].append("%s重复递交" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 1
-                        obj.save()
-                        continue
-                else:
-                    order = IntPurchaseOrder()
-                    order.erp_order_id = obj.erp_order_id
-                if obj.order_category in [1, 2]:
-                    if not all([obj.m_sn, obj.broken_part, obj.description]):
-                        data["error"].append("%s售后配件需要补全sn、部件和描述" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 2
-                        obj.save()
-                        continue
-                if not obj.department:
-                    data["error"].append("%s无部门" % str(obj.id))
+                if obj.process_tag != 1:
+                    data["error"].append("%s只有完成状态才可审核" % str(obj.id))
                     n -= 1
-                    obj.mistake_tag = 3
+                    obj.mistake_tag = 1
                     obj.save()
                     continue
-                if not all([obj.province, obj.city]):
-                    data["error"].append("%s省市不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if obj.city.name not in special_city and not obj.district:
-                    data["error"].append("%s 区县不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[3456789]\d{9}))$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                if not obj.shop:
-                    data["error"].append("%s 无店铺" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 6
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    if obj.process_tag != 3:
-                        data["error"].append("%s地址是集运仓" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 7
-                        obj.save()
-                        continue
-
-                order.buyer_remark = "%s 的 %s 创建" % (str(obj.department), str(obj.creator))
-                if obj.servicer:
-                    order.buyer_remark = "%s来自%s" % (order.buyer_remark, str(obj.servicer))
-                error_tag = 0
-                export_goods_details = []
-                all_goods_details = obj.mogoods_set.all()
-                if len(all_goods_details) > 1:
-                    order.cs_memoranda = "#"
-                for goods_detail in all_goods_details:
-                    _q_mo_repeat = IPOGoods.objects.filter(manual_order__mobile=obj.mobile, goods_id=goods_detail.goods_id).order_by("-create_time")
-                    if len(_q_mo_repeat) > 1:
-                        if obj.process_tag != 3:
-                            delta_date = (obj.create_time - _q_mo_repeat[1].create_time).days
-                            if int(delta_date) < 14:
-                                error_tag = 1
-                                data["error"].append("%s 14天内重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 8
-                                obj.save()
-                                break
-                            else:
-                                error_tag = 1
-                                data["error"].append("%s 14天外重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 9
-                                obj.save()
-                                break
-                    if not export_goods_details:
-                        export_goods_details = [goods_detail.goods_name.name, goods_detail.goods_id, goods_detail.quantity]
-                    goods_info = "+ %sx%s" % (goods_detail.goods_name.name, goods_detail.quantity)
-                    goods_id_info = "+ %s x%s" % (goods_detail.goods_id, goods_detail.quantity)
-                    order.buyer_remark = str(order.buyer_remark) + goods_info
-                    order.cs_memoranda = str(order.cs_memoranda) + goods_id_info
-                if error_tag:
-                    continue
-                export_goods_fields = ["goods_name", "goods_id", "quantity"]
-                for i in range(len(export_goods_details)):
-                    setattr(order, export_goods_fields[i], export_goods_details[i])
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "province", "city", "district", "erp_order_id"]
-
-                for field in order_fields:
-                    setattr(order, field, getattr(obj, field, None))
-                order.ori_order = obj
-                if obj.assign_express:
-                    express = express_list.get(obj.assign_express, None)
-                    if express:
-                        order.cs_memoranda = "%s 指定%s" % (order.cs_memoranda, express)
-                try:
-                    order.buyer_remark = "%s%s" % (order.buyer_remark, obj.memo)
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 10
-                    obj.save()
-                    continue
-
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.save()
@@ -787,7 +576,7 @@ class ExceptionIPOCheckViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=1)
+            reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -805,6 +594,23 @@ class ExceptionIPOCheckViewset(viewsets.ModelViewSet):
         }
         if n:
             set_list.update(process_tag=3)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_end(self, request, *args, **kwargs):
+        params = request.data
+        set_list = self.get_handle_list(params)
+        n = len(set_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            set_list.update(process_tag=1)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -848,7 +654,7 @@ class ExceptionIPOManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['manualorder.view_manualorder']
+        "GET": ['intpurchase.view_intpurchaseorder',]
     }
 
     def get_queryset(self):
@@ -870,226 +676,46 @@ class ExceptionIPOManageViewset(viewsets.ModelViewSet):
         serializer = ExceptionIPOSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
-    def get_handle_list(self, params):
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
-        department = self.request.user.department
-        params["department"] = department
-        if all_select_tag:
-            handle_list = ExceptionIPOFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = ExceptionIPO.objects.filter(id__in=order_ids, order_status=2, department=department)
-            else:
-                handle_list = []
-        return handle_list
+
+class ExceptionIPOAllManageViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定采购单
+    list:
+        返回采购单明细
+    update:
+        更新采购单明细
+    destroy:
+        删除采购单明细
+    create:
+        创建采购单明细
+    partial_update:
+        更新部分采购单明细
+    """
+    serializer_class = ExceptionIPOSerializer
+    filter_class = ExceptionIPOFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['intpurchase.view_handler_intpurchaseorder']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return ExceptionIPO.objects.none()
+        center = self.request.user.department.center
+        queryset = ExceptionIPO.objects.filter(department__center=center).order_by("id")
+        return queryset
 
     @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
         params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市', '北屯市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
-        express_list = {
-            1: "顺丰",
-            2: "申通",
-            3: "韵达",
-        }
-        if n:
-            for obj in check_list:
-                if not obj.erp_order_id:
-                    _prefix = "MO"
-                    serial_number = str(datetime.date.today()).replace("-", "")
-                    obj.erp_order_id = serial_number + _prefix + str(obj.id)
-                    obj.save()
-                _q_mo_exp_repeat = IntPurchaseOrder.objects.filter(ori_order=obj)
-                if _q_mo_exp_repeat.exists():
-                    order = _q_mo_exp_repeat[0]
-                    if order.order_status in [0, 1]:
-                        order.order_status = 1
-                        order.buyer_remark = ""
-                        order.cs_memoranda = ""
-                    else:
-                        data["error"].append("%s重复递交" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 1
-                        obj.save()
-                        continue
-                else:
-                    order = IntPurchaseOrder()
-                    order.erp_order_id = obj.erp_order_id
-                if obj.order_category in [1, 2]:
-                    if not all([obj.m_sn, obj.broken_part, obj.description]):
-                        data["error"].append("%s售后配件需要补全sn、部件和描述" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 2
-                        obj.save()
-                        continue
-                if not obj.department:
-                    data["error"].append("%s无部门" % str(obj.id))
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
-                if not all([obj.province, obj.city]):
-                    data["error"].append("%s省市不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if obj.city.name not in special_city and not obj.district:
-                    data["error"].append("%s 区县不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[3456789]\d{9}))$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                if not obj.shop:
-                    data["error"].append("%s 无店铺" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 6
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    if obj.process_tag != 3:
-                        data["error"].append("%s地址是集运仓" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 7
-                        obj.save()
-                        continue
-
-                order.buyer_remark = "%s 的 %s 创建" % (str(obj.department), str(obj.creator))
-                if obj.servicer:
-                    order.buyer_remark = "%s来自%s" % (order.buyer_remark, str(obj.servicer))
-                error_tag = 0
-                export_goods_details = []
-                all_goods_details = obj.mogoods_set.all()
-                if len(all_goods_details) > 1:
-                    order.cs_memoranda = "#"
-                for goods_detail in all_goods_details:
-                    _q_mo_repeat = IPOGoods.objects.filter(manual_order__mobile=obj.mobile, goods_id=goods_detail.goods_id).order_by("-create_time")
-                    if len(_q_mo_repeat) > 1:
-                        if obj.process_tag != 3:
-                            delta_date = (obj.create_time - _q_mo_repeat[1].create_time).days
-                            if int(delta_date) < 14:
-                                error_tag = 1
-                                data["error"].append("%s 14天内重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 8
-                                obj.save()
-                                break
-                            else:
-                                error_tag = 1
-                                data["error"].append("%s 14天外重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 9
-                                obj.save()
-                                break
-                    if not export_goods_details:
-                        export_goods_details = [goods_detail.goods_name.name, goods_detail.goods_id, goods_detail.quantity]
-                    goods_info = "+ %sx%s" % (goods_detail.goods_name.name, goods_detail.quantity)
-                    goods_id_info = "+ %s x%s" % (goods_detail.goods_id, goods_detail.quantity)
-                    order.buyer_remark = str(order.buyer_remark) + goods_info
-                    order.cs_memoranda = str(order.cs_memoranda) + goods_id_info
-                if error_tag:
-                    continue
-                export_goods_fields = ["goods_name", "goods_id", "quantity"]
-                for i in range(len(export_goods_details)):
-                    setattr(order, export_goods_fields[i], export_goods_details[i])
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "province", "city", "district", "erp_order_id"]
-
-                for field in order_fields:
-                    setattr(order, field, getattr(obj, field, None))
-                order.ori_order = obj
-                if obj.assign_express:
-                    express = express_list.get(obj.assign_express, None)
-                    if express:
-                        order.cs_memoranda = "%s 指定%s" % (order.cs_memoranda, express)
-                try:
-                    order.buyer_remark = "%s%s" % (order.buyer_remark, obj.memo)
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
-                    n -= 1
-                    obj.mistake_tag = 10
-                    obj.save()
-                    continue
-
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=1)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def set_special(self, request, *args, **kwargs):
-        params = request.data
-        set_list = self.get_handle_list(params)
-        n = len(set_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            set_list.update(process_tag=3)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reset_tag(self, request, *args, **kwargs):
-        params = request.data
-        set_list = self.get_handle_list(params)
-        n = len(set_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            set_list.update(process_tag=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
+        params["department"] = user.department
+        f = ExceptionIPOFilter(params)
+        serializer = ExceptionIPOSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
 
 

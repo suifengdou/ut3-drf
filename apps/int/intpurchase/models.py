@@ -38,6 +38,7 @@ class IntPurchaseOrder(models.Model):
     MISTAKE_LIST = (
         (0, '正常'),
         (1, '货品金额为零'),
+        (2, '采购单未完成不可审核'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -182,7 +183,7 @@ class ExceptionIPO(models.Model):
 
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '货品金额为零'),
+        (1, '非完成状态，不可审核'),
     )
     PROCESS_TAG = (
         (0, '未处理'),

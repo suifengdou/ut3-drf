@@ -53,7 +53,7 @@ class IntReceiptCreateViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['dealerparts.view_user_dealerparts',]
+        "GET": ['intpurchase.view_user_intpurchaseorder']
     }
 
     def get_queryset(self):
@@ -340,7 +340,7 @@ class IntReceiptSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['dealerparts.view_handler_dealerparts',]
+        "GET": ['dealerparts.view_handler_dealerparts', 'intpurchase.view_intpurchaseorder']
     }
 
     def get_queryset(self):
@@ -526,7 +526,7 @@ class IntReceiptCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['dealerparts.view_handler_dealerparts',]
+        "GET": ['intpurchase.view_user_intpurchaseorder']
     }
 
     def get_queryset(self):
@@ -761,7 +761,7 @@ class IntReceiptExecuteViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['dealerparts.view_handler_dealerparts',]
+        "GET": ['dealerparts.view_handler_dealerparts', 'intpurchase.view_intpurchaseorder']
     }
 
     def get_queryset(self):
@@ -951,7 +951,7 @@ class IntReceiptBalanceViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['dealerparts.view_handler_dealerparts',]
+        "GET": ['intpurchase.view_intpurchaseorder']
     }
 
     def get_queryset(self):
@@ -983,143 +983,6 @@ class IntReceiptBalanceViewset(viewsets.ModelViewSet):
             else:
                 handle_list = []
         return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
-        if n:
-            for obj in check_list:
-                _q_mo_repeat = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
-                if _q_mo_repeat.exists():
-                    order = _q_mo_repeat[0]
-                    if order.order_status in [0, 1]:
-                        order.order_status = 1
-                        order.mogoods_set.all().delete()
-                    else:
-                        data["error"].append("%s重复递交" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 1
-                        obj.save()
-                        continue
-                else:
-                    order = ManualOrder()
-                    order.erp_order_id = obj.erp_order_id
-
-                if obj.order_category in [1, 2]:
-                    if not all([obj.m_sn, obj.broken_part, obj.description]):
-                        data["error"].append("%s售后配件需要补全sn、部件和描述" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 2
-                        obj.save()
-                        continue
-                if not obj.department:
-                    data["error"].append("%s无部门" % str(obj.id))
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
-                if not all([obj.province, obj.city]):
-                    data["error"].append("%s省市不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if obj.city.name not in special_city and not obj.district:
-                    data["error"].append("%s 区县不可为空" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 4
-                    obj.save()
-                    continue
-                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[3456789]\d{9}))$", obj.mobile):
-                    data["error"].append("%s 手机错误" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 5
-                    obj.save()
-                    continue
-                if not obj.shop:
-                    data["error"].append("%s 无店铺" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 6
-                    obj.save()
-                    continue
-                if '集运' in str(obj.address):
-                    data["error"].append("%s地址是集运仓" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 7
-                    obj.save()
-                    continue
-                order_fields = ["nickname", "receiver", "address", "mobile", "m_sn", "broken_part", "description",
-                                "erp_order_id", "shop", "province", "city", "district", "order_id", "order_category",
-                                "creator"]
-                for keyword in order_fields:
-                    setattr(order, keyword, getattr(obj, keyword, None))
-                order.department = request.user.department
-                try:
-                    order.save()
-                except Exception as e:
-                    data["error"].append("%s 手工单保存出错" % obj.order_id)
-                    n -= 1
-                    obj.mistake_tag = 10
-                    obj.save()
-                    continue
-                error_tag = 0
-                all_goods_details = obj.dpgoods_set.all()
-                for goods_detail in all_goods_details:
-                    _q_dp_repeat = DPGoods.objects.filter(dealer_parts__mobile=obj.mobile, goods_id=goods_detail.goods_id).order_by("-create_time")
-                    if len(_q_dp_repeat) > 1:
-                        if obj.process_tag != 3:
-                            delta_date = (obj.create_time - _q_dp_repeat[1].create_time).days
-                            if int(delta_date) < 14:
-                                error_tag = 1
-                                data["error"].append("%s 14天内重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 8
-                                obj.save()
-                                break
-                            else:
-                                error_tag = 1
-                                data["error"].append("%s 14天外重复" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 9
-                                obj.save()
-                                break
-                    mo_detail = MOGoods()
-                    mo_detail.manual_order = order
-                    detail_goods_fields = ["goods_name", "goods_id", "quantity", "creator"]
-                    for keyword in detail_goods_fields:
-                        setattr(mo_detail, keyword, getattr(goods_detail, keyword, None))
-                    try:
-                        mo_detail.save()
-                        goods_detail.order_status = 2
-                        goods_detail.save()
-                    except Exception as e:
-                        error_tag = 1
-                        data["error"].append("%s 手工单货品保存出错" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 11
-                        obj.save()
-                        break
-                if error_tag:
-                    continue
-                obj.order_status = 3
-                obj.mistake_tag = 0
-                obj.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
@@ -1161,7 +1024,7 @@ class IntReceiptManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['dealerparts.view_dealerparts',]
+        "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_intpurchaseorder']
     }
 
     def get_queryset(self):

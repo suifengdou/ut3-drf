@@ -33,7 +33,7 @@ class CurrencyViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['goods.view_goods']
+        "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_handler_intpurchaseorder']
     }
 
     def get_queryset(self):
@@ -73,7 +73,7 @@ class IntAccountViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['goods.view_goods']
+        "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_handler_intpurchaseorder']
     }
 
     def get_queryset(self):

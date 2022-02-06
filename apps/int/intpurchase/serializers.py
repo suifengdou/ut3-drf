@@ -159,6 +159,14 @@ class IntPurchaseOrderSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_exception_num(self, instance):
+        try:
+            all_exception = ExceptionIPO.objects.filter(distributor=instance.distributor, order_status=1)
+            ret = len(all_exception)
+        except:
+            ret = 0
+        return ret
+
     def get_goods_details(self, instance):
         goods_details = instance.ipogoods_set.all()
         ret = []
@@ -188,6 +196,7 @@ class IntPurchaseOrderSerializer(serializers.ModelSerializer):
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["sign"] = self.get_sign(instance)
+        ret["exception_num"] = self.get_exception_num(instance)
         ret["order_category"] = self.get_order_category(instance)
         ret["trade_mode"] = self.get_trade_mode(instance)
         ret["goods_details"] = self.get_goods_details(instance)
@@ -244,12 +253,9 @@ class IntPurchaseOrderSerializer(serializers.ModelSerializer):
         return instance
 
     def check_sign(self, instance, sign):
-        if sign in [5, 6, 7, 8, 9, 10]:
-            if int(instance.actual_amount) == 0:
-                raise serializers.ValidationError({"标记设置错误": "PI单未收款不可选择此标签！"})
-        if sign in [11, 12]:
+        if sign == 5:
             if instance.virtual_amount != instance.amount:
-                raise serializers.ValidationError({"标记设置错误": "PI单未付尾款不可选择此标签！"})
+                raise serializers.ValidationError({"标记设置错误": "PI单未付全款不可选择此标签！"})
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
@@ -391,6 +397,16 @@ class ExceptionIPOSerializer(serializers.ModelSerializer):
         model = ExceptionIPO
         fields = "__all__"
 
+    def get_ori_order_id(self, instance):
+        try:
+            ret = {
+                "id": instance.ori_order_id.id,
+                "name": instance.ori_order_id.order_id,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_distributor(self, instance):
         try:
             ret = {
@@ -523,6 +539,7 @@ class ExceptionIPOSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(ExceptionIPOSerializer, self).to_representation(instance)
+        ret["ori_order_id"] = self.get_ori_order_id(instance)
         ret["distributor"] = self.get_distributor(instance)
         ret["currency"] = self.get_currency(instance)
         ret["order_status"] = self.get_order_status(instance)
@@ -574,23 +591,20 @@ class ExceptionIPOSerializer(serializers.ModelSerializer):
         validated_data["department"] = user.department
 
         instance = self.Meta.model.objects.create(**validated_data)
+        _prefix = "EIPO"
+        serial_number = str(datetime.date.today()).replace("-", "")
+        instance.order_id = _prefix + serial_number + str(instance.id)
+        instance.save()
         for goods_detail in goods_details:
-            goods_detail['ipo'] = instance
+            goods_detail['eipo'] = instance
             goods_name = Goods.objects.filter(id=goods_detail["goods_name"])[0]
+            goods_detail["id"] = "n"
             goods_detail["goods_name"] = goods_name
             goods_detail["goods_id"] = goods_name.goods_id
             goods_detail["currency"] = validated_data["currency"]
             goods_detail.pop("xh")
             self.create_goods_detail(goods_detail)
         return instance
-
-    def check_sign(self, instance, sign):
-        if sign in [5, 6, 7, 8, 9, 10]:
-            if int(instance.actual_amount) == 0:
-                raise serializers.ValidationError({"标记设置错误": "PI单未收款不可选择此标签！"})
-        if sign in [11, 12]:
-            if instance.virtual_amount != instance.amount:
-                raise serializers.ValidationError({"标记设置错误": "PI单未付尾款不可选择此标签！"})
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
@@ -601,13 +615,11 @@ class ExceptionIPOSerializer(serializers.ModelSerializer):
         goods_details = validated_data.pop("goods_details", [])
         if goods_details:
             validated_data["currency"], validated_data["amount"], validated_data["quantity"] = self.check_goods_details(goods_details)
-        if validated_data["sign"]:
-            self.check_sign(instance, validated_data["sign"])
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         if goods_details:
-            instance.ipogoods_set.all().delete()
+            instance.eipogoods_set.all().delete()
             for goods_detail in goods_details:
-                goods_detail['ipo'] = instance
+                goods_detail['eipo'] = instance
                 _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
                 goods_detail["goods_name"] = _q_goods
                 goods_detail["goods_id"] = _q_goods.goods_id

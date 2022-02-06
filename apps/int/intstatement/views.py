@@ -49,7 +49,7 @@ class IntStatementRelatedViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['dealerparts.view_user_dealerparts',]
+        "GET": ['intpurchase.view_intpurchaseorder',]
     }
 
     def get_queryset(self):
@@ -154,7 +154,7 @@ class IntStatementManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['dealerparts.view_user_dealerparts',]
+        "GET": ['intpurchase.view_intpurchaseorder',]
     }
 
     def get_queryset(self):

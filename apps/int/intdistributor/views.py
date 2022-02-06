@@ -33,7 +33,7 @@ class IntDistributorMyselfViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['goods.view_goods']
+        "GET": ['intpurchase.view_intpurchaseorder']
     }
 
     def get_queryset(self):
@@ -216,13 +216,14 @@ class IntDistributorViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['goods.view_goods']
+        "GET": ['intpurchase.view_handler_intpurchaseorder']
     }
 
     def get_queryset(self):
         if not self.request:
             return IntDistributor.objects.none()
-        queryset = IntDistributor.objects.all().order_by("id")
+        center = self.request.user.department.center
+        queryset = IntDistributor.objects.filter(department__center=center).order_by("id")
         return queryset
 
 
@@ -231,6 +232,7 @@ class IntDistributorViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["department__center"] = request.user.department.center
         f =ContactModeFilter(params)
         serializer = ContactModeSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -397,7 +399,7 @@ class ContactsMyselfViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['goods.view_goods']
+        "GET": ['intpurchase.view_intpurchaseorder']
     }
 
     def get_queryset(self):
@@ -579,7 +581,7 @@ class ContactsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['goods.view_goods']
+        "GET": ['intpurchase.view_handler_intpurchaseorder']
     }
 
     def get_queryset(self):
