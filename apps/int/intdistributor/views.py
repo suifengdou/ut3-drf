@@ -32,9 +32,9 @@ class IntDistributorMyselfViewset(viewsets.ModelViewSet):
     filter_class = IntDistributorFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -215,9 +215,9 @@ class IntDistributorViewset(viewsets.ModelViewSet):
     filter_class = IntDistributorFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_handler_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_handler_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -398,9 +398,9 @@ class ContactsMyselfViewset(viewsets.ModelViewSet):
     filter_class = ContactsFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -580,9 +580,9 @@ class ContactsViewset(viewsets.ModelViewSet):
     filter_class = ContactsFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_handler_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_handler_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:

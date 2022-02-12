@@ -265,6 +265,24 @@ class SWOSerializer(serializers.ModelSerializer):
             }
         return ret
 
+    def get_cs_level(self, instance):
+        level_list = {
+            1: "优质",
+            2: "合格",
+            3: "缺陷",
+        }
+        try:
+            ret = {
+                "id": instance.cs_level,
+                "name": level_list.get(instance.cs_level, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
     def get_order_status(self, instance):
         order_status = {
             0: "已被取消",
@@ -397,6 +415,7 @@ class SWOSerializer(serializers.ModelSerializer):
         ret["process_tag"] = self.get_process_tag(instance)
         ret["stage"] = self.get_stage(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["cs_level"] = self.get_cs_level(instance)
         ret["progress_details"] = self.get_progress_details(instance)
         return ret
 
@@ -419,11 +438,39 @@ class SWOSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
+        validated_data["update_time"] = datetime.datetime.now()
+        try:
+            is_solved = validated_data["is_solved"]
+        except:
+            is_solved = instance.is_solved
+        try:
+            is_beaten = validated_data["is_beaten"]
+        except:
+            is_beaten = instance.is_beaten
+        try:
+            is_satisfied = validated_data["is_satisfied"]
+        except:
+            is_satisfied = instance.is_satisfied
+        if None not in [is_solved, is_beaten, is_satisfied]:
+            if not is_solved:
+                validated_data["cs_level"] = 3
+            else:
+                if all((is_beaten, is_satisfied)):
+                    validated_data["cs_level"] = 1
+                else:
+                    if any((is_beaten, is_satisfied)):
+                        validated_data["cs_level"] = 2
+                    else:
+                        validated_data["cs_level"] = 3
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        print(instance)
 
         return instance
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
 
 
 class SWOProgressSerializer(serializers.ModelSerializer):

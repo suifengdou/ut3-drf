@@ -100,6 +100,8 @@ class SatisfactionWorkOrder(models.Model):
         (0, '已被取消'),
         (1, '等待领取'),
         (2, '等待处理'),
+        (3, '等待审核'),
+        (3, '等待确认'),
         (3, '事务完结'),
     )
 
@@ -110,6 +112,8 @@ class SatisfactionWorkOrder(models.Model):
         (3, '体验单未完成不可审核'),
         (4, '体验单无体验指数'),
         (5, '创建客户体验指数错误'),
+        (6, '单据未评价不可审核'),
+        (7, '申诉内容给为空'),
     )
 
     PROCESSTAG = (
@@ -127,6 +131,13 @@ class SatisfactionWorkOrder(models.Model):
         (3, '处理中期'),
         (4, '处理后期'),
         (5, '处理结束'),
+    )
+
+
+    LEVEL_LIST = (
+        (1, '优质'),
+        (2, '合格'),
+        (3, '缺陷'),
     )
 
     ori_order = models.OneToOneField(OriSatisfactionWorkOrder, on_delete=models.CASCADE, verbose_name='原始工单', help_text='原始工单')
@@ -156,6 +167,27 @@ class SatisfactionWorkOrder(models.Model):
     handler = models.CharField(null=True, blank=True, max_length=30, verbose_name='领取人', help_text='领取人')
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='领取时间', help_text='领取时间')
     handle_interval = models.IntegerField(null=True, blank=True, verbose_name='领取间隔(分钟)', help_text='领取间隔(分钟)')
+
+    completer = models.CharField(null=True, blank=True, max_length=30, verbose_name='完成人', help_text='完成人')
+    completed_time = models.DateTimeField(null=True, blank=True, verbose_name='完成时间', help_text='完成时间')
+    completed_interval = models.IntegerField(null=True, blank=True, verbose_name='完成间隔(分钟)', help_text='完成间隔(分钟)')
+
+    is_solved = models.BooleanField(default=False, verbose_name='是否解决', help_text='是否解决')
+    is_beaten = models.BooleanField(default=False, verbose_name='是否超预期', help_text='是否超预期')
+    is_satisfied = models.BooleanField(default=False, verbose_name='是否满意', help_text='是否满意')
+
+    cs_level = models.SmallIntegerField(choices=LEVEL_LIST, null=True, blank=True, verbose_name='案例品级', help_text='案例品级')
+
+    checker = models.CharField(null=True, blank=True, max_length=30, verbose_name='审核人', help_text='审核人')
+    checked_time = models.DateTimeField(null=True, blank=True, verbose_name='审核时间', help_text='审核时间')
+    checked_interval = models.IntegerField(null=True, blank=True, verbose_name='审核间隔(分钟)', help_text='审核间隔(分钟)')
+
+    confirmer = models.CharField(null=True, blank=True, max_length=30, verbose_name='确认人', help_text='确认人')
+    confirmed_time = models.DateTimeField(null=True, blank=True, verbose_name='确认时间', help_text='确认时间')
+    confirmed_interval = models.IntegerField(null=True, blank=True, verbose_name='确认间隔(分钟)', help_text='确认间隔(分钟)')
+
+    appeal = models.CharField(null=True, blank=True, max_length=250, verbose_name='申诉理由', help_text='申诉理由')
+    judgment = models.CharField(null=True, blank=True, max_length=250, verbose_name='终审内容', help_text='终审内容')
 
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签', help_text='处理标签')

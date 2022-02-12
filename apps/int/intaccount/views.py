@@ -32,9 +32,9 @@ class CurrencyViewset(viewsets.ModelViewSet):
     filter_class = CurrencyFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_handler_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_handler_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -72,9 +72,9 @@ class IntAccountViewset(viewsets.ModelViewSet):
     filter_class = IntAccountFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_handler_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_handler_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:

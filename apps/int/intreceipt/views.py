@@ -52,9 +52,9 @@ class IntReceiptCreateViewset(viewsets.ModelViewSet):
     filter_class = IntReceiptFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_user_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_user_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -339,9 +339,9 @@ class IntReceiptSubmitViewset(viewsets.ModelViewSet):
     filter_class = IntReceiptFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['dealerparts.view_handler_dealerparts', 'intpurchase.view_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['dealerparts.view_handler_dealerparts', 'intpurchase.view_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -525,9 +525,9 @@ class IntReceiptCheckViewset(viewsets.ModelViewSet):
     filter_class = IntReceiptFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_user_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_user_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -760,9 +760,9 @@ class IntReceiptExecuteViewset(viewsets.ModelViewSet):
     filter_class = IntReceiptFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['dealerparts.view_handler_dealerparts', 'intpurchase.view_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['dealerparts.view_handler_dealerparts', 'intpurchase.view_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -950,9 +950,9 @@ class IntReceiptBalanceViewset(viewsets.ModelViewSet):
     filter_class = IntReceiptFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -1023,9 +1023,9 @@ class IntReceiptManageViewset(viewsets.ModelViewSet):
     filter_class = IntReceiptFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_intpurchaseorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_user_intpurchaseorder', 'intpurchase.view_intpurchaseorder']
+    # }
 
     def get_queryset(self):
         if not self.request:

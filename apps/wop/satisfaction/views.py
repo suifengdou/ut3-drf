@@ -1410,6 +1410,9 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                     n -= 1
                     obj.save()
                     continue
+
+
+
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.save()
@@ -1782,6 +1785,16 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
                     n -= 1
                     obj.save()
                     continue
+
+                obj.completer = request.user.username
+                obj.completed_time = datetime.datetime.now()
+                start_time = datetime.datetime.strptime(str(obj.handle_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                end_time = datetime.datetime.strptime(str(obj.completed_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                d_value = end_time - start_time
+                days_seconds = d_value.days * 3600
+                total_seconds = days_seconds + d_value.seconds
+                obj.completed_interval = math.floor(total_seconds / 60)
+
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
@@ -2141,6 +2154,16 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
                     n -= 1
                     obj.save()
                     continue
+
+                obj.completer = request.user.username
+                obj.completed_time = datetime.datetime.now()
+                start_time = datetime.datetime.strptime(str(obj.handle_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                end_time = datetime.datetime.strptime(str(obj.completed_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                d_value = end_time - start_time
+                days_seconds = d_value.days * 3600
+                total_seconds = days_seconds + d_value.seconds
+                obj.completed_interval = math.floor(total_seconds / 60)
+
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
@@ -2388,6 +2411,233 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
         data["false"] = len(check_list) - n
+        return Response(data)
+
+
+# 体验单审核处理界面
+class SWOCheckViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定体验单执行
+    list:
+        返回体验单执行
+    update:
+        更新体验单执行
+    destroy:
+        删除体验单执行
+    create:
+        创建体验单执行
+    partial_update:
+        更新部分体验单执行
+    """
+    serializer_class = SWOSerializer
+    filter_class = SWOFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['satisfaction.view_handler_satisfactionworkorder']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return SatisfactionWorkOrder.objects.none()
+        user = self.request.user
+        queryset = SatisfactionWorkOrder.objects.filter(order_status=3).order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 3
+        f = SWOFilter(params)
+        serializer = SWOSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        user = self.request.user
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 3
+        if all_select_tag:
+            handle_list = SWOFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = SatisfactionWorkOrder.objects.filter(id__in=order_ids, order_status=3)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.cs_level not in [1, 2, 3]:
+                    obj.mistake_tag = 7
+                    data["error"].append("%s 评价未完成" % obj.order_id)
+                    n -= 1
+                    continue
+
+                obj.checker = request.user.username
+                obj.checked_time = datetime.datetime.now()
+                start_time = datetime.datetime.strptime(str(obj.completed_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                end_time = datetime.datetime.strptime(str(obj.checked_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                d_value = end_time - start_time
+                days_seconds = d_value.days * 3600
+                total_seconds = days_seconds + d_value.seconds
+                obj.checked_interval = math.floor(total_seconds / 60)
+
+                obj.order_status = 4
+                obj.mistake_tag = 0
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                obj.order_status = 2
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+
+# 体验单确认处理界面
+class SWOConfirmViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定体验单执行
+    list:
+        返回体验单执行
+    update:
+        更新体验单执行
+    destroy:
+        删除体验单执行
+    create:
+        创建体验单执行
+    partial_update:
+        更新部分体验单执行
+    """
+    serializer_class = SWOSerializer
+    filter_class = SWOFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['satisfaction.view_handler_satisfactionworkorder']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return SatisfactionWorkOrder.objects.none()
+        user = self.request.user
+        queryset = SatisfactionWorkOrder.objects.filter(order_status=4, handler=user.username).order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 4
+        params["handler"] = user.username
+        f = SWOFilter(params)
+        serializer = SWOSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        user = self.request.user
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 4
+        params["handler"] = user.username
+        if all_select_tag:
+            handle_list = SWOFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = SatisfactionWorkOrder.objects.filter(id__in=order_ids, order_status=4)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+
+                obj.confirmer = request.user.username
+                obj.confirmed_time = datetime.datetime.now()
+                start_time = datetime.datetime.strptime(str(obj.checked_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                end_time = datetime.datetime.strptime(str(obj.confirmed_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                d_value = end_time - start_time
+                days_seconds = d_value.days * 3600
+                total_seconds = days_seconds + d_value.seconds
+                obj.confirmed_interval = math.floor(total_seconds / 60)
+
+                obj.order_status = 5
+                obj.mistake_tag = 0
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                if not obj.appeal:
+                    obj.mistake_tag = 7
+                    data["error"].append("%s 申诉内容给为空" % obj.order_id)
+                    n -= 1
+                    continue
+                obj.order_status = 4
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
         return Response(data)
 
 

@@ -48,9 +48,9 @@ class IntStatementRelatedViewset(viewsets.ModelViewSet):
     filter_class = IntStatementFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_intpurchaseorder',]
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_intpurchaseorder',]
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -153,9 +153,9 @@ class IntStatementManageViewset(viewsets.ModelViewSet):
     filter_class = IntStatementFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['intpurchase.view_intpurchaseorder',]
-    }
+    # extra_perm_map = {
+    #     "GET": ['intpurchase.view_intpurchaseorder',]
+    # }
 
     def get_queryset(self):
         if not self.request:
