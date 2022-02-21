@@ -351,6 +351,9 @@ class SWOSerializer(serializers.ModelSerializer):
             3: "体验单未完成不可审核",
             4: "体验单无体验指数",
             5: "创建客户体验指数错误",
+            6: "单据未评价不可审核",
+            7: "申诉内容为空",
+            8: "工单已终审无法驳回",
         }
         try:
             ret = {

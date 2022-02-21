@@ -61,6 +61,7 @@ class TOGoodsFilter(django_filters.FilterSet):
 
 class RefundOrderFilter(django_filters.FilterSet):
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+    handle_time = django_filters.DateTimeFromToRangeFilter()
     create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:

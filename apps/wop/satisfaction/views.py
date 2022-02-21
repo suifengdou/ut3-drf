@@ -2506,25 +2506,6 @@ class SWOCheckViewset(viewsets.ModelViewSet):
         data["false"] = len(check_list) - n
         return Response(data)
 
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for obj in reject_list:
-                obj.order_status = 2
-                obj.save()
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
 
 # 体验单确认处理界面
 class SWOConfirmViewset(viewsets.ModelViewSet):
@@ -2630,14 +2611,20 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
             for obj in reject_list:
                 if not obj.appeal:
                     obj.mistake_tag = 7
-                    data["error"].append("%s 申诉内容给为空" % obj.order_id)
+                    data["error"].append("%s 申诉内容为空" % obj.order_id)
                     n -= 1
                     continue
-                obj.order_status = 4
+                if obj.judgment:
+                    obj.mistake_tag = 8
+                    data["error"].append("%s 工单已终审无法驳回" % obj.order_id)
+                    n -= 1
+                    continue
+                obj.order_status = 3
                 obj.save()
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
+        data["false"] = len(reject_list) - n
         return Response(data)
 
 
