@@ -105,7 +105,8 @@ class ExpressWorkOrder(models.Model):
 
     @classmethod
     def verify_mandatory(cls, columns_key):
-        VERIFY_FIELD = ["track_id", "category", "company", "information", "memo"]
+        VERIFY_FIELD = ["title", "demand", "information", "nickname", "mobile", "purchase_time", "goods_name",
+                        "quantity", "m_sn", "receiver", "address", "memo"]
         for i in VERIFY_FIELD:
             if i not in columns_key:
                 return 'verify_field error, must have mandatory field: "{}""'.format(i)

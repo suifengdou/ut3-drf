@@ -141,7 +141,6 @@ class StatementsViewset(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-
 class PrestoreSubmitViewset(viewsets.ModelViewSet):
     """
     retrieve:

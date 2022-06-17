@@ -37,7 +37,7 @@ class Address(models.Model):
     province = models.ForeignKey(Province, on_delete=models.CASCADE, verbose_name='省份', help_text='省份')
     city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='城市', help_text='城市')
     district = models.ForeignKey(District, on_delete=models.CASCADE, verbose_name='区县', help_text='区县')
-
+    is_default = models.BooleanField(default=True, verbose_name='是否默认', help_text='是否默认')
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -167,7 +167,7 @@ class Interaction(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-C-客户信息-钱'
+        verbose_name = 'CRM-C-客户信息-互动'
         verbose_name_plural = verbose_name
         db_table = 'crm_customer_interaction'
 
@@ -189,7 +189,9 @@ class PurchasedGoods(models.Model):
     source = models.SmallIntegerField(choices=S_SOURCE, default=1, verbose_name='来源', help_text='来源')
     category = models.SmallIntegerField(choices=CATEGORY_LIST, default=1, verbose_name='类别', help_text='类别')
     goods = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品', help_text='货品')
-    quantity = models.IntegerField(default=0, verbose_name='数量', help_text='数量')
+    purchased_time = models.DateTimeField(null=True, blank=True, verbose_name='购买时间', help_text='购买时间')
+    warranty_time = models.DateTimeField(null=True, blank=True, verbose_name='保修时间', help_text='保修时间')
+    m_sn = models.CharField(null=True, blank=True, max_length=250, verbose_name='SN', help_text='SN')
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -198,12 +200,12 @@ class PurchasedGoods(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-C-客户信息-钱'
+        verbose_name = 'CRM-C-客户信息-货'
         verbose_name_plural = verbose_name
         db_table = 'crm_customer_purchasedgoods'
 
     def __str__(self):
-        return str(self.goods)
+        return str(self.goods.name)
 
 
 

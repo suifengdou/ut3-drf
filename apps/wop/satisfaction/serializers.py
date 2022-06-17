@@ -288,7 +288,9 @@ class SWOSerializer(serializers.ModelSerializer):
             0: "已被取消",
             1: "等待递交",
             2: "等待处理",
-            3: "事务完结",
+            3: "等待审核",
+            4: "等待确认",
+            5: "事务完结",
         }
         try:
             ret = {
@@ -467,8 +469,6 @@ class SWOSerializer(serializers.ModelSerializer):
                     else:
                         validated_data["cs_level"] = 3
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        print(instance)
-
         return instance
 
     def partial_update(self, request, *args, **kwargs):

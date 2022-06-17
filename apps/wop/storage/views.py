@@ -362,17 +362,17 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         if n:
             for obj in reject_list:
                 if not obj.rejection:
-                    if not obj.suggestion:
-                        data["error"].append("%s 无驳回原因, 不可驳回" % obj.keyword)
-                        n -= 1
-                        obj.mistake_tag = 2
-                        obj.save()
-                        continue
+                    data["error"].append("%s 无驳回原因, 不可驳回" % obj.keyword)
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                else:
                     obj.order_status = 1
                     obj.save()
+                    data["successful"] += 1
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
+        data["false"] = n - data["successful"]
         return Response(data)
 
 

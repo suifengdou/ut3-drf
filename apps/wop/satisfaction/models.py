@@ -38,7 +38,7 @@ class OriSatisfactionWorkOrder(models.Model):
     purchase_time = models.DateTimeField(verbose_name='购买时间', help_text='购买时间')
     purchase_interval = models.IntegerField(null=True, blank=True, verbose_name='购买时长', help_text='购买时长')
     goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称', help_text='货品名称')
-    quantity = models.IntegerField(null=True, blank=True, verbose_name='货品数量', help_text='货品数量')
+    quantity = models.IntegerField(default=1, verbose_name='货品数量', help_text='货品数量')
     m_sn = models.CharField(null=True, blank=True, max_length=60, verbose_name='机器SN', help_text='机器SN')
 
     receiver = models.CharField(max_length=150, verbose_name='客户姓名', help_text='客户姓名')
@@ -67,6 +67,16 @@ class OriSatisfactionWorkOrder(models.Model):
 
     def __str__(self):
         return str(self.id)
+
+    @classmethod
+    def verify_mandatory(cls, columns_key):
+        VERIFY_FIELD = ["title", "demand", "information", "nickname", "mobile", "purchase_time", "goods_name",
+                        "quantity", "m_sn", "receiver", "address", "memo"]
+        for i in VERIFY_FIELD:
+            if i not in columns_key:
+                return 'verify_field error, must have mandatory field: "{}""'.format(i)
+        else:
+            return None
 
 
 class OSWOFiles(models.Model):
@@ -101,8 +111,8 @@ class SatisfactionWorkOrder(models.Model):
         (1, '等待领取'),
         (2, '等待处理'),
         (3, '等待审核'),
-        (3, '等待确认'),
-        (3, '事务完结'),
+        (4, '等待确认'),
+        (5, '事务完结'),
     )
 
     MISTAKE_LIST = (

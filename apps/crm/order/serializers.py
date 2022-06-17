@@ -1,7 +1,7 @@
 import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import OriOrderInfo, OrderInfo, BMSOrderInfo
+from .models import OriOrderInfo, OrderInfo, BMSOrderInfo, TBOrder
 
 
 class OriOrderInfoSerializer(serializers.ModelSerializer):
@@ -319,6 +319,85 @@ class BMSOrderInfoSerializer(serializers.ModelSerializer):
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
+
+class TBOrderSerializer(serializers.ModelSerializer):
+
+    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = TBOrder
+        fields = "__all__"
+
+    def get_process_tag(self, instance):
+        process_tag = {
+            0: '未处理',
+            1: '已处理',
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process_tag.get(instance.process_tag, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "返回单号为空",
+            2: "处理意见为空",
+            3: "经销商反馈为空",
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_order_status(self, instance):
+        order_status = {
+            0: "已取消",
+            1: "未处理",
+            2: "已完成",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def to_representation(self, instance):
+        ret = super(TBOrderSerializer, self).to_representation(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        return ret
+
+    def create(self, validated_data):
+        validated_data["creator"] = self.context["request"].user.username
+        return self.Meta.model.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 
 
 

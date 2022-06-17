@@ -40,8 +40,10 @@ class SWOFilter(django_filters.FilterSet):
     goods_name__name = django_filters.CharFilter(lookup_expr='icontains')
     create_time = django_filters.DateTimeFromToRangeFilter()
     update_time = django_filters.DateTimeFromToRangeFilter()
+    completed_time = django_filters.DateTimeFromToRangeFilter()
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
-    process_tag__in = NumberInFilter(field_name="order_status", lookup_expr="in")
+    stage__in = NumberInFilter(field_name="stage", lookup_expr="in")
+    cs_level__in = NumberInFilter(field_name="cs_level", lookup_expr="in")
 
 
     class Meta:

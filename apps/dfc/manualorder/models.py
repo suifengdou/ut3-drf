@@ -54,7 +54,7 @@ class ManualOrder(models.Model):
     nickname = models.CharField(max_length=50, verbose_name='网名')
     receiver = models.CharField(max_length=50, verbose_name='收件人')
     address = models.CharField(max_length=250, verbose_name='地址')
-    mobile = models.CharField(max_length=50, verbose_name='手机')
+    mobile = models.CharField(max_length=50, db_index=True, verbose_name='手机')
 
     province = models.ForeignKey(Province, on_delete=models.CASCADE, null=True, blank=True, verbose_name='省')
     city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, verbose_name='市')

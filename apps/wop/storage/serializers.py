@@ -85,7 +85,9 @@ class StorageWorkOrderSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "关键字重复",
+            1: "无处理意见, 不可审核",
+            2: "无驳回原因, 不可驳回",
+            3: "无执行内容，不可审核",
 
         }
         try:

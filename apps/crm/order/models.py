@@ -69,7 +69,7 @@ class OriOrderInfo(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-原始订单'
+        verbose_name = 'CRM-订单-原始订单'
         verbose_name_plural = verbose_name
         db_table = 'crm_order_ori'
 
@@ -150,7 +150,7 @@ class OrderInfo(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-UT订单-查询'
+        verbose_name = 'CRM-订单-UT订单'
         verbose_name_plural = verbose_name
         db_table = 'crm_order'
         permissions = (
@@ -170,10 +170,10 @@ class OrderInfo(models.Model):
         else:
             return None
 
+    @property
     def cs_info(self):
         cs_info = str(self.receiver_name) + "+" + str(self.receiver_area) + "+" + str(self.receiver_address) + "+" + str(self.receiver_mobile)
         return cs_info
-    cs_info.short_description = '客户信息'
 
 
 class BMSOrderInfo(models.Model):
@@ -257,4 +257,85 @@ class BMSOrderInfo(models.Model):
             return None
 
 
+class TBOrder(models.Model):
+    ORDERSTATUS = (
+        (0, '已取消'),
+        (1, '未处理'),
+        (2, '未标记'),
+        (3, '未财审'),
+        (4, '已完成'),
+    )
+    MISTAKE_LIST = (
+        (0, '正常'),
+        (1, '已导入过的订单'),
+        (2, 'UT中无此店铺'),
+        (3, 'UT中店铺关联平台'),
+        (4, '保存出错'),
+
+    )
+    PROCESS_TAG = (
+        (0, '未处理'),
+        (1, '已处理'),
+        (2, '退款'),
+    )
+    trade_no = models.CharField(max_length=60, db_index=True, verbose_name='订单编号', help_text='订单编号')
+    buyer_nick = models.CharField(max_length=150, db_index=True, verbose_name='买家会员名', help_text='买家会员名')
+    paid_id = models.CharField(max_length=60, db_index=True, verbose_name='支付单号', help_text='支付单号')
+
+    payable_amount = models.FloatField(default=0, verbose_name='买家应付货款', help_text='买家应付货款')
+    share_amount = models.FloatField(default=0, verbose_name='总金额', help_text='总金额')
+    paid_amount = models.FloatField(default=0, verbose_name='总金额', help_text='总金额')
+    ori_order_status = models.SmallIntegerField(choices=ORDERSTATUS, default=1, db_index=True, verbose_name='订单状态',
+                                            help_text='订单状态')
+    buyer_message = models.TextField(null=True, blank=True, verbose_name='买家留言', help_text='买家留言')
+
+    receiver_name = models.CharField(max_length=150, verbose_name='收货人姓名', help_text='收货人姓名')
+    receiver_address = models.CharField(max_length=254, verbose_name='收货地址', help_text='收货地址')
+    receiver_mobile = models.CharField(null=True, blank=True, max_length=40, db_index=True, verbose_name='联系手机', help_text='联系手机')
+
+    order_time = models.DateTimeField(verbose_name='订单创建时间', help_text='订单创建时间')
+    pay_time = models.DateTimeField(null=True, blank=True, verbose_name='订单付款时间 ', help_text='订单付款时间 ')
+    goods_name = models.CharField(null=True, blank=True, max_length=255, verbose_name='宝贝标题 ', help_text='宝贝标题 ')
+    logistics_no = models.CharField(null=True, blank=True, max_length=150, verbose_name='物流单号', help_text='物流单号')
+    logistics_name = models.CharField(null=True, blank=True, max_length=60, verbose_name='物流公司', help_text='物流公司')
+
+    remark = models.TextField(null=True, blank=True, max_length=800, verbose_name='订单备注', help_text='订单备注')
+
+    shop_name = models.CharField(max_length=128, verbose_name='店铺', help_text='店铺')
+    is_mobile = models.BooleanField(default=True, verbose_name='是否手机订单', help_text='是否手机订单')
+    updated_address = models.CharField(max_length=254, verbose_name='修改后的收货地址', help_text='修改后的收货地址')
+    confirm_time = models.DateTimeField(null=True, blank=True, verbose_name='确认收货时间', db_index=True, help_text='确认收货时间')
+    collected_amount = models.FloatField(default=0, verbose_name='打款商家金额', help_text='打款商家金额')
+    deliver_time = models.DateTimeField(null=True, blank=True, verbose_name='发货时间', db_index=True, help_text='发货时间')
+    cs_remark = models.TextField(null=True, blank=True, max_length=800, verbose_name='商家备忘', help_text='商家备忘')
+
+    order_status = models.SmallIntegerField(choices=ORDERSTATUS, default=1, db_index=True, verbose_name='单据状态', help_text='单据状态')
+    process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签', help_text='处理标签')
+    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表', help_text='错误列表')
+
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+
+    class Meta:
+        verbose_name = 'CRM-订单-淘宝订单'
+        verbose_name_plural = verbose_name
+        db_table = 'crm_order_taobao'
+
+    def __str__(self):
+        return str(self.id)
+
+    @classmethod
+    def verify_mandatory(cls, columns_key):
+        VERIFY_FIELD = ["trade_no", "buyer_nick", "paid_id", "payable_amount", "share_amount",
+                        "paid_amount", "ori_order_status", "buyer_message", "receiver_name",
+                        "receiver_address", "receiver_mobile", "order_time", "pay_time", "goods_name",
+                        "logistics_no", "logistics_name", "remark", "shop_name", "is_mobile",
+                        "updated_address", "confirm_time", "collected_amount", "delivery_time", "cs_remark"]
+        for i in VERIFY_FIELD:
+            if i not in columns_key:
+                return 'verify_field error, must have mandatory field: "{}""'.format(i)
+        else:
+            return None
 

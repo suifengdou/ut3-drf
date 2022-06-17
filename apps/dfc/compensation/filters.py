@@ -34,9 +34,11 @@ class BatchCompensationFilter(django_filters.FilterSet):
 
 class BCDetailFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
+    handle_time = django_filters.DateTimeFromToRangeFilter()
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
     batch_order__order_id = django_filters.CharFilter(lookup_expr='iexact')
     batch_order__oa_order_id = django_filters.CharFilter(lookup_expr='iexact')
+    batch_order__order_category = django_filters.CharFilter(lookup_expr='iexact')
     batch_order__shop__name = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:

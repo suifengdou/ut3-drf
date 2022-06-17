@@ -22,6 +22,7 @@ from apps.crm.customers.models import Customer, Satisfaction, Money, Interaction
 from apps.crm.vipwechat.models import VIPWechat
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.base.shop.models import Shop
+from apps.base.goods.models import Goods
 from apps.utils.oss.aliyunoss import AliyunOSS
 from apps.utils.geography.tools import PickOutAdress
 from ut3.settings import EXPORT_TOPLIMIT
@@ -406,13 +407,21 @@ class OSWOCreateViewset(viewsets.ModelViewSet):
         if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
             df = pd.read_excel(_file, sheet_name=0, dtype=str)
             columns_key_ori = df.columns.values.tolist()
-            filter_fields = ["快递单号", "工单事项类型", "快递公司", "初始问题信息", "备注"]
+            filter_fields = ["原始工单标题", "用户ID", "接洽电话", "购买时间", "货品编码", "货品数量", "机器SN", "客户姓名",
+                             "客户地址", "诉求", "问题描述", "备注"]
             INIT_FIELDS_DIC = {
-                "快递单号": "track_id",
-                "工单事项类型": "category",
-                "快递公司": "company",
-                "初始问题信息": "information",
-                "备注": "memo"
+                "原始工单标题": "title",
+                "诉求": "demand",
+                "问题描述": "information",
+                "用户ID": "nickname",
+                "接洽电话": "mobile",
+                "客户姓名": "receiver",
+                "客户地址": "address",
+                "购买时间": "purchase_time",
+                "货品编码": "goods_name",
+                "货品数量": "quantity",
+                "机器SN": "m_sn",
+                "备注": "memo",
             }
             result_keys = []
             for keywords in columns_key_ori:
@@ -471,48 +480,56 @@ class OSWOCreateViewset(viewsets.ModelViewSet):
         # 设置初始报告
         report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
         error = report_dic["error"].append
-        category_list = {
-            "截单退回": 1,
-            "无人收货": 2,
-            "客户拒签": 3,
-            "修改地址": 4,
-            "催件派送": 5,
-            "虚假签收": 6,
-            "丢件破损": 7,
-            "其他异常": 8
-        }
         user = request.user
-
+        today = datetime.datetime.now()
         for row in resource:
-
-            order_fields = ["track_id", "category", "company", "information", "memo"]
-            row["category"] = category_list.get(row["category"], None)
-            if not row["category"]:
-                error("%s 单据类型错误" % row["track_id"])
-                report_dic["false"] += 1
-                continue
-            _q_company = Company.objects.filter(name=row["company"])
-            if _q_company.exists():
-                row["company"] = _q_company[0]
+            _q_goods = Goods.objects.filter(goods_id=row["goods_name"])
+            if _q_goods.exists():
+                row["goods_name"] = _q_goods[0]
             else:
-                error("%s 快递错误" % row["track_id"])
+                error("%s的货品编码UT中未找到" % row["title"])
                 report_dic["false"] += 1
                 continue
-            order = OriSatisfactionWorkOrder()
-            order.is_forward = user.is_our
+            if not re.match('^[0-9]+$', row["mobile"]):
+                error("%s的电话格式错误" % row["title"])
+                report_dic["false"] += 1
+                continue
+            try:
+                row["purchase_time"] = datetime.datetime.strptime(row["purchase_time"], '%Y-%m-%d %H:%M:%S')
+            except Exception as e:
+                error("%s的购买时间格式错误" % row["title"])
+                report_dic["false"] += 1
+                continue
+            mandatory_error = 0
+            mandatory_fields = ["title", "demand", "information", "nickname", "purchase_time", "receiver", "address"]
+            for field in mandatory_fields:
+                value = row.get(field, None)
+                if not value:
+                    error("%s的%s必填字段错误" % (row["title"], field))
+                    mandatory_error = 1
+                    break
+            if mandatory_error:
+                report_dic["false"] += 1
+                continue
 
+            order = OriSatisfactionWorkOrder()
+            order_fields = ["title", "demand", "information", "nickname", "mobile", "purchase_time",
+                            "goods_name", "quantity", "m_sn", "receiver", "address", "memo"]
             for field in order_fields:
                 setattr(order, field, row[field])
-            order.track_id = re.sub("[!#$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(order.track_id).strip())
-
+            order.purchase_interval = (today - order.purchase_time).days
             try:
                 order.creator = user.username
                 order.save()
                 report_dic["successful"] += 1
+                profix_today = re.sub('[- :\.]', '', str(today))[:8]
+                number = int(order.id) + 10000000
+                profix = "SWO"
+                order.order_id = '%s%s%s' % (profix_today, profix, str(number)[-7:])
+                order.save()
             except Exception as e:
-                report_dic['error'].append("%s 保存出错" % row["track_id"])
+                report_dic['error'].append("%s 保存出错" % row["title"])
                 report_dic["false"] += 1
-
         return report_dic
 
     @action(methods=['patch'], detail=False)
@@ -2528,7 +2545,7 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['satisfaction.view_handler_satisfactionworkorder']
+        "GET": ['satisfaction.view_satisfactionworkorder']
     }
 
     def get_queryset(self):
@@ -4966,11 +4983,9 @@ class InvoiceManageViewset(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         user = self.request.user
-        request.data["creator"] = user.username
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 1
         f = InvoiceWorkOrderFilter(params)
         serializer = InvoiceWorkOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
