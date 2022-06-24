@@ -54,6 +54,7 @@ class OriTailOrder(models.Model):
         (16, '型号错误'),
         (17, '单据创建人不存在预存账户'),
         (18, '生成支出单错误'),
+        (19, '发货型号未授权或金额错误'),
     )
 
     LOGICAL_DECISION = (

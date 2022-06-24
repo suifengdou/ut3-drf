@@ -4,7 +4,6 @@ import django.utils.timezone as timezone
 from apps.base.goods.models import Goods
 from apps.base.warehouse.models import Warehouse
 from apps.base.shop.models import Shop
-from apps.crm.order.models import OrderInfo
 
 
 class Outbound(models.Model):
@@ -23,7 +22,6 @@ class Outbound(models.Model):
     )
 
     ob_order_id = models.CharField(max_length=30, verbose_name='出库编号')
-    ori_order_id = models.OneToOneField(OrderInfo, on_delete=models.CASCADE, verbose_name='原订单')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, verbose_name='仓库')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺')
     goods_id = models.CharField(max_length=30, verbose_name='商家编码')

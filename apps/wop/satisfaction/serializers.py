@@ -19,12 +19,31 @@ class OriSatisfactionWorkOrderSerializer(serializers.ModelSerializer):
         model = OriSatisfactionWorkOrder
         fields = "__all__"
 
-
     def get_goods_name(self, instance):
         try:
             ret = {
                 "id": instance.goods_name.id,
                 "name": instance.goods_name.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_category(self, instance):
+        CATEGORY_LIST = {
+            1: "超期退货",
+            2: "超期换货",
+            3: "过保维修",
+            4: "升级投诉",
+            5: "其他",
+        }
+        try:
+            ret = {
+                "id": instance.category,
+                "name": CATEGORY_LIST.get(instance.category, None)
             }
         except:
             ret = {
@@ -116,6 +135,7 @@ class OriSatisfactionWorkOrderSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(OriSatisfactionWorkOrderSerializer, self).to_representation(instance)
         ret["goods_name"] = self.get_goods_name(instance)
+        ret["category"] = self.get_category(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["order_status"] = self.get_order_status(instance)
         ret["file_details"] = self.get_file_details(instance)
@@ -125,16 +145,25 @@ class OriSatisfactionWorkOrderSerializer(serializers.ModelSerializer):
         return super(OriSatisfactionWorkOrderSerializer, self).to_internal_value(data)
 
     def create(self, validated_data):
+        if validated_data["category"] == 0:
+            raise serializers.ValidationError("未选类型，不可创建！")
+        CATEGORY_LIST = {
+            1: "超期退货",
+            2: "超期换货",
+            3: "过保维修",
+            4: "升级投诉",
+            5: "其他",
+        }
         user = self.context["request"].user
         validated_data["creator"] = user.username
         today = datetime.datetime.now()
         validated_data["purchase_interval"] = (today - validated_data["purchase_time"]).days
         instance = self.Meta.model.objects.create(**validated_data)
-
         today = re.sub('[- :\.]', '', str(today))[:8]
         number = int(instance.id) + 10000000
         profix = "SWO"
         instance.order_id = '%s%s%s' % (today, profix, str(number)[-7:])
+        instance.title = '%s-%s-%s' % (str(instance.nickname), str(CATEGORY_LIST.get(instance.category, None)), str(instance.demand))
         instance.save()
 
         return instance
@@ -186,6 +215,25 @@ class SWOSerializer(serializers.ModelSerializer):
         model = SatisfactionWorkOrder
         fields = "__all__"
 
+    def get_category(self, instance):
+        CATEGORY_LIST = {
+            1: "超期退货",
+            2: "超期换货",
+            3: "过保维修",
+            4: "升级投诉",
+            5: "其他",
+        }
+        try:
+            ret = {
+                "id": instance.category,
+                "name": CATEGORY_LIST.get(instance.category, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
 
     def get_customer(self, instance):
         try:
@@ -410,6 +458,7 @@ class SWOSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(SWOSerializer, self).to_representation(instance)
+        ret["category"] = self.get_category(instance)
         ret["customer"] = self.get_customer(instance)
         ret["specialist"] = self.get_specialist(instance)
         ret["goods_name"] = self.get_goods_name(instance)

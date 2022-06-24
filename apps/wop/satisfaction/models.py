@@ -30,9 +30,17 @@ class OriSatisfactionWorkOrder(models.Model):
         (6, '初始化体验单资料失败'),
         (7, '体验单已操作无法修复'),
     )
+    CATEGORY_LIST = (
+        (1, '超期退货'),
+        (2, '超期换货'),
+        (3, '过保维修'),
+        (4, '升级投诉'),
+        (5, '其他'),
+    )
 
     order_id = models.CharField(unique=True, null=True, blank=True, max_length=100, verbose_name='原始工单编号', help_text='原始工单编号')
-    title = models.CharField(max_length=120, verbose_name='原始工单标题', help_text='原始工单标题')
+    title = models.CharField(max_length=120, null=True, blank=True, verbose_name='原始工单标题', help_text='原始工单标题')
+    category = models.SmallIntegerField(choices=CATEGORY_LIST, default=0, verbose_name='工单类型', help_text='工单类型')
     nickname = models.CharField(max_length=120, verbose_name='用户ID', help_text='用户ID')
     mobile = models.CharField(max_length=60, db_index=True, verbose_name='接洽电话', help_text='接洽电话')
     purchase_time = models.DateTimeField(verbose_name='购买时间', help_text='购买时间')
@@ -49,7 +57,6 @@ class OriSatisfactionWorkOrder(models.Model):
 
     demand = models.CharField(max_length=150, verbose_name='诉求', help_text='诉求')
     information = models.TextField(verbose_name='问题描述', help_text='问题描述')
-
 
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')
 
@@ -150,10 +157,18 @@ class SatisfactionWorkOrder(models.Model):
         (2, '合格'),
         (3, '缺陷'),
     )
+    CATEGORY_LIST = (
+        (1, '超期退货'),
+        (2, '超期换货'),
+        (3, '过保维修'),
+        (4, '升级投诉'),
+        (5, '其他'),
+    )
 
     ori_order = models.OneToOneField(OriSatisfactionWorkOrder, on_delete=models.CASCADE, verbose_name='原始工单', help_text='原始工单')
     order_id = models.CharField(unique=True, max_length=100, verbose_name='工单编号', help_text='工单编号')
     title = models.CharField(max_length=120, verbose_name='工单标题', help_text='工单标题')
+    category = models.SmallIntegerField(choices=CATEGORY_LIST, default=0, verbose_name='工单类型', help_text='工单类型')
     nickname = models.CharField(max_length=120, verbose_name='用户ID', help_text='用户ID')
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='用户', help_text='用户')
     purchase_time = models.DateTimeField(verbose_name='购买时间', help_text='购买时间')
@@ -250,10 +265,11 @@ class SWOProgress(models.Model):
 
     order = models.ForeignKey(SatisfactionWorkOrder, on_delete=models.CASCADE, verbose_name='工单', help_text='工单')
     process_id = models.CharField(unique=True, null=True, blank=True, max_length=100, verbose_name='进度编号', help_text='进度编号')
-    title = models.CharField(max_length=120, verbose_name='进度标题', help_text='进度标题')
+    title = models.CharField(max_length=120, null=True, blank=True, verbose_name='进度标题', help_text='进度标题')
     stage = models.SmallIntegerField(choices=STAGE_LIST, default=1, verbose_name='进度标签', help_text='进度标签')
+
     appointment = models.DateTimeField(null=True, blank=True, verbose_name='下次预约', help_text='下次预约')
-    action =  models.CharField(max_length=120, verbose_name='动作', help_text='动作')
+    action = models.CharField(max_length=120, null=True, blank=True, verbose_name='动作', help_text='动作')
     content = models.TextField(verbose_name='内容', help_text='内容')
 
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态', help_text='单据状态')

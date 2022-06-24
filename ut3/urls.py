@@ -37,6 +37,7 @@ from apps.wop.dealerparts.router import dealerparts_router
 from apps.wop.satisfaction.router import wosatisfaction_router
 from apps.sales.advancepayment.router import advance_router
 from apps.sales.tailgoods.router import tailgoods_router
+from apps.sales.productcatalog.router import product_catalog_router
 from apps.crm.order.router import order_router
 from apps.crm.customers.router import customer_router
 from apps.crm.dialog.router import dialgo_router
@@ -89,6 +90,7 @@ route.registry.extend(intaccount_router.registry)
 route.registry.extend(intreceipt_router.registry)
 route.registry.extend(intpurchase_router.registry)
 route.registry.extend(intstatement_router.registry)
+route.registry.extend(product_catalog_router.registry)
 
 
 urlpatterns = [

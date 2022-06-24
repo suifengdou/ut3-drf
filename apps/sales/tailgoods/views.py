@@ -21,6 +21,7 @@ from apps.auth.users.models import UserProfile
 from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from apps.sales.productcatalog.models import ProductCatalog
 
 
 class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
@@ -103,15 +104,15 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
         if not account.order_status:
             raise serializers.ValidationError("账户被冻结！")
         try:
-            company = check_list[0].shop.company
+            company = request.user.company
         except Exception as e:
-            raise serializers.ValidationError("店铺未关联公司！")
+            raise serializers.ValidationError("账号未关联公司！")
         if not company:
-            raise serializers.ValidationError("店铺未关联公司！")
-        ori_await_amount = OriTailOrder.objects.filter(order_status=2).aggregate(Sum("amount"))["amount__sum"]
+            raise serializers.ValidationError("账号未关联公司！")
+        ori_await_amount = OriTailOrder.objects.filter(sign_company=company, order_status=2).aggregate(Sum("amount"))["amount__sum"]
         if not ori_await_amount:
             ori_await_amount = 0
-        await_amount = TailOrder.objects.filter(order_status=1).aggregate(Sum("amount"))["amount__sum"]
+        await_amount = TailOrder.objects.filter(sign_company=company, order_status=1).aggregate(Sum("amount"))["amount__sum"]
         if not await_amount:
             await_amount = 0
         submit_amount = check_list.aggregate(Sum("amount"))["amount__sum"]
@@ -140,15 +141,7 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
                     obj.save()
                     n -= 1
                     continue
-                _q_repeated_order = OriTailOrder.objects.filter(sent_consignee=obj.sent_consignee,
-                                                                order_status__in=[2, 3, 4])
-                if _q_repeated_order.exists():
-                    if obj.process_tag != 10:
-                        data["error"].append("%s 重复提交的订单" % obj.order_id)
-                        obj.mistake_tag = 15
-                        obj.save()
-                        n -= 1
-                        continue
+
                 _q_repeated_order = OriTailOrder.objects.filter(sent_smartphone=obj.sent_smartphone,
                                                                 order_status__in=[2, 3, 4])
                 if _q_repeated_order.exists():
@@ -204,6 +197,30 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
                         obj.save()
                         n -= 1
                         continue
+                user = request.user
+                if user.department.id == 1:
+                    price_error = 0
+                    goods_details = obj.otogoods_set.all()
+                    for goods_detail in goods_details:
+                        ori_goods = goods_detail.goods_name
+                        ori_price = goods_detail.price
+                        q_standard_price = ProductCatalog.objects.filter(goods=ori_goods, company=user.company, order_status=1)
+                        if q_standard_price.exists():
+                            standard_price = q_standard_price[0].price
+                            if standard_price > ori_price:
+                                price_error = 1
+                                break
+                        else:
+                            price_error = 1
+                            break
+                    if price_error:
+                        data["error"].append("%s 发货型号未授权或金额错误" % obj.order_id)
+                        obj.mistake_tag = 19
+                        obj.save()
+                        n -= 1
+                        continue
+
+                    pass
                 obj.submit_time = datetime.datetime.now()
                 obj.order_status = 2
                 obj.mistake_tag = 0

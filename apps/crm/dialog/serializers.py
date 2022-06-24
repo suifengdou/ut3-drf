@@ -156,7 +156,8 @@ class DialogTBDetailSerializer(serializers.ModelSerializer):
             12: "差价类型只能填1或3",
             13: "差价验算公式错误",
             14: "差价验算结果和差价不等",
-            15: "保存差价申请单出错"
+            15: "保存差价申请单出错",
+            16: "被丢弃"
         }
         try:
             ret = {
@@ -323,7 +324,8 @@ class DialogJDDetailSerializer(serializers.ModelSerializer):
             8: "输出单保存出错",
             9: "货品错误",
             10: "明细中货品重复",
-            11: "输出单保存出错"
+            11: "输出单保存出错",
+            12: "被丢弃"
         }
         try:
             ret = {
@@ -425,7 +427,8 @@ class DialogOWSerializer(serializers.ModelSerializer):
             8: "输出单保存出错",
             9: "货品错误",
             10: "明细中货品重复、部件和描述",
-            11: "输出单保存出错"
+            11: "输出单保存出错",
+            12: "被丢弃"
         }
         try:
             ret = {

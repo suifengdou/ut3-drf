@@ -79,6 +79,9 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
             14: "导入货品编码错误",
             15: "重复订单",
             16: "型号错误",
+            17: "单据创建人不存在预存账户",
+            18: "生成支出单错误",
+            19: "发货型号未授权或金额错误",
         }
         try:
             ret = {
@@ -196,19 +199,19 @@ class OriTailOrderSerializer(serializers.ModelSerializer):
         return goods_detail
 
     def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
+        user = self.context["request"].user
+        validated_data["creator"] = user.username
         goods_details = validated_data.pop("goods_details", [])
         amount, quantity = self.check_goods_details(goods_details)
         validated_data["amount"] = amount
         validated_data["quantity"] = quantity
-        if self.context["request"].user.department:
-
-            validated_data["sign_department"] = self.context["request"].user.department
+        if user.department:
+            validated_data["sign_department"] = user.department
         else:
             raise serializers.ValidationError("登陆账号没有设置部门，不可以创建！")
-        if validated_data["shop"].company:
-            if validated_data["shop"].company.category == 4:
-                validated_data["sign_company"] = validated_data["shop"].company
+        if user.company:
+            if user.company.category == 4:
+                validated_data["sign_company"] = user.company
             else:
                 raise serializers.ValidationError("店铺设置公司，不是经销代理，不可以创建！")
         else:

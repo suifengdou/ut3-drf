@@ -955,7 +955,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=2)
+            reject_list.update(order_status=2, mistake_tag=16)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -1326,7 +1326,7 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=2)
+            reject_list.update(order_status=2, mistake_tag=16)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -2336,7 +2336,7 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            abandon_list.update(order_status=2)
+            abandon_list.update(order_status=2, mistake_tag=12)
         else:
             raise serializers.ValidationError("没有可丢弃的单据！")
         data["successful"] = n
@@ -2765,7 +2765,7 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=2)
+            reject_list.update(order_status=2, mistake_tag=12)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
