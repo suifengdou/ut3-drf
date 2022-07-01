@@ -6,11 +6,15 @@
 # @Software: PyCharm
 
 import django_filters
-from django_filters.filters import BaseInFilter, NumberFilter
-from .models import ExpressWorkOrder
+from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
+from .models import ExpressWorkOrder, EWOPhoto
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
+    pass
+
+
+class CharInFilter(BaseInFilter, CharFilter):
     pass
 
 
@@ -23,9 +27,19 @@ class ExpressWorkOrderFilter(django_filters.FilterSet):
     suggestion = django_filters.CharFilter(field_name="suggestion", lookup_expr='icontains')
     feedback = django_filters.CharFilter(field_name="feedback", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
+    track_id__in = CharInFilter(field_name="track_id", lookup_expr="in")
 
 
     class Meta:
         model = ExpressWorkOrder
         fields = "__all__"
+
+
+class EWOPhotoFilter(django_filters.FilterSet):
+    create_time = django_filters.DateTimeFromToRangeFilter()
+
+    class Meta:
+        model = EWOPhoto
+        fields = "__all__"
+
 

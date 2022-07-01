@@ -51,9 +51,7 @@ class ExpressWorkOrder(models.Model):
     )
     HANDLINGS = (
         (0, '未处理'),
-        (1, '在处理'),
-        (2, '待核实'),
-        (3, '已处理'),
+        (1, '已处理'),
     )
 
     track_id = models.CharField(unique=True, max_length=100, verbose_name='快递单号', help_text='快递单号')
@@ -76,6 +74,8 @@ class ExpressWorkOrder(models.Model):
     is_return = models.BooleanField(default=False, verbose_name='是否返回', help_text='是否返回')
     memo = models.TextField(null=True, blank=True, verbose_name='备注', help_text='备注')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='工单状态', help_text='工单状态')
+
+    check_time = models.DateTimeField(null=True, blank=True, verbose_name='审核时间', help_text='审核时间')
 
     is_forward = models.BooleanField(default=False, verbose_name='是否正向', help_text='是否正向')
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签', help_text='处理标签')
@@ -105,8 +105,7 @@ class ExpressWorkOrder(models.Model):
 
     @classmethod
     def verify_mandatory(cls, columns_key):
-        VERIFY_FIELD = ["title", "demand", "information", "nickname", "mobile", "purchase_time", "goods_name",
-                        "quantity", "m_sn", "receiver", "address", "memo"]
+        VERIFY_FIELD = ["track_id", "category", "company", "information", "memo"]
         for i in VERIFY_FIELD:
             if i not in columns_key:
                 return 'verify_field error, must have mandatory field: "{}""'.format(i)

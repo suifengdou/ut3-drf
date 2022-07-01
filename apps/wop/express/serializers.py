@@ -123,9 +123,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
     def get_handling_status(self, instance):
         handlings = {
             0: "未处理",
-            1: "在处理",
-            2: "待核实",
-            3: "已处理",
+            1: "已处理",
         }
         try:
             ret = {
@@ -140,7 +138,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         return ret
 
     def get_photo_details(self, instance):
-        photo_details = instance.ewophoto_set.all()
+        photo_details = instance.ewophoto_set.filter(is_delete=False)
         ret = []
         for photo_detail in photo_details:
             data = {
@@ -180,4 +178,32 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
+        return instance
+
+
+class EWOPhotoSerializer(serializers.ModelSerializer):
+
+    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = EWOPhoto
+        fields = "__all__"
+
+    def to_representation(self, instance):
+        ret = super(EWOPhotoSerializer, self).to_representation(instance)
+        return ret
+
+    def to_internal_value(self, data):
+        return super(EWOPhotoSerializer, self).to_internal_value(data)
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        validated_data["creator"] = user.username
+        return self.Meta.model.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data["update_time"] = datetime.datetime.now()
+        create_time = validated_data.pop("create_time", "")
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance

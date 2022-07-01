@@ -10,8 +10,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
 from .models import ExpressWorkOrder, EWOPhoto
-from .serializers import ExpressWorkOrderSerializer
-from .filters import ExpressWorkOrderFilter
+from .serializers import ExpressWorkOrderSerializer, EWOPhotoSerializer
+from .filters import ExpressWorkOrderFilter, EWOPhotoFilter
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.base.company.models import Company
 import oss2
@@ -286,6 +286,36 @@ class EWOCreateViewset(viewsets.ModelViewSet):
             }
         return Response(data)
 
+    @action(methods=['patch'], detail=False)
+    def photo_import(self, request, *args, **kwargs):
+        files = request.FILES.getlist("files", None)
+        id = request.data.get('id', None)
+        if id:
+            work_order = ExpressWorkOrder.objects.filter(id=id)[0]
+        else:
+            data = {
+                "error": "系统错误联系管理员，无法回传单据ID！"
+            }
+            return Response(data)
+        if files:
+            prefix = "ut3s1/workorder/express"
+            a_oss = AliyunOSS(prefix, files)
+            file_urls = a_oss.upload()
+            for obj in file_urls["urls"]:
+                photo_order = EWOPhoto()
+                photo_order.url = obj["url"]
+                photo_order.workorder = work_order
+                photo_order.creator = request.user.username
+                photo_order.save()
+            data = {
+                "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
+                "error": file_urls["error"]
+            }
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+        return Response(data)
 
 
 class EWOHandleViewset(viewsets.ModelViewSet):
@@ -500,7 +530,6 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-
 class EWOExecuteViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -678,7 +707,6 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-
 class EWOCheckViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -706,6 +734,17 @@ class EWOCheckViewset(viewsets.ModelViewSet):
         if not self.request:
             return ExpressWorkOrder.objects.none()
         queryset = ExpressWorkOrder.objects.filter(order_status=4).order_by("id")
+        for order in queryset:
+            if not order.check_time:
+                order.handling_status = 0
+                order.save()
+                continue
+            else:
+                today_date = datetime.datetime.now().date()
+                check_date = order.check_time.date()
+                if check_date <= today_date:
+                    order.handling_status = 0
+                    order.save()
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -717,6 +756,37 @@ class EWOCheckViewset(viewsets.ModelViewSet):
         f = ExpressWorkOrderFilter(params)
         serializer = ExpressWorkOrderSerializer(f.qs, many=True)
         return Response(serializer.data)
+
+    @action(methods=['patch'], detail=False)
+    def set_appointment(self, request, *args, **kwargs):
+        days = request.data.get("days", None)
+        id = request.data.get("id", None)
+        today = datetime.datetime.now()
+        data = {"successful": 0}
+        if all([days, id]):
+            order = ExpressWorkOrder.objects.filter(id=id)[0]
+            if days == 1:
+                order.check_time = today + datetime.timedelta(days=1)
+            else:
+                order.check_time = today + datetime.timedelta(days=3)
+            order.handling_status = 1
+            order.save()
+            data["successful"] = 1
+
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_recover(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        today = datetime.datetime.now()
+        data = {"successful": 0}
+        if id:
+            order = ExpressWorkOrder.objects.filter(id=id)[0]
+            order.check_time = today
+            order.handling_status = 0
+            order.save()
+            data["successful"] = 1
+        return Response(data)
 
     def get_handle_list(self, params):
         params.pop("page", None)
@@ -866,7 +936,6 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
         return Response(data)
 
 
-
 class EWOManageViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -911,3 +980,52 @@ class EWOManageViewset(viewsets.ModelViewSet):
         f = ExpressWorkOrderFilter(params)
         serializer = ExpressWorkOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
+
+
+class EWOPhotoViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = EWOPhotoSerializer
+    filter_class = EWOPhotoFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['express.view_expressworkorder']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return EWOPhoto.objects.none()
+        user = self.request.user
+        if user.is_our:
+            queryset = EWOPhoto.objects.all().order_by("id")
+        else:
+            queryset = EWOPhoto.objects.filter(creator=user.username).order_by("id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def delete_photo(self, request):
+        id = request.data.get("id", None)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if id:
+            pass
+
+        return Response(data)
+
+
