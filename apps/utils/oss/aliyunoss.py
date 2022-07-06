@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import random
 import oss2
 from oss2.models import BucketCors, CorsRule
 import datetime
@@ -42,12 +43,13 @@ class AliyunOSS(object):
         }
         return result_urls
 
-
     def create_object_name(self, file):
         c_time = datetime.datetime.now()
         file_name, *middle, suffix = str(file.name).split(".")
         serial_number = re.sub("[- .:]", "", str(c_time))
-        file_name = str(hashlib.md5(file_name.encode(encoding='UTF-8')).hexdigest())
+        random_number = str(random.randint(100000, 999999))
+        file_name = str(hashlib.md5(random_number.encode(encoding='UTF-8')).hexdigest())
         file_name = '%s%s' % (file_name, serial_number[:10])
         object_name = '%s/%s/%s/%s/%s.%s' % (self.prefix, c_time.year, c_time.month, c_time.day, file_name, suffix)
         return object_name
+

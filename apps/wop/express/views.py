@@ -286,37 +286,6 @@ class EWOCreateViewset(viewsets.ModelViewSet):
             }
         return Response(data)
 
-    @action(methods=['patch'], detail=False)
-    def photo_import(self, request, *args, **kwargs):
-        files = request.FILES.getlist("files", None)
-        id = request.data.get('id', None)
-        if id:
-            work_order = ExpressWorkOrder.objects.filter(id=id)[0]
-        else:
-            data = {
-                "error": "系统错误联系管理员，无法回传单据ID！"
-            }
-            return Response(data)
-        if files:
-            prefix = "ut3s1/workorder/express"
-            a_oss = AliyunOSS(prefix, files)
-            file_urls = a_oss.upload()
-            for obj in file_urls["urls"]:
-                photo_order = EWOPhoto()
-                photo_order.url = obj["url"]
-                photo_order.workorder = work_order
-                photo_order.creator = request.user.username
-                photo_order.save()
-            data = {
-                "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
-                "error": file_urls["error"]
-            }
-        else:
-            data = {
-                "error": "上传文件未找到！"
-            }
-        return Response(data)
-
 
 class EWOHandleViewset(viewsets.ModelViewSet):
     """
@@ -1001,9 +970,6 @@ class EWOPhotoViewset(viewsets.ModelViewSet):
     filter_class = EWOPhotoFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
-    }
 
     def get_queryset(self):
         if not self.request:
@@ -1023,9 +989,20 @@ class EWOPhotoViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        user = request.user.username
         if id:
-            pass
-
+            photo_order = EWOPhoto.objects.filter(id=id, creator=user, is_delete=False)
+            if photo_order.exists():
+                photo_order = photo_order[0]
+                photo_order.is_delete = 1
+                photo_order.save()
+                data["successful"] += 1
+            else:
+                data["false"] += 1
+                data["error"].append("只有创建者才有删除权限")
+        else:
+            data["false"] += 1
+            data["error"].append("没有找到删除对象")
         return Response(data)
 
 

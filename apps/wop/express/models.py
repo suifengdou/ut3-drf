@@ -101,7 +101,7 @@ class ExpressWorkOrder(models.Model):
         )
 
     def __str__(self):
-        return self.id
+        return str(self.id)
 
     @classmethod
     def verify_mandatory(cls, columns_key):
@@ -128,4 +128,5 @@ class EWOPhoto(models.Model):
         db_table = 'wop_express_photo'
 
     def __str__(self):
-        return self.id
+        return str(self.id)
+

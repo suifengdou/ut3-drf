@@ -2409,9 +2409,9 @@ class SWOManageViewset(viewsets.ModelViewSet):
     filter_class = SWOFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['satisfaction.view_satisfactionworkorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['satisfaction.view_satisfactionworkorder', 'satisfaction.view_user_serviceworkorder', 'satisfaction.view_user_satisfactionworkorder']
+    # }
 
     def get_queryset(self):
         if not self.request:
@@ -3415,9 +3415,9 @@ class ServiceManageViewset(viewsets.ModelViewSet):
     filter_class = ServiceWorkOrderFilter
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['satisfaction.view_serviceworkorder']
-    }
+    # extra_perm_map = {
+    #     "GET": ['satisfaction.view_serviceworkorder', 'satisfaction.view_user_serviceworkorder',]
+    # }
 
     def get_queryset(self):
         if not self.request:
