@@ -354,6 +354,78 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         return handle_list
 
     @action(methods=['patch'], detail=False)
+    def set_return(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        current_time = datetime.datetime.now()
+        user = request.user.username
+        if n:
+            check_list.update(is_return=True)
+        else:
+            raise serializers.ValidationError("没有可处理的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_return_trackid(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                obj.return_express_id = obj.track_id
+                try:
+                    obj.save()
+                    data["successful"] += 1
+                except Exception as e:
+                    data["error"].append(e)
+        else:
+            raise serializers.ValidationError("没有可处理的单据！")
+        data["false"] = len(check_list) - data["successful"]
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_suggestion(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        current_time = datetime.datetime.now()
+        user = request.user.username
+        suggestion_content = "已知悉，已处理完毕。{%s-%s}" % (str(user), str(current_time)[:19])
+        if n:
+            for obj in check_list:
+                if obj.suggestion:
+                    obj.suggestion = '%s~%s' % (obj.suggestion, suggestion_content)
+                else:
+                    obj.suggestion = suggestion_content
+                try:
+                    obj.save()
+                    data["successful"] += 1
+                except Exception as e:
+                    data["error"].append(e)
+        else:
+            raise serializers.ValidationError("没有可处理的单据！")
+        data["false"] = len(check_list) - data["successful"]
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def set_lossing(self, request, *args, **kwargs):
         params = request.data
         check_list = self.get_handle_list(params)
@@ -642,6 +714,76 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         data["false"] = len(reject_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_feedback(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        current_time = datetime.datetime.now()
+        user = request.user.username
+        feedback_content = "收到处理意见，按流程执行完成。{%s-%s}" % (str(user), str(current_time)[:19])
+        if n:
+            for obj in check_list:
+                if obj.feedback:
+                    obj.feedback = '%s~%s' % (obj.feedback, feedback_content)
+                else:
+                    obj.feedback = feedback_content
+                try:
+                    obj.save()
+                    data["successful"] += 1
+                except Exception as e:
+                    data["error"].append(e)
+        else:
+            raise serializers.ValidationError("没有可处理的单据！")
+        data["false"] = len(check_list) - data["successful"]
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_return(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(is_return=True)
+        else:
+            raise serializers.ValidationError("没有可处理的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_return_trackid(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                obj.return_express_id = obj.track_id
+                try:
+                    obj.save()
+                    data["successful"] += 1
+                except Exception as e:
+                    data["error"].append(e)
+        else:
+            raise serializers.ValidationError("没有可处理的单据！")
+        data["false"] = len(check_list) - data["successful"]
         return Response(data)
 
     @action(methods=['patch'], detail=False)

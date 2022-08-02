@@ -175,8 +175,6 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
             '发票备注': 'remark',
             '收件人姓名': 'sent_consignee',
             '收件人手机': 'sent_smartphone',
-            '收件城市': 'sent_city',
-            '收件区县': 'sent_district',
             '收件地址': 'sent_address',
             '是否发顺丰': 'is_deliver',
             '工单留言': 'message',
@@ -193,7 +191,7 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
             with pd.ExcelFile(_file) as xls:
                 df = pd.read_excel(xls, sheet_name=0, converters={u'货品编码': str})
                 FILTER_FIELDS = ['店铺', '收款开票公司', '源单号', '发票类型', '发票抬头', '纳税人识别号', '联系电话', '银行名称',
-                                 '银行账号', '地址', '发票备注', '收件人姓名', '收件人手机', '收件城市', '收件区县', '收件地址',
+                                 '银行账号', '地址', '发票备注', '收件人姓名', '收件人手机', '收件地址',
                                  '是否发顺丰', '工单留言', '货品编码', '货品名称', '数量', '含税单价', '用户昵称']
 
                 try:
@@ -223,13 +221,12 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
                 df.rename(columns=ret_columns_key, inplace=True)
                 check_list = ['shop', 'company', 'order_id', 'order_category', 'title', 'tax_id', 'phone', 'bank',
                               'account', 'address', 'remark', 'sent_consignee', 'sent_smartphone',
-                              'sent_city', 'sent_district', 'sent_address', 'is_deliver', 'goods_id']
+                              'sent_address', 'is_deliver', 'goods_id']
                 df_check = df[check_list]
-
+                check_list.pop()
                 tax_ids = list(set(df_check.tax_id))
                 for tax_id in tax_ids:
                     data_check = df_check[df_check.tax_id == tax_id]
-                    check_list.pop()
                     if len(data_check.goods_id) != len(list(set(data_check.goods_id))):
                         error = '税号%s，货品重复，请剔除重复货品' % str(tax_id)
                         report_dic["error"].append(error)
@@ -392,7 +389,6 @@ class OriInvoiceApplicateViewset(viewsets.ModelViewSet):
             work_order.save()
             all_goods_info = work_order.oriinvoicegoods_set.all()
             all_goods_info.delete()
-
 
         for goods_id, quantity, price in zip(goods_ids, goods_quantity, goods_prices):
             goods_order = OriInvoiceGoods()
@@ -645,11 +641,10 @@ class OriInvoiceSubmitViewset(viewsets.ModelViewSet):
                               'account', 'address', 'remark', 'sent_consignee', 'sent_smartphone',
                               'sent_address', 'is_deliver', 'goods_id']
                 df_check = df[check_list]
-
+                check_list.pop()
                 tax_ids = list(set(df_check.tax_id))
                 for tax_id in tax_ids:
                     data_check = df_check[df_check.tax_id == tax_id]
-                    check_list.pop()
                     if len(data_check.goods_id) != len(list(set(data_check.goods_id))):
                         error = '税号%s，货品重复，请剔除重复货品' % str(tax_id)
                         report_dic["error"].append(error)

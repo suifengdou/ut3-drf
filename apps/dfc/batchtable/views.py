@@ -25,6 +25,7 @@ from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.utils.geography.tools import PickOutAdress
+from ut3.settings import EXPORT_TOPLIMIT
 
 
 
@@ -54,7 +55,10 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return OriginData.objects.none()
-        queryset = OriginData.objects.filter(order_status=1).order_by("id")
+        department = self.request.user.department
+        if not department:
+            return OriginData.objects.none()
+        queryset = OriginData.objects.filter(order_status=1, department=department).order_by("id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -65,7 +69,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = OriginDataFilter(params)
-        serializer = OriginDataSerializer(f.qs, many=True)
+        serializer = OriginDataSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -93,8 +97,16 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        department = request.user.department
         if n:
             for obj in check_list:
+                if department.name != '财务中心-客审部':
+                    if obj.goods_name.category == 1:
+                        data["error"].append("%s非法添加主机" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 6
+                        obj.save()
+                        continue
                 if obj.mistake_tag != 4:
                     data["error"].append("%s 不是重复递交的单据不可修复" % obj.erp_order_id)
                     obj.save()
@@ -119,9 +131,16 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
+        department = request.user.department
         if n:
             for obj in check_list:
-
+                if department.name != '财务中心-客审部':
+                    if obj.goods_name.category == 1:
+                        data["error"].append("%s非法添加主机" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 6
+                        obj.save()
+                        continue
                 if obj.erp_order_id:
                     _q_repeat_order = ManualOrder.objects.filter(erp_order_id=obj.erp_order_id)
                     if _q_repeat_order.exists():
@@ -145,7 +164,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                     else:
                         order = ManualOrder()
                 else:
-                    order =  ManualOrder()
+                    order = ManualOrder()
                     _prefix = "SSBO"
                     serial_number = str(datetime.date.today()).replace("-", "")
                     obj.erp_order_id = _prefix + serial_number + str(obj.id)
@@ -243,7 +262,11 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             data = {
                 "error": "上传文件未找到！"
             }
-
+        department = request.user.department
+        if not department:
+            data = {
+                "error": "当前账号无部门不可导入！"
+            }
         return Response(data)
 
     def handle_upload_file(self, request, _file):
@@ -358,6 +381,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
         else:
             report_dic["error"].append("店铺名称错误")
             return report_dic
+        department =request.user.department
         for row in resource:
 
             order_fields = ["nickname", "receiver", "address", "mobile", "order_id", "quantity", "buyer_remark"]
@@ -366,6 +390,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                 setattr(order, field, row[field])
             order.mobile = re.sub("[a-zA-Z!#$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(order.mobile))
             order.shop = shop
+            order.department = department
             _q_goods_name = Goods.objects.filter(name=row["goods_name"])
             if _q_goods_name.exists():
                 order.goods_name = _q_goods_name[0]
@@ -420,10 +445,8 @@ class OriginDataManageViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["company"] = user.company
-        params["order_status"] = 1
         f = OriginDataFilter(params)
-        serializer = OriginDataSerializer(f.qs, many=True)
+        serializer = OriginDataSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
 

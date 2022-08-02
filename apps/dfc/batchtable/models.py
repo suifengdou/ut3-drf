@@ -3,6 +3,7 @@ from django.db import models
 from apps.base.goods.models import Goods
 from apps.base.shop.models import Shop
 from apps.utils.geography.models import Province, City, District
+from apps.base.department.models import Department
 # Create your models here.
 
 
@@ -19,6 +20,7 @@ class OriginData(models.Model):
         (3, '集运仓地址'),
         (4, '重复递交'),
         (5, '输出单保存出错'),
+        (6, '非法添加主机'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -43,11 +45,12 @@ class OriginData(models.Model):
 
     order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='状态')
     submit_user = models.CharField(null=True, blank=True, max_length=50, verbose_name='处理人')
-    erp_order_id = models.CharField(null=True, blank=True, unique=True, max_length=50, verbose_name='原始单号')
+    erp_order_id = models.CharField(null=True, blank=True, unique=True, max_length=50, verbose_name='UT单号')
 
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误标签')
     process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
 
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, verbose_name='部门', help_text='部门')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
@@ -123,3 +126,5 @@ class BatchTable(models.Model):
 
     def __str__(self):
         return self.order_id
+
+

@@ -24,6 +24,16 @@ class OriginDataSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_department(self, instance):
+        try:
+            ret = {
+                "id": instance.department.id,
+                "name": instance.department.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_goods_name(self, instance):
         try:
             ret = {
@@ -57,7 +67,7 @@ class OriginDataSerializer(serializers.ModelSerializer):
             3: "集运仓地址",
             4: "重复递交",
             5: "输出单保存出错",
-            6: "同名订单",
+            6: "非法添加主机",
             7: "手机错误",
             8: "集运仓地址",
             9: "无店铺",
@@ -91,6 +101,7 @@ class OriginDataSerializer(serializers.ModelSerializer):
         ret = super(OriginDataSerializer, self).to_representation(instance)
         ret["order_status"] = self.get_order_status(instance)
         ret["shop"] = self.get_shop(instance)
+        ret["department"] = self.get_department(instance)
         ret["goods_name"] = self.get_goods_name(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["process_tag"] = self.get_process_tag(instance)

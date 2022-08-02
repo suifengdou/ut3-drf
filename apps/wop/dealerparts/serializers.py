@@ -115,7 +115,8 @@ class DealerPartsSerializer(serializers.ModelSerializer):
             8: "14天内重复",
             9: "14天外重复",
             10: "手工单保存出错",
-            11: "手工单货品保存出错"
+            11: "手工单货品保存出错",
+            12: "此工单仅支持配件",
         }
         try:
             ret = {

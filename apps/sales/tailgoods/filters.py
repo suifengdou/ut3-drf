@@ -6,13 +6,17 @@
 # @Software: PyCharm
 
 import django_filters
-from django_filters.filters import BaseInFilter, NumberFilter
+from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
 from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, PayBillOrder, PBOGoods, \
     ArrearsBillOrder, ABOGoods, FinalStatement, FinalStatementGoods, AccountInfo, PBillToAccount, ABillToAccount, \
     TailToExpense, RefundToPrestore
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
+    pass
+
+
+class CharInFilter(BaseInFilter, CharFilter):
     pass
 
 
@@ -63,14 +67,15 @@ class RefundOrderFilter(django_filters.FilterSet):
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     handle_time = django_filters.DateTimeFromToRangeFilter()
     create_time = django_filters.DateTimeFromToRangeFilter()
+    track_no__in = CharInFilter(field_name="track_no", lookup_expr="in")
 
     class Meta:
         model = RefundOrder
         fields = "__all__"
 
 
-
 class ROGoodsFilter(django_filters.FilterSet):
+    refund_order__track_no = django_filters.CharFilter(lookup_expr='icontains')
     create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:

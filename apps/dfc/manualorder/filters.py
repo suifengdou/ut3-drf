@@ -10,8 +10,10 @@ import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
 from .models import ManualOrder, MOGoods, ManualOrderExport
 
+
 class NumberInFilter(BaseInFilter, NumberFilter):
     pass
+
 
 class ManualOrderFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
@@ -21,6 +23,7 @@ class ManualOrderFilter(django_filters.FilterSet):
     city__name = django_filters.CharFilter(lookup_expr='exact')
     district__name = django_filters.CharFilter(lookup_expr='exact')
     mobile = django_filters.CharFilter(lookup_expr='icontains')
+    memo = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:
         model = ManualOrder

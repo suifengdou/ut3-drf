@@ -144,6 +144,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
             data = {
                 "id": photo_detail.id,
                 "name": photo_detail.url,
+                "creator": photo_detail.creator
             }
             ret.append(data)
         return ret

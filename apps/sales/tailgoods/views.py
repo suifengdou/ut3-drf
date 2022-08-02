@@ -198,29 +198,27 @@ class OriTailOrderSubmitViewset(viewsets.ModelViewSet):
                         n -= 1
                         continue
                 user = request.user
-                if user.department.id == 1:
-                    price_error = 0
-                    goods_details = obj.otogoods_set.all()
-                    for goods_detail in goods_details:
-                        ori_goods = goods_detail.goods_name
-                        ori_price = goods_detail.price
-                        q_standard_price = ProductCatalog.objects.filter(goods=ori_goods, company=user.company, order_status=1)
-                        if q_standard_price.exists():
-                            standard_price = q_standard_price[0].price
-                            if standard_price > ori_price:
-                                price_error = 1
-                                break
-                        else:
+                price_error = 0
+                goods_details = obj.otogoods_set.all()
+                for goods_detail in goods_details:
+                    ori_goods = goods_detail.goods_name
+                    ori_price = goods_detail.price
+                    q_standard_price = ProductCatalog.objects.filter(goods=ori_goods, company=user.company, order_status=1)
+                    if q_standard_price.exists():
+                        standard_price = q_standard_price[0].price
+                        if standard_price > ori_price:
                             price_error = 1
                             break
-                    if price_error:
-                        data["error"].append("%s 发货型号未授权或金额错误" % obj.order_id)
-                        obj.mistake_tag = 19
-                        obj.save()
-                        n -= 1
-                        continue
+                    else:
+                        price_error = 1
+                        break
+                if price_error:
+                    data["error"].append("%s 发货型号未授权或金额错误" % obj.order_id)
+                    obj.mistake_tag = 19
+                    obj.save()
+                    n -= 1
+                    continue
 
-                    pass
                 obj.submit_time = datetime.datetime.now()
                 obj.order_status = 2
                 obj.mistake_tag = 0

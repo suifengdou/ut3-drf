@@ -146,7 +146,19 @@ class DealerPartsCreateViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 7
                     obj.save()
                     continue
-
+                goods_tag = 0
+                all_goods_details = obj.dpgoods_set.all()
+                if all_goods_details:
+                    for goods_detail in all_goods_details:
+                        if goods_detail.goods_name.goods_attribute == 1:
+                            goods_tag = 1
+                            break
+                if goods_tag:
+                    data["error"].append("%s此工单仅支持配件" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 12
+                    obj.save()
+                    continue
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.process_tag = 0
