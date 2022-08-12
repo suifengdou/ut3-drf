@@ -852,7 +852,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
                             obj.save()
                         order.nickname = obj.dialog.customer
                         for i in range(len(compensation_data)):
-                            if i ==1:
+                            if i == 1:
                                 conpensation_amount = re.findall(r'[\d\.]*$', str(compensation_data[i]))
                                 if conpensation_amount:
                                     compensation_data[i] = conpensation_amount[0]
@@ -2073,7 +2073,7 @@ class DialogJDViewset(viewsets.ModelViewSet):
                             except:
                                 report_dic["error"].append("先设置好新客服，再导入")
                                 break
-                            servicer_list.append(_sayer.name)
+                            servicer_list.append(servicer_new.name)
                         content = ''
                     else:
                         content = '%s%s' % (content, str(data_line))

@@ -1075,9 +1075,9 @@ class EWOManageViewset(viewsets.ModelViewSet):
             return ExpressWorkOrder.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = ExpressWorkOrder.objects.all().order_by("id")
+            queryset = ExpressWorkOrder.objects.all().order_by("-id")
         else:
-            queryset = ExpressWorkOrder.objects.filter(company=user.company).order_by("id")
+            queryset = ExpressWorkOrder.objects.filter(company=user.company).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)

@@ -29,7 +29,6 @@ class ExpressWorkOrderFilter(django_filters.FilterSet):
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
     track_id__in = CharInFilter(field_name="track_id", lookup_expr="in")
 
-
     class Meta:
         model = ExpressWorkOrder
         fields = "__all__"
