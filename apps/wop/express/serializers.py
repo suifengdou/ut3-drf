@@ -171,7 +171,6 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         if _q_express_order.exists():
             raise serializers.ValidationError("相同快递单号只可创建一次工单！")
         work_order = self.Meta.model.objects.create(**validated_data)
-
         return work_order
 
     def update(self, instance, validated_data):

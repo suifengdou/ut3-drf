@@ -2087,7 +2087,6 @@ class DialogJDViewset(viewsets.ModelViewSet):
             return report_dic
 
 
-
 class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -3771,3 +3770,4 @@ class DialogOWWordsViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
+

@@ -10,12 +10,17 @@ import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
 from .models import OriCallLog, CallLog
 
+
 class NumberInFilter(BaseInFilter, NumberFilter):
     pass
+
 
 class OriCallLogFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     call_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+    answer_status = django_filters.CharFilter(field_name="answer_status", lookup_expr='icontains')
+    satisfaction = django_filters.CharFilter(field_name="satisfaction", lookup_expr='icontains')
+    remark = django_filters.CharFilter(field_name="remark", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:

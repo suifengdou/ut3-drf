@@ -30,17 +30,17 @@ from apps.utils.geography.tools import PickOutAdress
 class OriCallLogSubmitViewset(viewsets.ModelViewSet):
     """
     retrieve:
-        返回指定货品明细
+        返回指定原始通话记录明细
     list:
-        返回货品明细
+        返回原始通话记录明细
     update:
-        更新货品明细
+        更新原始通话记录明细
     destroy:
-        删除货品明细
+        删除原始通话记录明细
     create:
-        创建货品明细
+        创建原始通话记录明细
     partial_update:
-        更新部分货品明细
+        更新部分原始通话记录明细
     """
     serializer_class = OriCallLogSerializer
     filter_class = OriCallLogFilter
@@ -492,7 +492,6 @@ class OriCallLogCheckViewset(viewsets.ModelViewSet):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 2
-        params["company"] = self.request.user.company
         if all_select_tag:
             handle_list = OriCallLogFilter(params).qs
         else:
@@ -502,6 +501,46 @@ class OriCallLogCheckViewset(viewsets.ModelViewSet):
             else:
                 handle_list = []
         return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def sign(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.category != '呼入':
+                    continue
+                if obj.process_tag == 2:
+                    continue
+                if int(obj.repeated_num) > 0:
+                    OriCallLog.objects.filter(calling_num=obj.calling_num, order_status=2).update(process_tag=2)
+                    data["successful"] += 1
+        else:
+            raise serializers.ValidationError("没有可标记的单据！")
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def setall(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            check_list.update(process_tag=1)
+            data["successful"] = n
+        else:
+            raise serializers.ValidationError("没有可标记的单据！")
+        return Response(data)
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
@@ -516,7 +555,25 @@ class OriCallLogCheckViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
+                if obj.process_tag == 0:
+                    data["error"].append("%s 未处理单据不可递交" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 12
+                    obj.save()
+                    continue
+                try:
+                    if obj.calllog:
+                        data["error"].append("%s 已经存在检查单，不可重复创建" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 13
+                        obj.save()
+                        continue
+                except:
+                    pass
+
                 order = CallLog()
+                order.ori_order = obj
+
                 order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
                                 "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
                                 "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
@@ -525,24 +582,25 @@ class OriCallLogCheckViewset(viewsets.ModelViewSet):
                                 "three_level_classification", "four_level_classification", "five_level_classification",
                                 "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn",
                                 "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
-                                "area", "address"]
+                                "area", "address", 'process_tag']
 
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
-                _q_goods_name = MOGoods.objects.filter(manual_order=order, goods_name=obj.goods_name)
-                if _q_goods_name.exists():
-                    data["error"].append("%s重复递交，已存在输出单据" % obj.id)
+                try:
+                    order.creator = request.user.username
+                    order.save()
+                except Exception as e:
+                    data["error"].append("%s 保存检查单错误" % obj.id)
                     n -= 1
-                    obj.mistake_tag = 4
+                    obj.mistake_tag = 13
                     obj.save()
                     continue
-                obj.submit_user = request.user.username
-                obj.order_status = 2
+
+                obj.order_status = 3
                 obj.mistake_tag = 0
-                obj.process_tag = 1
                 obj.save()
         else:
-            raise serializers.ValidationError("没有可审核的单据！")
+            raise serializers.ValidationError("没有可递交的单据！")
         data["successful"] = n
         data["false"] = len(check_list) - n
         return Response(data)
@@ -558,172 +616,11 @@ class OriCallLogCheckViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            reject_list.update(order_status=3)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def excel_import(self, request, *args, **kwargs):
-
-        file = request.FILES.get('file', None)
-        if file:
-            data = self.handle_upload_file(request, file)
-        else:
-            data = {
-                "error": "上传文件未找到！"
-            }
-
-        return Response(data)
-
-    def handle_upload_file(self, request, _file):
-        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
-        INIT_FIELDS_DIC = {
-            "通话ID": "call_id",
-            "类型": "category",
-            "开启服务时间": "start_time",
-            "结束服务时间": "end_time",
-            "服务时长": "total_duration",
-            "通话时长": "call_duration",
-            "排队时长": "queue_time",
-            "振铃时长": "ring_time",
-            "静音时长": "muted_duration",
-            "静音次数": "muted_time",
-            "主叫号码": "calling_num",
-            "被叫号码": "called_num",
-            "号码归属地": "attribution",
-            "用户名": "nickname",
-            "手机号码": "smartphone",
-            "ivr语音导航": "ivr",
-            "分流客服组": "group",
-            "接待客服": "servicer",
-            "重复咨询": "repeated_num",
-            "接听状态": "answer_status",
-            "挂机方": "on_hook",
-            "满意度": "satisfaction",
-            "服务录音": "call_recording",
-            "一级分类": "primary_classification",
-            "二级分类": "secondary_classification",
-            "三级分类": "three_level_classification",
-            "四级分类": "four_level_classification",
-            "五级分类": "five_level_classification",
-            "咨询备注": "remark",
-            "问题解决状态": "problem_status",
-            "购买日期": "purchase_time",
-            "购买店铺": "shop",
-            "产品型号": "goods_type",
-            "出厂序列号": "m_sn",
-            "补寄原因": "order_category",
-            "配件信息": "goods_details",
-            "损坏部位": "broken_part",
-            "损坏描述": "description",
-            "收件人姓名": "receiver",
-            "建单手机": "mobile",
-            "省市区": "area",
-            "详细地址": "address"
-        }
-
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
-        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
-            df = pd.read_excel(_file, sheet_name=0, dtype=str)
-
-            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
-                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
-                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
-                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
-                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
-                             "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
-                             "建单手机", "省市区", "详细地址"]
-
-            try:
-                df = df[FILTER_FIELDS]
-            except Exception as e:
-                report_dic["error"].append("必要字段不全或者错误")
-                return report_dic
-
-            # 获取表头，对表头进行转换成数据库字段名
-            columns_key = df.columns.values.tolist()
-            for i in range(len(columns_key)):
-                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
-                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
-
-            # 验证一下必要的核心字段是否存在
-            _ret_verify_field = OriCallLog.verify_mandatory(columns_key)
-            if _ret_verify_field is not None:
-                return _ret_verify_field
-
-            # 更改一下DataFrame的表名称
-            columns_key_ori = df.columns.values.tolist()
-            ret_columns_key = dict(zip(columns_key_ori, columns_key))
-            df.rename(columns=ret_columns_key, inplace=True)
-
-            # 更改一下DataFrame的表名称
-            num_end = 0
-            step = 300
-            step_num = int(len(df) / step) + 2
-            i = 1
-            while i < step_num:
-                num_start = num_end
-                num_end = step * i
-                intermediate_df = df.iloc[num_start: num_end]
-
-                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
-                _ret_list = intermediate_df.to_dict(orient='records')
-                intermediate_report_dic = self.save_resources(request, _ret_list)
-                for k, v in intermediate_report_dic.items():
-                    if k == "error":
-                        if intermediate_report_dic["error"]:
-                            report_dic[k].append(v)
-                    else:
-                        report_dic[k] += v
-                i += 1
-            return report_dic
-
-        else:
-            report_dic["error"].append('只支持excel文件格式！')
-            return report_dic
-
-    @staticmethod
-    def save_resources(request, resource):
-        # 设置初始报告
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
-
-        for row in resource:
-            _q_calllog = OriCallLog.objects.filter(call_id=row["call_id"])
-            if _q_calllog.exists():
-                report_dic["discard"] += 1
-                report_dic["error"].append("%s提交重复" % row["call_id"])
-                continue
-            order = OriCallLog()
-            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
-                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
-                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
-                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
-                            "call_recording", "primary_classification", "secondary_classification",
-                            "three_level_classification", "four_level_classification", "five_level_classification",
-                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn",
-                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
-                            "area", "address"]
-            if len(str(row["remark"])) > 349:
-                row["remark"] = row["remark"][:349]
-            for field in order_fields:
-                if str(row[field]) == "nan":
-                    row[field] = ""
-                setattr(order, field, row[field])
-            if all((order.receiver, order.mobile, order.area, order.address)):
-                order.is_order = True
-            else:
-                order.order_status =2
-            try:
-                order.creator = request.user.username
-                order.save()
-                report_dic["successful"] += 1
-            except Exception as e:
-                report_dic['error'].append("%s 保存出错" % row["call_id"])
-                report_dic["false"] += 1
-
-        return report_dic
 
 
 class OriCallLogViewset(viewsets.ModelViewSet):
@@ -1122,6 +1019,332 @@ class OriCallLogViewset(viewsets.ModelViewSet):
         return report_dic
 
 
+class CallLogHandleViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = CallLogSerializer
+    filter_class = CallLogFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['callcenter.view_calllog']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return CallLog.objects.none()
+        queryset = CallLog.objects.filter(order_status=1).order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = CallLogFilter(params)
+        serializer = CallLogSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 1
+        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = CallLogFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = CallLog.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.is_subjectivity:
+                    obj.order_status = 2
+                    if len(str(obj.suggestion)) < 10:
+                        data["error"].append("%s 主观类型必填处理意见" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 1
+                        obj.save()
+                        continue
+                else:
+                    obj.order_status = 3
+                if not obj.question_tag:
+                    data["error"].append("%s 未标记工单不可审核" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 2
+                    obj.save()
+                    continue
+                obj.handler = request.user.username
+                obj.handle_time = datetime.datetime.now()
+                obj.mistake_tag = 0
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+
+class CallLogExecuteViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = CallLogSerializer
+    filter_class = CallLogFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['callcenter.view_calllog']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return CallLog.objects.none()
+        queryset = CallLog.objects.filter(order_status=2).order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 1
+        f = CallLogFilter(params)
+        serializer = CallLogSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 2
+        if all_select_tag:
+            handle_list = CallLogFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = CallLog.objects.filter(id__in=order_ids, order_status=2)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if not obj.feedback:
+                    data["error"].append("%s 无执行结果不可审核" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 4
+                    obj.save()
+                    continue
+                obj.executor = request.user.username
+                obj.execute_time = datetime.datetime.now()
+                obj.order_status = 3
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                if not obj.rejection:
+                    data["error"].append("%s 无驳回原因不可驳回" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+                obj.order_status = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+
+class CallLogCheckViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = CallLogSerializer
+    filter_class = CallLogFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['callcenter.view_calllog']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return CallLog.objects.none()
+        queryset = CallLog.objects.filter(order_status=3).order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        user = self.request.user
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 3
+        f = CallLogFilter(params)
+        serializer = CallLogSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 3
+        if all_select_tag:
+            handle_list = CallLogFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = CallLog.objects.filter(id__in=order_ids, order_status=3)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                obj.order_status = 4
+                obj.mistake_tag = 0
+                obj.process_tag = 1
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                if not obj.rejection:
+                    data["error"].append("%s 无驳回原因不可驳回" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+                obj.order_status = 2
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+
 class CallLogViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -1148,7 +1371,7 @@ class CallLogViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return CallLog.objects.none()
-        queryset = CallLog.objects.filter(extract_tag=False, category__in=[1, 2]).order_by("-id")
+        queryset = CallLog.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)

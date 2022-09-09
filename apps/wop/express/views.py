@@ -48,9 +48,9 @@ class EWOCreateViewset(viewsets.ModelViewSet):
             return ExpressWorkOrder.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = ExpressWorkOrder.objects.filter(order_status=1, is_forward=user.is_our).order_by("id")
+            queryset = ExpressWorkOrder.objects.filter(order_status=1, is_forward=user.is_our).order_by("-id")
         else:
-            queryset = ExpressWorkOrder.objects.filter(company=user.company, order_status=1, is_forward=user.is_our).order_by("id")
+            queryset = ExpressWorkOrder.objects.filter(company=user.company, order_status=1, is_forward=user.is_our).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -146,12 +146,14 @@ class EWOCreateViewset(viewsets.ModelViewSet):
         if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
             df = pd.read_excel(_file, sheet_name=0, dtype=str)
             columns_key_ori = df.columns.values.tolist()
-            filter_fields = ["快递单号", "工单事项类型", "快递公司", "初始问题信息", "备注"]
+            filter_fields = ["快递单号", "工单事项类型", "快递公司", "初始问题信息", "备注", "是否返回", "返回单号"]
             INIT_FIELDS_DIC = {
                 "快递单号": "track_id",
                 "工单事项类型": "category",
                 "快递公司": "company",
                 "初始问题信息": "information",
+                "是否返回": "is_return",
+                "返回单号": "return_express_id",
                 "备注": "memo"
             }
             result_keys = []
@@ -221,12 +223,17 @@ class EWOCreateViewset(viewsets.ModelViewSet):
             "丢件破损": 7,
             "其他异常": 8
         }
+        return_tag_list = {
+            "是": True,
+        }
         user = request.user
 
         for row in resource:
 
-            order_fields = ["track_id", "category", "company", "information", "memo"]
+            order_fields_common = ["track_id", "category", "company", "information", "memo"]
+            order_fields_return = ["track_id", "category", "company", "information", "is_return", "return_express_id", "memo"]
             row["category"] = category_list.get(row["category"], None)
+            row["is_return"] = return_tag_list.get(row["is_return"], False)
             if not row["category"]:
                 error("%s 单据类型错误" % row["track_id"])
                 report_dic["false"] += 1
@@ -235,16 +242,19 @@ class EWOCreateViewset(viewsets.ModelViewSet):
             if _q_company.exists():
                 row["company"] = _q_company[0]
             else:
-                error("%s 快递错误" % row["track_id"])
+                error("%s 快递工单已存在" % row["track_id"])
                 report_dic["false"] += 1
                 continue
             order = ExpressWorkOrder()
             order.is_forward = user.is_our
-
+            if row["is_return"]:
+                order_fields = order_fields_return
+            else:
+                order_fields = order_fields_common
             for field in order_fields:
                 setattr(order, field, row[field])
             order.track_id = re.sub("[!#$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(order.track_id).strip())
-
+            order.return_express_id = re.sub("[!#$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(order.return_express_id).strip())
             try:
                 order.creator = user.username
                 order.save()

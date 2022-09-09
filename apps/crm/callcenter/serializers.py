@@ -17,8 +17,9 @@ class OriCallLogSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         status = {
             0: "已取消",
-            1: "未处理",
-            2: "已导入",
+            1: "待提取",
+            2: "未处理",
+            3: "已完成",
         }
         try:
             ret = {
@@ -42,7 +43,10 @@ class OriCallLogSerializer(serializers.ModelSerializer):
             8: "输出单保存出错",
             9: "货品错误",
             10: "明细中货品重复、部件和描述",
-            11: "输出单保存出错"
+            11: "输出单保存出错",
+            12: "未处理单据不可递交",
+            13: "已经存在检查单",
+            14: "保存检查单错误",
         }
         try:
             ret = {
@@ -68,7 +72,6 @@ class OriCallLogSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-
     def to_representation(self, instance):
         ret = super(OriCallLogSerializer, self).to_representation(instance)
         ret["order_status"] = self.get_order_status(instance)
@@ -85,7 +88,6 @@ class OriCallLogSerializer(serializers.ModelSerializer):
         if len(goods_list) != len(goods_check):
             raise serializers.ValidationError("明细中货品重复！")
 
-
     def create(self, validated_data):
         validated_data["creator"] = self.context["request"].user.username
         return self.Meta.model.objects.create(**validated_data)
@@ -94,6 +96,7 @@ class OriCallLogSerializer(serializers.ModelSerializer):
         validated_data["update_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
+
 
 class CallLogSerializer(serializers.ModelSerializer):
 
@@ -104,41 +107,13 @@ class CallLogSerializer(serializers.ModelSerializer):
         model = CallLog
         fields = "__all__"
 
-    def get_shop(self, instance):
-        try:
-            ret = {
-                "id": instance.shop.id,
-                "name": instance.shop.name,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_customer(self, instance):
-        try:
-            ret = {
-                "id": instance.customer.id,
-                "name": instance.customer.name,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_servicer(self, instance):
-        try:
-            ret = {
-                "id": instance.servicer.id,
-                "name": instance.servicer.username,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
     def get_order_status(self, instance):
         status = {
             0: "已取消",
             1: "未处理",
-            2: "已导入",
+            2: "待执行",
+            3: "待确认",
+            4: "已完成",
         }
         try:
             ret = {
@@ -152,10 +127,10 @@ class CallLogSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "货品名称错误",
-            2: "14天内重复订单",
-            3: "14天外重复订单",
-            4: "省市区出错",
+            1: "主观类型必填处理意见",
+            2: "未标记工单不可审核",
+            3: "无驳回原因不可驳回",
+            4: "无执行结果不可审核",
             5: "输出单保存出错",
             6: "同名订单",
             7: "手机错误",
@@ -189,14 +164,31 @@ class CallLogSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_question_tag(self, instance):
+        question_list = {
+            0: "未标记",
+            1: "客服问题",
+            2: "未能转人工",
+            3: "非服务时间",
+            4: "常规复咨询",
+            5: "用户问题",
+            6: "其他",
+        }
+        try:
+            ret = {
+                "id": instance.question_tag,
+                "name": question_list.get(instance.question_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(CallLogSerializer, self).to_representation(instance)
-        ret["shop"] = self.get_shop(instance)
-        ret["customer"] = self.get_customer(instance)
-        ret["servicer"] = self.get_servicer(instance)
         ret["order_status"] = self.get_order_status(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["process_tag"] = self.get_process_tag(instance)
+        ret["question_tag"] = self.get_question_tag(instance)
         return ret
 
     def create(self, validated_data):
