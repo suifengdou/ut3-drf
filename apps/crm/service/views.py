@@ -25,7 +25,7 @@ from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.crm.customers.models import Customer
-from apps.crm.order.models import OrderInfo
+from apps.crm.order.models import OriOrder
 
 
 class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):

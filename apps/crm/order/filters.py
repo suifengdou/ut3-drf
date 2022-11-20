@@ -7,35 +7,37 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
-from .models import OriOrderInfo, OrderInfo, BMSOrderInfo
+from .models import OriOrder, DecryptOrder, LogOriOrder, LogDecryptOrder
+
 
 class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
-class OriOrderInfoFilter(django_filters.FilterSet):
+
+class OriOrderFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     trade_no = django_filters.CharFilter(field_name="trade_no", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
-        model = OriOrderInfo
+        model = OriOrder
         fields = "__all__"
 
-class BMSOrderInfoFilter(django_filters.FilterSet):
+
+class DecryptOrderFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     trade_no = django_filters.CharFilter(field_name="trade_no", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
+    goods = django_filters.CharFilter(method='goods_filter')
 
     class Meta:
-        model = BMSOrderInfo
+        model = DecryptOrder
         fields = "__all__"
 
+    def goods_filter(self, queryset, name, *value):
+        condition_list = value
+        for condition in condition_list:
+            queryset = queryset.filter(**{name: condition})
+        return queryset
 
-class OrderInfoFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    trade_no = django_filters.CharFilter(field_name="trade_no", lookup_expr='icontains')
-    order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
-    class Meta:
-        model = OrderInfo
-        fields = "__all__"

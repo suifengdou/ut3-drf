@@ -18,6 +18,7 @@ class AccountFilter(django_filters.FilterSet):
 
 
 class StatementsFilter(django_filters.FilterSet):
+    account__name = django_filters.CharFilter(lookup_expr='icontains')
     create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
@@ -26,7 +27,10 @@ class StatementsFilter(django_filters.FilterSet):
 
 
 class PrestoreFilter(django_filters.FilterSet):
+    account__name = django_filters.CharFilter(lookup_expr='icontains')
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+    bank_sn = django_filters.CharFilter(field_name="bank_sn", lookup_expr='icontains')
+    memorandum = django_filters.CharFilter(field_name="memorandum", lookup_expr='icontains')
     create_time = django_filters.DateTimeFromToRangeFilter()
 
 
@@ -36,6 +40,7 @@ class PrestoreFilter(django_filters.FilterSet):
 
 
 class ExpenseFilter(django_filters.FilterSet):
+    memorandum = django_filters.CharFilter(field_name="memorandum", lookup_expr='icontains')
     create_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
@@ -45,10 +50,8 @@ class ExpenseFilter(django_filters.FilterSet):
 
 class VerificationPrestoreFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    prestore = django_filters.ModelMultipleChoiceFilter(field_name='prestore__order_id', to_field_name="order_id",
-                                                        queryset=Prestore.objects.all())
-    statement = django_filters.ModelMultipleChoiceFilter(field_name='statement__order_id', to_field_name="order_id",
-                                                         queryset=Statements.objects.all())
+    prestore__order_id = django_filters.CharFilter(lookup_expr='icontains')
+    statement__order_id = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:
         model = VerificationPrestore
@@ -57,9 +60,8 @@ class VerificationPrestoreFilter(django_filters.FilterSet):
 
 class VerificationExpensesFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    expense = django_filters.ModelMultipleChoiceFilter(field_name='expense__order_id', to_field_name="order_id", queryset=Expense.objects.all())
-    statement = django_filters.ModelMultipleChoiceFilter(field_name='statement__order_id', to_field_name="order_id",
-                                                         queryset=Statements.objects.all())
+    expense__order_id = django_filters.CharFilter(lookup_expr='icontains')
+    statement__order_id = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:
         model = VerificationExpenses
@@ -68,10 +70,9 @@ class VerificationExpensesFilter(django_filters.FilterSet):
 
 class ExpendListFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    prestore = django_filters.ModelMultipleChoiceFilter(field_name='prestore__order_id', to_field_name="order_id",
-                                                        queryset=Prestore.objects.all())
-    statement = django_filters.ModelMultipleChoiceFilter(field_name='statement__order_id', to_field_name="order_id",
-                                                         queryset=Statements.objects.all())
+    prestore__order_id = django_filters.CharFilter(lookup_expr='icontains')
+    statements__order_id = django_filters.CharFilter(lookup_expr='icontains')
+    account__name = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:
         model = ExpendList

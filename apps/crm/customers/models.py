@@ -149,7 +149,9 @@ class Money(models.Model):
 
 class Interaction(models.Model):
     S_SOURCE = (
-        (1, '用户体验工单'),
+        (1, '销售订单'),
+        (2, '销售订单'),
+        (3, '销售订单'),
     )
     CATEGORY_LIST = (
         (1, '收入'),
@@ -190,7 +192,6 @@ class PurchasedGoods(models.Model):
     category = models.SmallIntegerField(choices=CATEGORY_LIST, default=1, verbose_name='类别', help_text='类别')
     goods = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品', help_text='货品')
     purchased_time = models.DateTimeField(null=True, blank=True, verbose_name='购买时间', help_text='购买时间')
-    warranty_time = models.DateTimeField(null=True, blank=True, verbose_name='保修时间', help_text='保修时间')
     m_sn = models.CharField(null=True, blank=True, max_length=250, verbose_name='SN', help_text='SN')
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')
 

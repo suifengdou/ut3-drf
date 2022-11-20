@@ -11,7 +11,6 @@ from apps.auth.users.models import UserProfile
 from apps.crm.vipwechat.models import Specialist
 
 
-
 class OriSatisfactionWorkOrder(models.Model):
 
     ORDER_STATUS = (

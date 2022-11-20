@@ -13,6 +13,7 @@ from rest_framework import serializers
 from .models import Customer
 from .serializers import CustomerSerializer
 from .filters import CustomerFilter
+from apps.utils.logging.loggings import logging, getlogs, getfiles
 
 
 

@@ -16,7 +16,7 @@ from .filters import OriTailOrderFilter, OTOGoodsFilter, TailOrderFilter, TOGood
     ROGoodsFilter, AccountInfoFilter, TailToExpenseFilter, RefundToPrestoreFilter
 from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, AccountInfo, \
     TailToExpense, TailTOAccount, RefundToPrestore, ROGoodsToAccount
-from apps.sales.advancepayment.models import Expense, Account, Statements, VerificationExpenses, ExpendList, Prestore
+from apps.sales.advancepayment.models import Expense, Account, Statements, VerificationExpenses, ExpendList, Prestore, VerificationPrestore
 from apps.auth.users.models import UserProfile
 from ut3.permissions import Permissions
 from rest_framework.decorators import action
@@ -2308,6 +2308,7 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user.username
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -2342,6 +2343,35 @@ class RefundOrderCheckViewset(viewsets.ModelViewSet):
                     refund_order.save()
                     n -= 1
                     continue
+
+                statement = Statements()
+                statement.order_id = 'SN' + str(prestore_order.order_id)
+                statement.revenue = prestore_order.amount
+                statement.category = 2
+                statement.account = prestore_order.account
+                statement.memorandum = "来自退款单：%s" % str(refund_order.order_id)
+                statement.creator = user
+                try:
+                    statement.save()
+                except Exception as e:
+                    refund_order.mistake_tag = 19
+                    data["error"].append("%s 保存流水出错 %s " % (refund_order.order_id, e))
+                    refund_order.save()
+                    n -= 1
+                    continue
+                verifyprestore = VerificationPrestore()
+                verifyprestore.prestore = prestore_order
+                verifyprestore.statement = statement
+                verifyprestore.creator = user
+                try:
+                    verifyprestore.save()
+                except Exception as e:
+                    refund_order.mistake_tag = 20
+                    data["error"].append("%s 保存流水验证出错 %s " % (refund_order.order_id, e))
+                    refund_order.save()
+                    n -= 1
+                    continue
+
                 goods_orders = refund_order.rogoods_set.all()
                 i = 1
                 error_tag = 0

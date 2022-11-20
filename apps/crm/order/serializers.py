@@ -1,10 +1,11 @@
 import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import OriOrderInfo, OrderInfo, BMSOrderInfo, TBOrder
+from .models import OriOrder, DecryptOrder, LogOriOrder, LogDecryptOrder
+from apps.utils.logging.loggings import logging
 
 
-class OriOrderInfoSerializer(serializers.ModelSerializer):
+class OriOrderSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
@@ -12,8 +13,60 @@ class OriOrderInfoSerializer(serializers.ModelSerializer):
     deliver_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", label="发货时间", help_text="发货时间")
 
     class Meta:
-        model = OriOrderInfo
+        model = OriOrder
         fields = "__all__"
+
+    def get_goods(self, instance):
+        try:
+            ret = {
+                "id": instance.goods.id,
+                "name": instance.goods.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_shop(self, instance):
+        try:
+            ret = {
+                "id": instance.shop.id,
+                "name": instance.shop.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_warehouse(self, instance):
+        try:
+            ret = {
+                "id": instance.warehouse.id,
+                "name": instance.warehouse.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_customer(self, instance):
+        try:
+            ret = {
+                "id": instance.customer.id,
+                "name": instance.customer.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
 
     def get_process_tag(self, instance):
         process_list = {
@@ -69,10 +122,14 @@ class OriOrderInfoSerializer(serializers.ModelSerializer):
         return ret
 
     def to_representation(self, instance):
-        ret = super(OriOrderInfoSerializer, self).to_representation(instance)
+        ret = super(OriOrderSerializer, self).to_representation(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["order_status"] = self.get_order_status(instance)
+        ret["goods"] = self.get_goods(instance)
+        ret["shop"] = self.get_shop(instance)
+        ret["warehouse"] = self.get_warehouse(instance)
+        ret["customer"] = self.get_customer(instance)
         return ret
 
     def create(self, validated_data):
@@ -80,84 +137,29 @@ class OriOrderInfoSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        user = self.context["request"].user
         validated_data["update_time"] = datetime.datetime.now()
+        # 改动内容
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if value != check_value:
+                    content.append('%s 替换 %s' % (value, check_value))
+
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        logging(instance, user, LogOriOrder, "修改内容：%s" % str(content))
         return instance
 
 
-class OrderInfoSerializer(serializers.ModelSerializer):
+class DecryptOrderSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
-        model = OrderInfo
+        model = DecryptOrder
         fields = "__all__"
-
-    def get_goods_name(self, instance):
-        try:
-            ret = {
-                "id": instance.goods_name.id,
-                "name": instance.goods_name.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_shop_name(self, instance):
-        try:
-            ret = {
-                "id": instance.shop_name.id,
-                "name": instance.shop_name.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_warehouse_name(self, instance):
-        try:
-            ret = {
-                "id": instance.warehouse_name.id,
-                "name": instance.warehouse_name.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_customer(self, instance):
-        try:
-            ret = {
-                "id": instance.customer.id,
-                "name": instance.customer.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_city(self, instance):
-        try:
-            ret = {
-                "id": instance.city.id,
-                "name": instance.city.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
 
     def get_process_tag(self, instance):
         process_list = {
@@ -176,7 +178,6 @@ class OrderInfoSerializer(serializers.ModelSerializer):
                 "name": "空"
             }
         return ret
-
 
     def get_mistake_tag(self, instance):
         mistake_list = {
@@ -219,12 +220,7 @@ class OrderInfoSerializer(serializers.ModelSerializer):
         return ret
 
     def to_representation(self, instance):
-        ret = super(OrderInfoSerializer, self).to_representation(instance)
-        ret["goods_name"] = self.get_goods_name(instance)
-        ret["shop_name"] = self.get_shop_name(instance)
-        ret["warehouse_name"] = self.get_warehouse_name(instance)
-        ret["customer"] = self.get_customer(instance)
-        ret["city"] = self.get_city(instance)
+        ret = super(DecryptOrderSerializer, self).to_representation(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["order_status"] = self.get_order_status(instance)
@@ -235,168 +231,18 @@ class OrderInfoSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        user = self.context["request"].user
         validated_data["update_time"] = datetime.datetime.now()
+        # 改动内容
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if value != check_value:
+                    content.append('%s 替换 %s' % (value, check_value))
+
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class BMSOrderInfoSerializer(serializers.ModelSerializer):
-
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = BMSOrderInfo
-        fields = "__all__"
-
-    def get_process_tag(self, instance):
-        process_tag = {
-            0: '未处理',
-            1: '已处理',
-        }
-        try:
-            ret = {
-                "id": instance.process_tag,
-                "name": process_tag.get(instance.process_tag, None)
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_mistake_tag(self, instance):
-        mistake_list = {
-            0: "正常",
-            1: "返回单号为空",
-            2: "处理意见为空",
-            3: "经销商反馈为空",
-        }
-        try:
-            ret = {
-                "id": instance.mistake_tag,
-                "name": mistake_list.get(instance.mistake_tag, None)
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_order_status(self, instance):
-        order_status = {
-            0: "已取消",
-            1: "未处理",
-            2: "已完成",
-        }
-        try:
-            ret = {
-                "id": instance.order_status,
-                "name": order_status.get(instance.order_status, None)
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def to_representation(self, instance):
-        ret = super(BMSOrderInfoSerializer, self).to_representation(instance)
-        ret["process_tag"] = self.get_process_tag(instance)
-        ret["mistake_tag"] = self.get_mistake_tag(instance)
-        ret["order_status"] = self.get_order_status(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class TBOrderSerializer(serializers.ModelSerializer):
-
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = TBOrder
-        fields = "__all__"
-
-    def get_process_tag(self, instance):
-        process_tag = {
-            0: '未处理',
-            1: '已处理',
-        }
-        try:
-            ret = {
-                "id": instance.process_tag,
-                "name": process_tag.get(instance.process_tag, None)
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_mistake_tag(self, instance):
-        mistake_list = {
-            0: "正常",
-            1: "返回单号为空",
-            2: "处理意见为空",
-            3: "经销商反馈为空",
-        }
-        try:
-            ret = {
-                "id": instance.mistake_tag,
-                "name": mistake_list.get(instance.mistake_tag, None)
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_order_status(self, instance):
-        order_status = {
-            0: "已取消",
-            1: "未处理",
-            2: "已完成",
-        }
-        try:
-            ret = {
-                "id": instance.order_status,
-                "name": order_status.get(instance.order_status, None)
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def to_representation(self, instance):
-        ret = super(TBOrderSerializer, self).to_representation(instance)
-        ret["process_tag"] = self.get_process_tag(instance)
-        ret["mistake_tag"] = self.get_mistake_tag(instance)
-        ret["order_status"] = self.get_order_status(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        logging(instance, user, LogDecryptOrder, "修改内容：%s" % str(content))
         return instance
 
 

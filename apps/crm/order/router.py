@@ -1,15 +1,13 @@
 from rest_framework.routers import DefaultRouter
-from .views import OriOrderSubmitViewset, OriOrderManageViewset, BMSOrderSubmitViewset, BMSOrderManageViewset, \
-    OrderSubmitViewset, OrderManageViewset
+from .views import OriOrderSubmitViewset, OriOrderManageViewset, DecryptOrderSubmitViewset, DecryptOrderManageViewset
 
 
 order_router = DefaultRouter()
 order_router.register(r'crm/order/oriordersubmit', OriOrderSubmitViewset, basename='oriordersubmit')
 order_router.register(r'crm/order/oriordermanage', OriOrderManageViewset, basename='oriordermanage')
-order_router.register(r'crm/order/bmsordersubmit', BMSOrderSubmitViewset, basename='bmsordersubmit')
-order_router.register(r'crm/order/bmsordermanage', BMSOrderManageViewset, basename='bmsordermanage')
-order_router.register(r'crm/order/ordersubmit', OrderSubmitViewset, basename='ordersubmit')
-order_router.register(r'crm/order/ordermanage', OrderManageViewset, basename='ordermanage')
+order_router.register(r'crm/order/decryptordersubmit', DecryptOrderSubmitViewset, basename='decryptordersubmit')
+order_router.register(r'crm/order/decryptordermanage', DecryptOrderManageViewset, basename='decryptordermanage')
+
 
 
 

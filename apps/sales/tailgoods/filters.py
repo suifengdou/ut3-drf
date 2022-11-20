@@ -39,7 +39,7 @@ class OTOGoodsFilter(django_filters.FilterSet):
 
 class TailOrderFilter(django_filters.FilterSet):
     ori_tail_order__order_id = django_filters.CharFilter(lookup_expr='exact')
-    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+    order_id__in = CharInFilter(field_name="order_id", lookup_expr="in")
     create_time = django_filters.DateTimeFromToRangeFilter()
     update_time = django_filters.DateTimeFromToRangeFilter()
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")

@@ -597,7 +597,7 @@ class ExpendListViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['advancepayment.view_handler_prestore',]
+        "GET": ['advancepayment.view_prestore',]
     }
 
     def get_queryset(self):
