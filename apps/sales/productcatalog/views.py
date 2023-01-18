@@ -150,3 +150,47 @@ class ProductCatalogManageViewset(viewsets.ModelViewSet):
         serializer = ProductCatalogSerializer(f.qs, many=True)
         return Response(serializer.data)
 
+
+# class FreightViewset(viewsets.ModelViewSet):
+#     """
+#     retrieve:
+#         返回指定货品明细
+#     list:
+#         返回货品明细
+#     update:
+#         更新货品明细
+#     destroy:
+#         删除货品明细
+#     create:
+#         创建货品明细
+#     partial_update:
+#         更新部分货品明细
+#     """
+#     queryset = Freight.objects.all().order_by("id")
+#     serializer_class = FreightSerializer
+#     filter_class = FreightFilter
+#     filter_fields = "__all__"
+#     permission_classes = (IsAuthenticated, Permissions)
+#     extra_perm_map = {
+#         "GET": ['productcatalog.view_productcatalog',]
+#     }
+#
+#     def get_queryset(self):
+#         if not self.request:
+#             return Freight.objects.none()
+#         queryset = Freight.objects.all().order_by("id")
+#         return queryset
+#
+#     @action(methods=['patch'], detail=False)
+#     def export(self, request, *args, **kwargs):
+#         user = self.request.user
+#         if not user.is_our:
+#             request.data["creator"] = user.username
+#         request.data.pop("page", None)
+#         request.data.pop("allSelectTag", None)
+#         params = request.data
+#         f = FreightFilter(params)
+#         serializer = FreightSerializer(f.qs, many=True)
+#         return Response(serializer.data)
+
+

@@ -11,10 +11,6 @@ from apps.auth.users.models import UserProfile
 
 class OriOrder(models.Model):
 
-    VERIFY_FIELD = ['buyer_nick', 'trade_no', 'name', 'address', 'mobile', 'sub_src_tids',
-                    'deliver_time', 'pay_time', 'area', 'logistics_no', 'buyer_message', 'cs_remark',
-                    'src_tids', 'num', 'price', 'share_amount', 'goods_name', 'spec_code', 'order_category',
-                    'shop_name', 'logistics_name', 'warehouse_name']
 
     ORDERSTATUS = (
         (0, '已取消'),
@@ -24,47 +20,56 @@ class OriOrder(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '未校正订单'),
+        (1, '非待解密订单无需解密'),
         (2, '待确认重复订单'),
         (3, 'UT未创建货品'),
         (4, 'UT未创建店铺'),
         (5, 'UT未创建仓库'),
-
     )
     PROCESS_TAG = (
         (0, '未处理'),
         (1, '已解密'),
         (2, '已建档'),
-        (3, '无法解密'),
-        (4, '特殊订单'),
+        (3, '没法解'),
+        (4, '有退款'),
+        (5, '特殊'),
         (9, '驳回'),
     )
-
+    CATEGORY_LIST = (
+        (1, '出库明细'),
+        (2, '订单明细'),
+    )
     buyer_nick = models.CharField(max_length=150, db_index=True, null=True, blank=True, verbose_name='客户网名', help_text='客户网名')
     trade_no = models.CharField(max_length=60, db_index=True, verbose_name='订单编号', help_text='订单编号')
-    src_tids = models.CharField(max_length=101, null=True, blank=True, db_index=True, verbose_name='原始子订单号',
-                                help_text='原始子订单号')
+    src_tids = models.CharField(max_length=101, null=True, blank=True, db_index=True, verbose_name='子单原始单号',
+                                help_text='子单原始单号')
     sub_src_tids = models.CharField(max_length=101, null=True, blank=True, db_index=True, verbose_name='子单原始子订单号',
                                 help_text='子单原始子订单号')
-    name = models.CharField(max_length=150, null=True, blank=True, verbose_name='收件人', help_text='收件人')
+    receiver = models.CharField(max_length=150, null=True, blank=True, verbose_name='收件人', help_text='收件人')
     address = models.CharField(max_length=256, null=True, blank=True, verbose_name='收货地址', help_text='收货地址')
-    smartphone = models.CharField(max_length=40, db_index=True, null=True, blank=True, verbose_name='收件人手机', help_text='收件人手机')
+    mobile = models.CharField(max_length=40, db_index=True, null=True, blank=True, verbose_name='收件人手机', help_text='收件人手机')
     pay_time = models.DateTimeField(verbose_name='付款时间', help_text='付款时间')
     area = models.CharField(max_length=150, verbose_name='收货地区', help_text='收货地区')
     logistics_no = models.CharField(null=True, blank=True, max_length=150, verbose_name='物流单号', help_text='物流单号')
     buyer_message = models.TextField(null=True, blank=True, verbose_name='买家留言', help_text='买家留言')
     cs_remark = models.TextField(null=True, blank=True, max_length=800, verbose_name='客服备注', help_text='客服备注')
+    print_remark = models.TextField(null=True, blank=True, max_length=800, verbose_name='打印备注', help_text='打印备注')
 
-    num = models.IntegerField(verbose_name='货品数量', help_text='货品数量')
-    price = models.FloatField(verbose_name='成交价', help_text='成交价')
-    share_amount = models.FloatField(verbose_name='货品成交总价', help_text='货品成交总价')
+    num = models.IntegerField(default=0, verbose_name='下单数量', help_text='下单数量')
+    quantity = models.IntegerField(default=0, verbose_name='实发数量', help_text='实发数量')
+    price = models.FloatField(default=0, verbose_name='成交价', help_text='成交价')
+    weight = models.FloatField(default=0, verbose_name='预估重量', help_text='预估重量')
+    actual_weight = models.FloatField(default=0, verbose_name='实际重量', help_text='实际重量')
+    amount = models.FloatField(verbose_name='成交总价', help_text='成交总价')
     goods_name = models.CharField(max_length=255, verbose_name='货品名称', help_text='货品名称')
     spec_code = models.CharField(max_length=150, verbose_name='商家编码', db_index=True, help_text='商家编码')
     shop_name = models.CharField(max_length=128, verbose_name='店铺', help_text='店铺')
     logistics_name = models.CharField(null=True, blank=True, max_length=60, verbose_name='物流公司', help_text='物流公司')
-    warehouse_name = models.CharField(max_length=100, verbose_name='仓库', help_text='仓库')
+    warehouse_name = models.CharField(max_length=100, verbose_name='仓库名称', help_text='仓库名称')
     order_category = models.CharField(max_length=40, db_index=True,  verbose_name='订单类型', help_text='订单类型')
-    deliver_time = models.DateTimeField(verbose_name='发货时间', db_index=True, help_text='发货时间')
+    erp_order_status = models.CharField(max_length=40, db_index=True,  verbose_name='erp订单状态', help_text='erp订单状态')
+    deliver_time = models.DateTimeField(null=True, blank=True, verbose_name='发货时间', db_index=True, help_text='发货时间')
+    sign = models.CharField(max_length=40, db_index=True, default='无', verbose_name='erp订单标记', help_text='erp订单标记')
 
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True, verbose_name='客户',
                                  help_text='客户')
@@ -72,8 +77,9 @@ class OriOrder(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, verbose_name='店铺', help_text='店铺')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=True, blank=True, verbose_name='仓库', help_text='仓库')
     order_status = models.SmallIntegerField(choices=ORDERSTATUS, default=1, db_index=True, verbose_name='单据状态', help_text='单据状态')
-    process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签', help_text='处理标签')
+    process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0,  db_index=True, verbose_name='处理标签', help_text='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误列表', help_text='错误列表')
+    category = models.SmallIntegerField(choices=CATEGORY_LIST, default=1,  db_index=True, verbose_name='来源类型', help_text='来源类型')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -93,14 +99,6 @@ class OriOrder(models.Model):
     def __str__(self):
         return str(self.id)
 
-    @classmethod
-    def verify_mandatory(cls, columns_key):
-        for i in cls.VERIFY_FIELD:
-            if i not in columns_key:
-                return 'verify_field error, must have mandatory field: "{}""'.format(i)
-        else:
-            return None
-
     @property
     def cs_info(self):
         cs_info = str(self.name) + "+" + str(self.area) + "+" + str(self.address) + "+" + str(self.smartphone)
@@ -109,16 +107,13 @@ class OriOrder(models.Model):
 
 class DecryptOrder(models.Model):
 
-    VERIFY_FIELD = ['buyer_nick', 'trade_no', 'name', 'address', 'smartphone', 'sub_src_tids',
-                    'deliver_time', 'pay_time', 'area', 'logistics_no', 'buyer_message', 'cs_remark',
-                    'src_tids', 'num', 'price', 'share_amount', 'goods_name', 'spec_code', 'order_category',
-                    'shop_name', 'logistics_name', 'warehouse_name']
+    VERIFY_FIELD = ['buyer_nick', 'trade_no', 'receiver', 'address', 'mobile', 'sub_src_tids',
+                    'src_tids', 'area', 'buyer_message', 'cs_remark']
 
     ORDERSTATUS = (
         (0, '已取消'),
-        (1, '未处理'),
-        (2, '未递交'),
-        (3, '已完成'),
+        (1, '未解密'),
+        (2, '已解密'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
@@ -138,25 +133,14 @@ class DecryptOrder(models.Model):
 
     buyer_nick = models.CharField(max_length=150, db_index=True, verbose_name='客户网名', help_text='客户网名')
     trade_no = models.CharField(max_length=60, db_index=True, verbose_name='订单编号', help_text='订单编号')
-    name = models.CharField(max_length=150, verbose_name='收件人', help_text='收件人')
+    receiver = models.CharField(max_length=150, verbose_name='收件人', help_text='收件人')
     address = models.CharField(max_length=256, verbose_name='收货地址', help_text='收货地址')
-    smartphone = models.CharField(max_length=40, db_index=True, verbose_name='收件人手机', help_text='收件人手机')
-    pay_time = models.DateTimeField(verbose_name='付款时间', help_text='付款时间')
-    receiver_area = models.CharField(max_length=150, verbose_name='收货地区', help_text='收货地区')
-    logistics_no = models.CharField(null=True, blank=True, max_length=150, verbose_name='物流单号', help_text='物流单号')
+    mobile = models.CharField(max_length=40, db_index=True, verbose_name='收件人手机', help_text='收件人手机')
+
+    area = models.CharField(max_length=150, verbose_name='收货地区', help_text='收货地区')
     buyer_message = models.TextField(null=True, blank=True, verbose_name='买家留言', help_text='买家留言')
     cs_remark = models.TextField(null=True, blank=True, max_length=800, verbose_name='客服备注', help_text='客服备注')
     src_tids = models.CharField(max_length=101, null=True, blank=True, db_index=True, verbose_name='原始子订单号', help_text='原始子订单号')
-    num = models.IntegerField(verbose_name='货品数量', help_text='货品数量')
-    price = models.FloatField(verbose_name='成交价', help_text='成交价')
-    share_amount = models.FloatField(verbose_name='货品成交总价', help_text='货品成交总价')
-    goods_name = models.CharField(max_length=255, verbose_name='货品名称', help_text='货品名称')
-    spec_code = models.CharField(max_length=150, verbose_name='商家编码', db_index=True, help_text='商家编码')
-    shop_name = models.CharField(max_length=128, verbose_name='店铺', help_text='店铺')
-    logistics_name = models.CharField(null=True, blank=True, max_length=60, verbose_name='物流公司', help_text='物流公司')
-    warehouse_name = models.CharField(max_length=100, verbose_name='仓库', help_text='仓库')
-    order_category = models.CharField(max_length=40, db_index=True,  verbose_name='订单类型', help_text='订单类型')
-    deliver_time = models.DateTimeField(verbose_name='发货时间', db_index=True, help_text='发货时间')
 
     order_status = models.SmallIntegerField(choices=ORDERSTATUS, default=1, db_index=True, verbose_name='单据状态', help_text='单据状态')
     process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签', help_text='处理标签')

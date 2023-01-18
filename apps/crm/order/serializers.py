@@ -70,9 +70,13 @@ class OriOrderSerializer(serializers.ModelSerializer):
 
     def get_process_tag(self, instance):
         process_list = {
-            0: "未处理",
-            1: "已处理",
-            2: "驳回",
+            0: "未解密",
+            1: "已解密",
+            2: "已建档",
+            3: "无法解密",
+            4: "疑似退款",
+            5: "特殊订单",
+            9: "驳回",
         }
         try:
             ret = {
@@ -146,6 +150,8 @@ class OriOrderSerializer(serializers.ModelSerializer):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
                     content.append('%s 替换 %s' % (value, check_value))
+        if all([validated_data["receiver"], validated_data["mobile"], validated_data["address"]]):
+            validated_data["process_tag"] = 1
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogOriOrder, "修改内容：%s" % str(content))

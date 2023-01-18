@@ -24,3 +24,14 @@ class ProductCatalogFilter(django_filters.FilterSet):
     class Meta:
         model = ProductCatalog
         fields = "__all__"
+
+
+# class FreightFilter(django_filters.FilterSet):
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     update_time = django_filters.DateTimeFromToRangeFilter()
+#     goods__name = django_filters.CharFilter(lookup_expr='icontains')
+#     company__name = django_filters.CharFilter(lookup_expr='icontains')
+#
+#     class Meta:
+#         model = Freight
+#         fields = "__all__"

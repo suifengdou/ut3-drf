@@ -18,7 +18,7 @@ from .filters import OriSatisfactionWorkOrderFilter, OSWOFilesFilter, SWOFilter,
     ServiceWorkOrderFilter, InvoiceWorkOrderFilter, SWOPFilesFilter
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.base.company.models import Company
-from apps.crm.customers.models import Customer, Satisfaction, Money, Interaction
+from apps.crm.customers.models import Customer, Money
 from apps.crm.vipwechat.models import VIPWechat
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.base.shop.models import Shop

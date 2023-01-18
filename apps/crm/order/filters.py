@@ -6,7 +6,7 @@
 # @Software: PyCharm
 
 import django_filters
-from django_filters.filters import BaseInFilter, NumberFilter
+from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
 from .models import OriOrder, DecryptOrder, LogOriOrder, LogDecryptOrder
 
 
@@ -14,10 +14,14 @@ class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
 
+class CharInFilter(BaseInFilter, CharFilter):
+    pass
+
+
 class OriOrderFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
-    trade_no = django_filters.CharFilter(field_name="trade_no", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
+    trade_no__in = CharInFilter(field_name="trade_no", lookup_expr="in")
 
     class Meta:
         model = OriOrder
