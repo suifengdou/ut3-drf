@@ -8,7 +8,8 @@
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
 from .models import JobCategory, JobOrder, JOFiles, JobOrderDetails, LogJobCategory, LogJobOrder, \
-    LogJobOrderDetails, InvoiceJobOrder, IJOGoods, LogInvoiceJobOrder, LogIJOGoods, JODFiles
+    LogJobOrderDetails, JODFiles
+from apps.utils.orm.queryfunc import andconmbine, orconmbine
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
@@ -39,26 +40,51 @@ class JobOrderFilter(django_filters.FilterSet):
 
 class JobOrderDetailsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
+    order__code = django_filters.CharFilter(lookup_expr='icontains')
+    customer__name = django_filters.CharFilter(lookup_expr='icontains')
+    customer__name__in = django_filters.CharFilter(method='customer_filter')
+    keywords = django_filters.CharFilter(method='keywords_filter')
 
     class Meta:
         model = JobOrderDetails
         fields = "__all__"
 
+    def customer_filter(self, queryset, name, *value):
+        name = name[:-4]
+        condition_list = str(value[0]).split(",")
+        condition = orconmbine(condition_list, name)
+        if condition:
+            queryset = queryset.filter(condition)
+        else:
+            queryset = queryset.none()
+        return queryset
 
-class InvoiceJobOrderFilter(django_filters.FilterSet):
-    customer__name = django_filters.CharFilter(lookup_expr='icontains')
+    def keywords_filter(self, queryset, name, *value):
+        name = '%s__icontains' % name
+        condition_list = str(value[0]).split()
+        if len(condition_list) == 1:
+            queryset = queryset.filter(**{name: condition_list[0]})
+        else:
+            _condition_dict = {}
+            for value in condition_list:
+                _condition_dict[name] = value
+                queryset = queryset.filter(**_condition_dict)
+        return queryset
+
+
+class JOFilesFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
 
     class Meta:
-        model = InvoiceJobOrder
+        model = JOFiles
         fields = "__all__"
 
 
-class IJOGoodsFilter(django_filters.FilterSet):
-    customer__name = django_filters.CharFilter(lookup_expr='exact')
-    label__name = django_filters.CharFilter(lookup_expr='icontains')
+class JODFilesFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
 
     class Meta:
-        model = IJOGoods
+        model = JODFiles
         fields = "__all__"
 
 

@@ -182,7 +182,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                 for key_word in cs_info_fields:
                     setattr(order, key_word, _rt_addr.get(key_word, None))
 
-                if not re.match(r"^1[3456789]\d{9}$", obj.mobile):
+                if not re.match(r"^1[23456789]\d{9}$", obj.mobile):
                     data["error"].append("%s 手机错误" % obj.id)
                     n -= 1
                     obj.mistake_tag = 2

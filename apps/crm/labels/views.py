@@ -17,7 +17,7 @@ from apps.utils.logging.loggings import logging
 from .serializers import LabelCategorySerializer, LabelSerializer, LabelCustomerOrderSerializer, LabelCustomerSerializer, LabelCustomerOrderDetailsSerializer
 from .filters import LabelCategoryFilter, LabelFilter, LabelCustomerOrderFilter, LabelCustomerFilter, LabelCustomerOrderDetailsFilter
 from apps.utils.logging.loggings import logging, getlogs
-from apps.crm.customers.models import Customer
+from apps.crm.customers.models import Customer, LogCustomer
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.wop.job.models import JobOrder, JobOrderDetails, LogJobOrder, LogJobOrderDetails
 
@@ -555,6 +555,7 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
         return Response(data)
 
     def handle_upload_file(self, request, _file):
+        user = request.user
         ALLOWED_EXTENSIONS = ['xls', 'xlsx']
         INIT_FIELDS_DIC = {
             '手机': 'customer',
@@ -616,6 +617,10 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
                     else:
                         report_dic[k] += v
                 i += 1
+            for code in codes:
+                code_dict[code].quantity = code_dict[code].labelcustomerorderdetails_set.filter(order_status=1).count()
+                code_dict[code].save()
+                logging(code_dict[code], user, LogLabelCustomerOrder, "更新数量：%s" % code_dict[code].quantity)
             return report_dic
 
         else:
@@ -637,7 +642,7 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
                 continue
             order_details.order = order
             row["customer"] = re.sub("[!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(row["customer"]))
-            if not re.match(r"^1[3456789]\d{9}$", row["customer"]):
+            if not re.match(r"^1[23456789]\d{9}$", row["customer"]):
                 report_dic["error"].append("%s 电话不符合规则" % row["customer"])
                 report_dic["false"] += 1
                 continue
@@ -651,9 +656,8 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
                     continue
                 order_details.customer = customer
             else:
-                customer = Customer()
-                customer.name = row["customer"]
-                customer.save()
+                customer = Customer.objects.create(**{"name": row["customer"]})
+                logging(customer, user, LogCustomer, "由标签创建")
                 order_details.customer = customer
             order_details.memo = row['memo']
             try:
@@ -795,8 +799,7 @@ class LabelCustomerOrderDetailsCheckViewset(viewsets.ModelViewSet):
             try:
                 df = df[FILTER_FIELDS]
             except Exception as e:
-                report_dic["error"].append("必要字段不全或者错误")
-                return report_dic
+                raise serializers.ValidationError("必要字段不全或者错误: %s" % e)
 
             # 获取表头，对表头进行转换成数据库字段名
             columns_key = df.columns.values.tolist()

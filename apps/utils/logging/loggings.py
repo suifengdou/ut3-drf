@@ -65,7 +65,7 @@ def getfiles(obj, classlog):
         return ret
     reserver_query_name = "%s_set" % str(r_name).lower()
     try:
-        file_details = getattr(obj, reserver_query_name).all().order_by("-id")
+        file_details = getattr(obj, reserver_query_name).filter(is_delete=False).order_by("-id")
     except Exception as e:
         ret = [{
             "id": -1,

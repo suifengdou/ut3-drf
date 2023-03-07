@@ -109,8 +109,8 @@ class LabelCustomerOrder(models.Model):
         (9, '驳回'),
         (5, '特殊订单'),
     )
-    name = models.CharField(max_length=30, unique=True, db_index=True, verbose_name='标签关联单名称', help_text='标签关联单名称')
-    code = models.CharField(max_length=30, unique=True, db_index=True, verbose_name='标签关联单编码', help_text='标签关联单编码')
+    name = models.CharField(max_length=200, unique=True, db_index=True, verbose_name='标签关联单名称', help_text='标签关联单名称')
+    code = models.CharField(max_length=120, unique=True, db_index=True, verbose_name='标签关联单编码', help_text='标签关联单编码')
     label = models.ForeignKey(Label, on_delete=models.CASCADE, verbose_name='标签', help_text='标签')
     quantity = models.IntegerField(default=0, verbose_name="数量", help_text="数量")
     order_status = models.SmallIntegerField(choices=ORDERSTATUS, default=1, db_index=True, verbose_name='单据状态',

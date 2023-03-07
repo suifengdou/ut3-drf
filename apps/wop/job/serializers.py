@@ -1,8 +1,9 @@
 import datetime, re
+from django.db.models import Sum, Count
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import JobCategory, JobOrder, JOFiles, JobOrderDetails, LogJobCategory, LogJobOrder, \
-    LogJobOrderDetails, InvoiceJobOrder, IJOGoods, LogInvoiceJobOrder, LogIJOGoods, JODFiles
+    LogJobOrderDetails, JODFiles
 from apps.utils.logging.loggings import logging
 
 
@@ -77,10 +78,103 @@ class JobOrderSerializer(serializers.ModelSerializer):
             }
         return ret
 
+    def get_department(self, instance):
+        try:
+            ret = {
+                "id": instance.department.id,
+                "name": instance.department.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_label(self, instance):
+        try:
+            ret = {
+                "id": instance.label.id,
+                "name": instance.label.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_process_tag(self, instance):
+        process_tag = {
+            0: "未处理",
+            1: "已处理",
+            5: "特殊订单",
+            9: "驳回",
+
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process_tag.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_mistake_tag(self, instance):
+        mistake_tag = {
+            0: "正常",
+            1: "任务明细未完整确认",
+            2: "存在未锁定单据明细",
+
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_tag.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_order_status(self, instance):
+        order_status = {
+            0: "已取消",
+            1: "待处理",
+            2: "待领取",
+            3: "待执行",
+            4: "待审核",
+            5: "已完成",
+
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_complete_number(self, instance):
+        ret = instance.joborderdetails_set.filter(is_complete=True).count()
+        return ret
+
+    def get_over_number(self, instance):
+        ret = instance.joborderdetails_set.filter(is_over=True).count()
+        return ret
+
     def to_representation(self, instance):
         ret = super(JobOrderSerializer, self).to_representation(instance)
         ret["category"] = self.get_category(instance)
         ret["center"] = self.get_center(instance)
+        ret["department"] = self.get_department(instance)
+        ret["label"] = self.get_label(instance)
+        ret["complete_number"] = self.get_complete_number(instance)
+        ret["over_number"] = self.get_over_number(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
         return ret
 
     def create(self, validated_data):
@@ -96,6 +190,17 @@ class JobOrderSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
+        user = self.context["request"].user
+        if any(('TEMP' in validated_data["code"], validated_data["label"] != instance.label, validated_data["category"] != instance.category)):
+            if not all((validated_data["label"], validated_data['category'])):
+                raise serializers.ValidationError({"更新错误": "标签和类型为必填字段！"})
+            serial_number = re.sub("[- .:]", "", str(datetime.datetime.today().date()))
+            validated_data["name"] = '%s-%s-%s-%s-%s' % (validated_data["department"].name,
+                                                         validated_data["category"].name, validated_data["label"].name,
+                                                         serial_number, user.username)
+
+            validated_data["code"] = '%s-%s-%s' % (validated_data["category"].code, validated_data["label"].code,
+                                                   str(instance.id))
         user = self.context["request"].user
         validated_data["update_time"] = datetime.datetime.now()
         # 改动内容
@@ -114,18 +219,21 @@ class JobOrderSerializer(serializers.ModelSerializer):
 class JobOrderDetailsSerializer(serializers.ModelSerializer):
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-    name = serializers.CharField(required=False)
-    code = serializers.CharField(required=False)
 
     class Meta:
         model = JobOrderDetails
         fields = "__all__"
 
-    def get_label(self, instance):
+    def get_order(self, instance):
         try:
             ret = {
-                "id": instance.label.id,
-                "name": instance.label.name
+                "id": instance.order.id,
+                "name": instance.order.name,
+                "code": instance.order.code,
+                "label": instance.order.label.name,
+                "category": instance.order.category.name,
+                "info": instance.order.info,
+                "keywords": instance.order.keywords
             }
         except:
             ret = {
@@ -134,9 +242,78 @@ class JobOrderDetailsSerializer(serializers.ModelSerializer):
             }
         return ret
 
+    def get_customer(self, instance):
+        try:
+            ret = {
+                "id": instance.customer.id,
+                "name": instance.customer.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_process_tag(self, instance):
+        process_tag = {
+            0: "未处理",
+            1: "已处理",
+            5: "特殊订单",
+            9: "驳回",
+
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process_tag.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_mistake_tag(self, instance):
+        mistake_tag = {
+            0: "正常",
+            1: "待处理",
+            2: "待领取",
+
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_tag.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_order_status(self, instance):
+        order_status = {
+            0: "已取消",
+            1: "待处理",
+            2: "待领取",
+            3: "待执行",
+            4: "待审核",
+            5: "已完成",
+
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(JobOrderDetailsSerializer, self).to_representation(instance)
-        ret["label"] = self.get_label(instance)
+        ret["order"] = self.get_order(instance)
+        ret["customer"] = self.get_customer(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
         return ret
 
     def create(self, validated_data):
@@ -173,32 +350,19 @@ class JobOrderDetailsSerializer(serializers.ModelSerializer):
         return instance
 
 
-class InvoiceJobOrderSerializer(serializers.ModelSerializer):
+class JOFilesSerializer(serializers.ModelSerializer):
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
-        model = InvoiceJobOrder
+        model = JOFiles
         fields = "__all__"
 
-    def get_order(self, instance):
+    def get_creator(self, instance):
         try:
             ret = {
-                "id": instance.order.id,
-                "name": instance.order.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_customer(self, instance):
-        try:
-            ret = {
-                "id": instance.customer.id,
-                "name": instance.customer.name
+                "id": instance.creator.id,
+                "name": instance.creator.username
             }
         except:
             ret = {
@@ -208,60 +372,33 @@ class InvoiceJobOrderSerializer(serializers.ModelSerializer):
         return ret
 
     def to_representation(self, instance):
-        ret = super(InvoiceJobOrderSerializer, self).to_representation(instance)
-        ret["order"] = self.get_order(instance)
-        ret["customer"] = self.get_customer(instance)
-        return ret
+            ret = super(JOFilesSerializer, self).to_representation(instance)
+            ret['creator'] = self.get_creator(instance)
+            return ret
 
     def create(self, validated_data):
-        user = self.context["request"].user
-        validated_data["creator"] = self.context["request"].user.username
-        instance = self.Meta.model.objects.create(**validated_data)
-        logging(instance, user, LogInvoiceJobOrder, "创建")
-        return instance
+        validated_data["creator"] = self.context["request"].user
+        return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
-        # 改动内容
-        content = []
-        for key, value in validated_data.items():
-            if 'time' not in str(key):
-                check_value = getattr(instance, key, None)
-                if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
-
+        validated_data["updated_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        logging(instance, user, LogInvoiceJobOrder, "修改内容：%s" % str(content))
         return instance
 
 
-class IJOGoodsSerializer(serializers.ModelSerializer):
+class JODFilesSerializer(serializers.ModelSerializer):
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
-        model = IJOGoods
+        model = JODFiles
         fields = "__all__"
 
-    def get_order(self, instance):
+    def get_creator(self, instance):
         try:
             ret = {
-                "id": instance.order.id,
-                "name": instance.order.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_customer(self, instance):
-        try:
-            ret = {
-                "id": instance.customer.id,
-                "name": instance.customer.name
+                "id": instance.creator.id,
+                "name": instance.creator.username
             }
         except:
             ret = {
@@ -271,30 +408,16 @@ class IJOGoodsSerializer(serializers.ModelSerializer):
         return ret
 
     def to_representation(self, instance):
-        ret = super(IJOGoodsSerializer, self).to_representation(instance)
-        ret["order"] = self.get_order(instance)
-        ret["customer"] = self.get_customer(instance)
-        return ret
+            ret = super(JODFilesSerializer, self).to_representation(instance)
+            ret['creator'] = self.get_creator(instance)
+            return ret
 
     def create(self, validated_data):
-        user = self.context["request"].user
-        validated_data["creator"] = self.context["request"].user.username
-        instance = self.Meta.model.objects.create(**validated_data)
-        logging(instance, user, LogInvoiceJobOrder, "创建")
-        return instance
+        validated_data["creator"] = self.context["request"].user
+        return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
-        # 改动内容
-        content = []
-        for key, value in validated_data.items():
-            if 'time' not in str(key):
-                check_value = getattr(instance, key, None)
-                if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
-
+        validated_data["updated_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        logging(instance, user, LogInvoiceJobOrder, "修改内容：%s" % str(content))
         return instance
 

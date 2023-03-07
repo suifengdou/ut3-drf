@@ -153,7 +153,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 4
                     obj.save()
                     continue
-                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[3456789]\d{9}))$", obj.mobile):
+                if not re.match(r"^((0\d{2,3}-\d{7,8})|(1[23456789]\d{9}))$", obj.mobile):
                     data["error"].append("%s 手机错误" % obj.id)
                     n -= 1
                     obj.mistake_tag = 5
