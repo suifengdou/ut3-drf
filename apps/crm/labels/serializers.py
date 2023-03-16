@@ -36,7 +36,7 @@ class LabelCategorySerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogLabelCategory, "修改内容：%s" % str(content))
@@ -105,7 +105,7 @@ class LabelSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogLabel, "修改内容：%s" % str(content))
@@ -163,7 +163,7 @@ class LabelCustomerOrderSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
         current_date = datetime.datetime.today().date()
         serial_number = re.sub("[- .:]", "", str(current_date))
         validated_data["name"] = '%s-%s-%s-%s-%s' % (user.department.center.name, validated_data["label"].name,
@@ -230,7 +230,7 @@ class LabelCustomerOrderDetailsSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogLabelCustomerOrderDetails, "修改内容：%s" % str(content))
@@ -307,7 +307,8 @@ class LabelCustomerSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogLabelCategory, "修改内容：%s" % str(content))

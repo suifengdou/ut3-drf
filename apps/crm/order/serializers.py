@@ -149,7 +149,7 @@ class OriOrderSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
         if all([validated_data["receiver"], validated_data["mobile"], validated_data["address"]]):
             validated_data["process_tag"] = 1
 
@@ -245,7 +245,7 @@ class DecryptOrderSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogDecryptOrder, "修改内容：%s" % str(content))

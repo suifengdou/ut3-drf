@@ -36,7 +36,7 @@ class JobCategorySerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogJobCategory, "修改内容：%s" % str(content))
@@ -125,8 +125,7 @@ class JobOrderSerializer(serializers.ModelSerializer):
         mistake_tag = {
             0: "正常",
             1: "任务明细未完整确认",
-            2: "存在未锁定单据明细",
-
+            2: "先锁定再审核",
         }
         try:
             ret = {
@@ -209,7 +208,7 @@ class JobOrderSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogJobOrder, "修改内容：%s" % str(content))
@@ -275,9 +274,13 @@ class JobOrderDetailsSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_tag = {
             0: "正常",
-            1: "待处理",
-            2: "待领取",
-
+            1: "单据已锁定无法锁定",
+            2: "先锁定再审核",
+            3: "先设置完成按钮或结束按钮",
+            4: "无操作内容",
+            5: "标签创建错误",
+            6: "标签删除错误",
+            7: "工单默认标签创建错误",
         }
         try:
             ret = {
@@ -319,13 +322,7 @@ class JobOrderDetailsSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context["request"].user
         validated_data["creator"] = user.username
-        current_date = datetime.datetime.today().date()
-        serial_number = re.sub("[- .:]", "", str(current_date))
-        validated_data["name"] = '%s-%s-%s-%s' % (user.department.center.name, validated_data["label"].name, serial_number, user.username)
-        validated_data["code"] = "%s-%s" % (validated_data["label"].code, serial_number)
         instance = self.Meta.model.objects.create(**validated_data)
-        instance.name = "%s-%s" % (instance.name, instance.id)
-        instance.code = "%s-%s" % (instance.code, instance.id)
         instance.save()
         logging(instance, user, LogJobOrderDetails, "创建")
         return instance
@@ -339,12 +336,7 @@ class JobOrderDetailsSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
-        current_date = datetime.datetime.today().date()
-        serial_number = re.sub("[- .:]", "", str(current_date))
-        validated_data["name"] = '%s-%s-%s-%s-%s' % (user.department.center.name, validated_data["label"].name,
-                                                     serial_number, user.username, instance.id)
-        validated_data["code"] = "%s-%s-%s" % (validated_data["label"].code, serial_number, instance.id)
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogJobOrderDetails, "修改内容：%s" % str(content))
         return instance

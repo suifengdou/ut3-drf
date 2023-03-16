@@ -245,8 +245,6 @@ class CustomerLabelViewset(viewsets.ModelViewSet):
         data["successful"] = n
         return Response(data)
 
-
-
     @action(methods=['patch'], detail=False)
     def get_log_details(self, request, *args, **kwargs):
         id = request.data.get("id", None)

@@ -29,7 +29,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
                 if value != check_value:
-                    content.append('%s 替换 %s' % (value, check_value))
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogCustomer, "修改内容：%s" % str(content))
         return instance
@@ -43,7 +43,7 @@ class CustomerLabelSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def get_labels(self, instance):
-        labels = instance.labelcustomer_set.all()
+        labels = instance.labelcustomer_set.filter(is_delete=False)
         ret = []
         if labels:
             for label in labels:

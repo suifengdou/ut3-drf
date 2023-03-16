@@ -4,11 +4,11 @@ import re
 from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import ManualOrder, MOGoods, ManualOrderExport
+from .models import ManualOrder, MOGoods, ManualOrderExport, LogManualOrder, LogManualOrderExport
 from apps.base.goods.models import Goods
 from apps.utils.geography.models import District
 from apps.utils.geography.tools import PickOutAdress
-
+from apps.utils.logging.loggings import logging
 
 
 class ManualOrderSerializer(serializers.ModelSerializer):
@@ -76,6 +76,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             1: "质量问题",
             2: "开箱即损",
             3: "礼品赠品",
+            4: "试用体验",
         }
         try:
             ret = {
@@ -159,6 +160,33 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_settle_category(self, instance):
+        settle_category = {
+            0: "常规",
+            1: "试用退回",
+            2: "OA报损",
+            3: "退回苏州",
+            4: "试用销售",
+        }
+        try:
+            ret = {
+                "id": instance.settle_category,
+                "name": settle_category.get(instance.order_category, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_warehouse(self, instance):
+        try:
+            ret = {
+                "id": instance.warehouse.id,
+                "name": instance.warehouse.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_goods_details(self, instance):
         goods_details = instance.mogoods_set.all()
         ret = []
@@ -189,6 +217,8 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         ret["order_category"] = self.get_order_category(instance)
         ret["assign_express"] = self.get_assign_express(instance)
         ret["order_status"] = self.get_order_status(instance)
+        ret["settle_category"] = self.get_settle_category(instance)
+        ret["warehouse"] = self.get_warehouse(instance)
         ret["goods_details"] = self.get_goods_details(instance)
         return ret
 
@@ -229,6 +259,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             validated_data[key_word] = _rt_addr.get(key_word, None)
 
         manual_order = self.Meta.model.objects.create(**validated_data)
+        logging(manual_order, user, LogManualOrder, "手工创建")
         for goods_detail in goods_details:
             goods_detail['manual_order'] = manual_order
             goods_name = Goods.objects.filter(id=goods_detail["goods_name"])[0]
@@ -260,7 +291,15 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         if goods_details:
             self.check_goods_details(goods_details)
 
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if value != check_value:
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
+
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+
         if goods_details:
             instance.mogoods_set.all().delete()
             for goods_detail in goods_details:
@@ -271,6 +310,8 @@ class ManualOrderSerializer(serializers.ModelSerializer):
                 goods_detail["id"] = 'n'
                 goods_detail.pop("xh")
                 self.create_goods_detail(goods_detail)
+                content.append('更新货品：%s x %s' % (_q_goods.name, goods_detail["quantity"]))
+        logging(instance, user, LogManualOrder, "修改内容：%s" % str(content))
         return instance
 
 
@@ -440,7 +481,6 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
         except:
             ret = {"id": -1, "name": "显示错误"}
         return ret
-
 
     def to_representation(self, instance):
         ret = super(ManualOrderExportSerializer, self).to_representation(instance)

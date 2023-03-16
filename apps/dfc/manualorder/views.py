@@ -18,7 +18,7 @@ from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
-from .models import ManualOrder, MOGoods, ManualOrderExport
+from .models import ManualOrder, MOGoods, ManualOrderExport, LogManualOrder, LogManualOrderExport
 from .serializers import ManualOrderSerializer, MOGoodsSerializer, ManualOrderExportSerializer
 from .filters import ManualOrderFilter, MOGoodsFilter, ManualOrderExportFilter
 from apps.utils.geography.models import City, District
@@ -26,6 +26,7 @@ from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.utils.geography.tools import PickOutAdress
 from ut3.settings import EXPORT_TOPLIMIT
+from apps.utils.logging.loggings import getlogs, logging
 
 
 class ManualOrderSubmitViewset(viewsets.ModelViewSet):
@@ -496,6 +497,15 @@ class ManualOrderManageViewset(viewsets.ModelViewSet):
         f = ManualOrderFilter(params)
         serializer = ManualOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = ManualOrder.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogManualOrder)
+        return Response(ret)
 
 
 class MOGoodsTrackViewset(viewsets.ModelViewSet):

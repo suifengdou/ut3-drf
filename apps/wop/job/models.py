@@ -122,9 +122,13 @@ class JobOrderDetails(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '明细对应标签单状态错误'),
-        (2, '明细对应客户已存在标签'),
-        (3, '创建标签出错'),
+        (1, '单据已锁定无法锁定'),
+        (2, '先锁定再审核'),
+        (3, '先设置完成按钮或结束按钮'),
+        (4, '无操作内容'),
+        (5, '标签创建错误'),
+        (6, '标签删除错误'),
+        (7, '工单默认标签创建错误'),
 
     )
     PROCESS_TAG = (
@@ -135,7 +139,8 @@ class JobOrderDetails(models.Model):
     )
     order = models.ForeignKey(JobOrder, on_delete=models.CASCADE, verbose_name='源单', help_text='源单')
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='客户', help_text='客户')
-    keywords = models.CharField(max_length=200, null=True, blank=True, verbose_name='任务执行关键字', help_text='任务执行关键字')
+    add_label = models.CharField(max_length=200, null=True, blank=True, verbose_name='添加标签', help_text='添加标签')
+    del_label = models.CharField(max_length=200, null=True, blank=True, verbose_name='删除标签', help_text='删除标签')
     is_complete = models.BooleanField(default=False, verbose_name='是否完成', help_text='是否完成')
     is_over = models.BooleanField(default=False, verbose_name='是否结束', help_text='是否结束')
     is_reset = models.BooleanField(default=False, verbose_name='是否重置', help_text='是否重置')

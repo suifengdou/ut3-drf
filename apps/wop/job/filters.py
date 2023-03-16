@@ -44,6 +44,8 @@ class JobOrderDetailsFilter(django_filters.FilterSet):
     customer__name = django_filters.CharFilter(lookup_expr='icontains')
     customer__name__in = django_filters.CharFilter(method='customer_filter')
     keywords = django_filters.CharFilter(method='keywords_filter')
+    add_label = django_filters.CharFilter(method='keywords_filter')
+    del_label = django_filters.CharFilter(method='keywords_filter')
 
     class Meta:
         model = JobOrderDetails
