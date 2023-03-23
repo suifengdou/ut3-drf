@@ -12,8 +12,8 @@ class LabelCategory(models.Model):
     code = models.CharField(max_length=30, unique=True, db_index=True, verbose_name='类型编码', help_text='类型编码')
     memo = models.CharField(null=True, blank=True, max_length=30, verbose_name='备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -27,16 +27,25 @@ class LabelCategory(models.Model):
 
 
 class Label(models.Model):
-
+    GROUP_CODE = (
+        ("PPL", '基础'),
+        ("FAM", '拓展'),
+        ("PROD", '产品'),
+        ("ORD", '交易'),
+        ("SVC", '售后'),
+        ("SAT", '体验'),
+        ("REFD", '退换'),
+        ("OTHS", '其他'),
+    )
     name = models.CharField(max_length=30, unique=True, db_index=True, verbose_name='标签名称', help_text='标签名称')
     code = models.CharField(max_length=30, unique=True, db_index=True, verbose_name='标签编码', help_text='标签编码')
     category = models.ForeignKey(LabelCategory, on_delete=models.CASCADE, verbose_name='类型', help_text='类型')
-    center = models.ForeignKey(Center, on_delete=models.CASCADE, null=True, blank=True, verbose_name='中心', help_text='中心')
+    group = models.CharField(choices=GROUP_CODE, max_length=30, verbose_name='标签分组', help_text='标签分组')
     is_cancel = models.BooleanField(default=False, verbose_name='是否停用', help_text='是否停用')
     memo = models.CharField(null=True, blank=True, max_length=30, verbose_name='备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -90,18 +99,6 @@ class LabelCustomerOrder(models.Model):
     MISTAKE_LIST = (
         (0, '正常'),
         (1, '存在未递交的明细'),
-        (2, '存在明细错误'),
-        (3, '无部门'),
-        (4, '省市区出错'),
-        (5, '手机错误'),
-        (6, '无店铺'),
-        (7, '集运仓地址'),
-        (8, '14天内重复'),
-        (9, '14天外重复'),
-        (10, '输出单保存出错'),
-        (11, '货品数量错误'),
-        (12, '无收件人'),
-        (13, '此类型不可发整机'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -119,8 +116,8 @@ class LabelCustomerOrder(models.Model):
     process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
     memo = models.CharField(null=True, blank=True, max_length=30, verbose_name='备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -143,8 +140,10 @@ class LabelCustomerOrderDetails(models.Model):
     MISTAKE_LIST = (
         (0, '正常'),
         (1, '明细对应标签单状态错误'),
-        (2, '明细对应客户已存在标签'),
-        (3, '创建标签出错'),
+        (2, '明细未锁定'),
+        (3, '标签已被删除恢复失败'),
+        (4, '标签已存在不可重复打标'),
+        (5, '标签打标失败'),
 
     )
     PROCESS_TAG = (
@@ -161,8 +160,8 @@ class LabelCustomerOrderDetails(models.Model):
     process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签')
     memo = models.CharField(null=True, blank=True, max_length=30, verbose_name='备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -198,8 +197,8 @@ class LabelCustomer(models.Model):
                                             help_text='单据状态')
     memo = models.CharField(null=True, blank=True, max_length=30, verbose_name='备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 

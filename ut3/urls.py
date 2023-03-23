@@ -46,6 +46,7 @@ from apps.crm.callcenter.router import callcenter_router
 from apps.crm.service.router import service_router
 from apps.crm.vipwechat.router import vipwechat_router
 from apps.crm.labels.router import label_router
+from apps.crm.customerlabel.router import customerlabel_router
 from apps.dfc.manualorder.router import manualorder_router
 from apps.dfc.batchtable.router import batchdata_router
 from apps.dfc.compensation.router import compensation_router
@@ -95,6 +96,7 @@ route.registry.extend(intreceipt_router.registry)
 route.registry.extend(intpurchase_router.registry)
 route.registry.extend(intstatement_router.registry)
 route.registry.extend(product_catalog_router.registry)
+route.registry.extend(customerlabel_router.registry)
 
 
 urlpatterns = [

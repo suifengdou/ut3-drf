@@ -6,8 +6,8 @@ from apps.utils.geography.models import City
 
 class WarehouseType(models.Model):
     name = models.CharField(unique=True, max_length=30, verbose_name='仓库类型', help_text='仓库类型')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -33,8 +33,8 @@ class Warehouse(models.Model):
     address = models.CharField(null=True, blank=True, max_length=90, verbose_name='地址', help_text='地址')
     category = models.ForeignKey(WarehouseType, on_delete=models.CASCADE, verbose_name='仓库类型', help_text='仓库类型')
     order_status = models.BooleanField(default=0, verbose_name='监控状态', help_text='监控状态')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 

@@ -14,8 +14,8 @@ class ProductCatalog(models.Model):
     price = models.IntegerField(default=0, verbose_name='销售单价', help_text='销售单价')
     memo = models.CharField(max_length=230, null=True, blank=True, verbose_name='备注', help_text='备注')
     order_status = models.BooleanField(default=False, verbose_name='状态', help_text='状态')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -39,8 +39,8 @@ class ProductCatalog(models.Model):
 #     amount = models.IntegerField(default=0, verbose_name='销售单价', help_text='销售单价')
 #     memo = models.CharField(max_length=230, null=True, blank=True, verbose_name='备注', help_text='备注')
 #     order_status = models.BooleanField(default=False, verbose_name='状态', help_text='状态')
-#     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-#     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+#     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+#     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
 #     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
 #     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 #

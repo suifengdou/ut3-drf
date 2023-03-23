@@ -34,8 +34,8 @@ class IntDistributor(models.Model):
     order_status = models.IntegerField(choices=STATUS_LIST, default=1, verbose_name='经销商状态', help_text='经销商状态')
     department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, verbose_name='部门', help_text='部门')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
 
     class Meta:
@@ -63,8 +63,8 @@ class Contacts(models.Model):
     gender = models.IntegerField(choices=GENDER_LIST, default=1, verbose_name='性别', help_text='性别')
     is_staff = models.BooleanField(default=True, verbose_name='在职状态', help_text='在职状态')
     memo = models.CharField(max_length=200, null=True, blank=True, verbose_name='备注', help_text='备注')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -86,8 +86,8 @@ class ContactMode(models.Model):
     name = models.CharField(max_length=150, verbose_name='联系方式', help_text='联系方式')
     content = models.CharField(max_length=150, verbose_name='相关内容', help_text='职位')
     memo = models.CharField(max_length=200, null=True, blank=True, verbose_name='备注', help_text='备注')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 

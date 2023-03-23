@@ -41,8 +41,8 @@ class Address(models.Model):
     is_default = models.BooleanField(default=True, verbose_name='是否默认', help_text='是否默认')
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -71,8 +71,8 @@ class Money(models.Model):
     amount = models.FloatField(default=0, verbose_name='金额', help_text='金额')
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -102,8 +102,8 @@ class CustomerGoods(models.Model):
     m_sn = models.CharField(null=True, blank=True, max_length=250, verbose_name='SN', help_text='SN')
     memo = models.CharField(null=True, blank=True, max_length=250, verbose_name='备注', help_text='备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -174,4 +174,10 @@ class LogCustomerGoods(models.Model):
 
     def __str__(self):
         return str(self.id)
+
+
+
+
+
+
 

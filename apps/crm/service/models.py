@@ -69,7 +69,7 @@ class OriMaintenance(models.Model):
     appraisal = models.CharField(max_length=200, null=True, blank=True, verbose_name='保修结束语', help_text='保修结束语')
     shop = models.CharField(max_length=60, verbose_name='关联店铺', help_text='关联店铺')
     purchase_time = models.DateTimeField(null=True, blank=True, verbose_name='购买时间', help_text='购买时间')
-    ori_create_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间', help_text='创建时间')
+    ori_created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间', help_text='创建时间')
     ori_creator = models.CharField(null=True, blank=True, max_length=50, verbose_name='创建人', help_text='创建人')
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='审核时间', help_text='审核时间')
     handler_name = models.CharField(null=True, blank=True, max_length=50, verbose_name='审核人', help_text='审核人')
@@ -106,8 +106,8 @@ class OriMaintenance(models.Model):
     mark_name = models.SmallIntegerField(choices=MARK_LIST, default=0, db_index=True, verbose_name="标记名称", help_text="标记名称")
     mark_memo = models.CharField(null=True, blank=True, max_length=230, verbose_name='异常备注', help_text='异常备注')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, db_index=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -171,7 +171,7 @@ class Maintenance(models.Model):
     charge_memory = models.TextField(default='', verbose_name='收费说明', help_text='收费说明')
 
     ori_creator = models.CharField(null=True, blank=True, max_length=50, verbose_name='创建人', help_text='创建人')
-    ori_create_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间', help_text='创建时间')
+    ori_created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间', help_text='创建时间')
     handler_name = models.CharField(max_length=50, verbose_name='审核人', help_text='审核人')
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='审核时间', help_text='审核时间')
     completer = models.CharField(null=True, blank=True, max_length=50, verbose_name='处理登记人', help_text='处理登记人')
@@ -187,8 +187,8 @@ class Maintenance(models.Model):
     order_status = models.SmallIntegerField(default=1, choices=ODER_STATUS, db_index=True, verbose_name='单据状态', help_text='单据状态')
     found_tag = models.BooleanField(default=False, verbose_name="发现二次维修", help_text="发现二次维修")
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -212,8 +212,8 @@ class FindAndFound(models.Model):
     found = models.OneToOneField(Maintenance, on_delete=models.CASCADE, related_name='m_found', verbose_name='二次保修单',
                                  help_text='二次保修单')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -232,8 +232,8 @@ class MaintenanceSummary(models.Model):
     repeat_found = models.IntegerField(default=0, verbose_name='当天发现30天二次维修量', help_text='当天发现30天二次维修量')
     repeat_today = models.IntegerField(default=0, verbose_name='当天二次维修量', help_text='当天二次维修量')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 

@@ -5,8 +5,7 @@ from functools import reduce
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import ValidationError
-from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, PayBillOrder, PBOGoods, \
-    ArrearsBillOrder, ABOGoods, FinalStatement, FinalStatementGoods, AccountInfo, PBillToAccount, ABillToAccount,  TailToExpense, RefundToPrestore
+from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, AccountInfo,  TailToExpense, RefundToPrestore
 from apps.base.goods.models import Goods
 from apps.utils.geography.tools import PickOutAdress
 
@@ -923,143 +922,143 @@ class ROGoodsSerializer(serializers.ModelSerializer):
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
+#
+# class PayBillOrderSerializer(serializers.ModelSerializer):
+#     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+#     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+#
+#     class Meta:
+#         model = PayBillOrder
+#         fields = "__all__"
+#
+#
+#     def to_representation(self, instance):
+#         ret = super(PayBillOrderSerializer, self).to_representation(instance)
+#         return ret
+#
+#     def create(self, validated_data):
+#         validated_data["creator"] = self.context["request"].user.username
+#         return self.Meta.model.objects.create(**validated_data)
+#
+#     def update(self, instance, validated_data):
+#         validated_data["update_time"] = datetime.datetime.now()
+#         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+#         return instance
+#
 
-class PayBillOrderSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+# class PBOGoodsSerializer(serializers.ModelSerializer):
+#     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+#     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+#
+#     class Meta:
+#         model = PBOGoods
+#         fields = "__all__"
+#
+#
+#     def to_representation(self, instance):
+#         ret = super(PBOGoodsSerializer, self).to_representation(instance)
+#         return ret
+#
+#     def create(self, validated_data):
+#         validated_data["creator"] = self.context["request"].user.username
+#         return self.Meta.model.objects.create(**validated_data)
+#
+#     def update(self, instance, validated_data):
+#         validated_data["update_time"] = datetime.datetime.now()
+#         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+#         return instance
+#
 
-    class Meta:
-        model = PayBillOrder
-        fields = "__all__"
+# class ArrearsBillOrderSerializer(serializers.ModelSerializer):
+#     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+#     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+#
+#     class Meta:
+#         model = ArrearsBillOrder
+#         fields = "__all__"
+#
+#
+#     def to_representation(self, instance):
+#         ret = super(ArrearsBillOrderSerializer, self).to_representation(instance)
+#         return ret
+#
+#     def create(self, validated_data):
+#         validated_data["creator"] = self.context["request"].user.username
+#         return self.Meta.model.objects.create(**validated_data)
+#
+#     def update(self, instance, validated_data):
+#         validated_data["update_time"] = datetime.datetime.now()
+#         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+#         return instance
 
-
-    def to_representation(self, instance):
-        ret = super(PayBillOrderSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class PBOGoodsSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = PBOGoods
-        fields = "__all__"
-
-
-    def to_representation(self, instance):
-        ret = super(PBOGoodsSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class ArrearsBillOrderSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = ArrearsBillOrder
-        fields = "__all__"
-
-
-    def to_representation(self, instance):
-        ret = super(ArrearsBillOrderSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class ABOGoodsSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = ABOGoods
-        fields = "__all__"
-
-
-    def to_representation(self, instance):
-        ret = super(ABOGoodsSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class FinalStatementSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = FinalStatement
-        fields = "__all__"
-
-
-    def to_representation(self, instance):
-        ret = super(FinalStatementSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class FinalStatementGoodsSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = FinalStatementGoods
-        fields = "__all__"
-
-
-    def to_representation(self, instance):
-        ret = super(FinalStatementGoodsSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
+#
+# class ABOGoodsSerializer(serializers.ModelSerializer):
+#     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+#     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+#
+#     class Meta:
+#         model = ABOGoods
+#         fields = "__all__"
+#
+#
+#     def to_representation(self, instance):
+#         ret = super(ABOGoodsSerializer, self).to_representation(instance)
+#         return ret
+#
+#     def create(self, validated_data):
+#         validated_data["creator"] = self.context["request"].user.username
+#         return self.Meta.model.objects.create(**validated_data)
+#
+#     def update(self, instance, validated_data):
+#         validated_data["update_time"] = datetime.datetime.now()
+#         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+#         return instance
+#
+#
+# class FinalStatementSerializer(serializers.ModelSerializer):
+#     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+#     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+#
+#     class Meta:
+#         model = FinalStatement
+#         fields = "__all__"
+#
+#
+#     def to_representation(self, instance):
+#         ret = super(FinalStatementSerializer, self).to_representation(instance)
+#         return ret
+#
+#     def create(self, validated_data):
+#         validated_data["creator"] = self.context["request"].user.username
+#         return self.Meta.model.objects.create(**validated_data)
+#
+#     def update(self, instance, validated_data):
+#         validated_data["update_time"] = datetime.datetime.now()
+#         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+#         return instance
+#
+#
+# class FinalStatementGoodsSerializer(serializers.ModelSerializer):
+#     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+#     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+#
+#     class Meta:
+#         model = FinalStatementGoods
+#         fields = "__all__"
+#
+#
+#     def to_representation(self, instance):
+#         ret = super(FinalStatementGoodsSerializer, self).to_representation(instance)
+#         return ret
+#
+#     def create(self, validated_data):
+#         validated_data["creator"] = self.context["request"].user.username
+#         return self.Meta.model.objects.create(**validated_data)
+#
+#     def update(self, instance, validated_data):
+#         validated_data["update_time"] = datetime.datetime.now()
+#         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+#         return instance
 
 
 class AccountInfoSerializer(serializers.ModelSerializer):
@@ -1158,50 +1157,50 @@ class AccountInfoSerializer(serializers.ModelSerializer):
         return instance
 
 
-class PBillToAccountSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+# class PBillToAccountSerializer(serializers.ModelSerializer):
+#     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+#     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+#
+#     class Meta:
+#         model = PBillToAccount
+#         fields = "__all__"
+#
+#
+#     def to_representation(self, instance):
+#         ret = super(PBillToAccountSerializer, self).to_representation(instance)
+#         return ret
+#
+#     def create(self, validated_data):
+#         validated_data["creator"] = self.context["request"].user.username
+#         return self.Meta.model.objects.create(**validated_data)
+#
+#     def update(self, instance, validated_data):
+#         validated_data["update_time"] = datetime.datetime.now()
+#         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+#         return instance
 
-    class Meta:
-        model = PBillToAccount
-        fields = "__all__"
-
-
-    def to_representation(self, instance):
-        ret = super(PBillToAccountSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class ABillToAccountSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = ABillToAccount
-        fields = "__all__"
-
-
-    def to_representation(self, instance):
-        ret = super(ABillToAccountSerializer, self).to_representation(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
+#
+# class ABillToAccountSerializer(serializers.ModelSerializer):
+#     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+#     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+#
+#     class Meta:
+#         model = ABillToAccount
+#         fields = "__all__"
+#
+#
+#     def to_representation(self, instance):
+#         ret = super(ABillToAccountSerializer, self).to_representation(instance)
+#         return ret
+#
+#     def create(self, validated_data):
+#         validated_data["creator"] = self.context["request"].user.username
+#         return self.Meta.model.objects.create(**validated_data)
+#
+#     def update(self, instance, validated_data):
+#         validated_data["update_time"] = datetime.datetime.now()
+#         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+#         return instance
 
 
 class TailToExpenseSerializer(serializers.ModelSerializer):

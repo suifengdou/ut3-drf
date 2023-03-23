@@ -882,9 +882,6 @@ class AccountInfo(models.Model):
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间')
     handle_interval = models.IntegerField(null=True, blank=True, verbose_name='处理间隔(分钟)')
 
-    final_statement = models.ForeignKey(FinalStatement, on_delete=models.CASCADE, null=True, blank=True,
-                                        verbose_name='结算单')
-
     message = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')
     feedback = models.CharField(null=True, blank=True, max_length=200, verbose_name='反馈')
     sign_company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='acc_tail_company', null=True,

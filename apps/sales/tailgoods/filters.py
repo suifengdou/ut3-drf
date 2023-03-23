@@ -7,9 +7,7 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
-from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, PayBillOrder, PBOGoods, \
-    ArrearsBillOrder, ABOGoods, FinalStatement, FinalStatementGoods, AccountInfo, PBillToAccount, ABillToAccount, \
-    TailToExpense, RefundToPrestore
+from .models import OriTailOrder, OTOGoods, TailOrder, TOGoods, RefundOrder, ROGoods, AccountInfo,  TailToExpense, RefundToPrestore
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
@@ -82,56 +80,56 @@ class ROGoodsFilter(django_filters.FilterSet):
         model = ROGoods
         fields = "__all__"
 
-
-class PayBillOrderFilter(django_filters.FilterSet):
-    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
-
-    class Meta:
-        model = PayBillOrder
-        fields = "__all__"
-
-
-class PBOGoodsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-
-    class Meta:
-        model = PBOGoods
-        fields = "__all__"
+#
+# class PayBillOrderFilter(django_filters.FilterSet):
+#     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#
+#     class Meta:
+#         model = PayBillOrder
+#         fields = "__all__"
 
 
-class ArrearsBillOrderFilter(django_filters.FilterSet):
-    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+# class PBOGoodsFilter(django_filters.FilterSet):
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#
+#     class Meta:
+#         model = PBOGoods
+#         fields = "__all__"
 
-    class Meta:
-        model = ArrearsBillOrder
-        fields = "__all__"
+#
+# class ArrearsBillOrderFilter(django_filters.FilterSet):
+#     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#
+#     class Meta:
+#         model = ArrearsBillOrder
+#         fields = "__all__"
+
+#
+# class ABOGoodsFilter(django_filters.FilterSet):
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#
+#     class Meta:
+#         model = ABOGoods
+#         fields = "__all__"
 
 
-class ABOGoodsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-
-    class Meta:
-        model = ABOGoods
-        fields = "__all__"
-
-
-class FinalStatementFilter(django_filters.FilterSet):
-    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
-
-    class Meta:
-        model = FinalStatement
-        fields = "__all__"
-
-
-class FinalStatementGoodsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-
-    class Meta:
-        model = FinalStatementGoods
-        fields = "__all__"
+# class FinalStatementFilter(django_filters.FilterSet):
+#     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#
+#     class Meta:
+#         model = FinalStatement
+#         fields = "__all__"
+#
+#
+# class FinalStatementGoodsFilter(django_filters.FilterSet):
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#
+#     class Meta:
+#         model = FinalStatementGoods
+#         fields = "__all__"
 
 
 class AccountInfoFilter(django_filters.FilterSet):
@@ -142,21 +140,21 @@ class AccountInfoFilter(django_filters.FilterSet):
         model = AccountInfo
         fields = "__all__"
 
+#
+# class PBillToAccountFilter(django_filters.FilterSet):
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#
+#     class Meta:
+#         model = PBillToAccount
+#         fields = "__all__"
 
-class PBillToAccountFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
 
-    class Meta:
-        model = PBillToAccount
-        fields = "__all__"
-
-
-class ABillToAccountFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-
-    class Meta:
-        model = ABillToAccount
-        fields = "__all__"
+# class ABillToAccountFilter(django_filters.FilterSet):
+#     create_time = django_filters.DateTimeFromToRangeFilter()
+#
+#     class Meta:
+#         model = ABillToAccount
+#         fields = "__all__"
 
 
 class TailToExpenseFilter(django_filters.FilterSet):

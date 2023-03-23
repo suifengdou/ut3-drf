@@ -20,6 +20,7 @@ from apps.utils.logging.loggings import logging, getlogs
 from apps.crm.customers.models import Customer, LogCustomer
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.wop.job.models import JobOrder, JobOrderDetails, LogJobOrder, LogJobOrderDetails
+from apps.crm.customerlabel.views import QueryLabel, CreateLabel, DeleteLabel, RecoverLabel
 
 
 class LabelCategoryViewset(viewsets.ModelViewSet):
@@ -60,37 +61,6 @@ class LabelCategoryViewset(viewsets.ModelViewSet):
         instance = LabelCategory.objects.filter(id=id)[0]
         ret = getlogs(instance, LogLabelCategory)
         return Response(ret)
-
-
-class LabelCenterViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定订单
-    list:
-        返回订单列表
-    """
-    serializer_class = LabelSerializer
-    filter_class = LabelFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['order.view_OriOrder']
-    }
-
-    def get_queryset(self):
-        if not self.request:
-            return Label.objects.none()
-        queryset = Label.objects.all().order_by("-id")
-        return queryset
-
-    @action(methods=['patch'], detail=False)
-    def export(self, request, *args, **kwargs):
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.data
-        f = LabelFilter(params)
-        serializer = LabelSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
-        return Response(serializer.data)
 
 
 class LabelViewset(viewsets.ModelViewSet):
@@ -192,51 +162,13 @@ class LabelCustomerOrderSubmitViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                all_details = obj.labelcustomerorderdetails_set.all()
-                check_all_details = all_details.filter(order_status=1)
-                if check_all_details.exists():
+                all_details = obj.labelcustomerorderdetails_set.filter(order_status=1)
+                if all_details.exists():
                     obj.mistake_tag = 1
                     data["error"].append("存在未递交的明细")
                     obj.save()
                     n -= 1
                     continue
-                details_error = 0
-                for details in all_details:
-                    _q_customer_label = LabelCustomer.objects.filter(customer=details.customer, label=obj.label)
-                    if _q_customer_label.exists():
-                        details.mistake_tag = 2
-                        data["error"].append("%s 明细对应客户已存在标签" % details.customer.name)
-                        obj.save()
-                        n -= 1
-                        details_error = 1
-                        continue
-                    else:
-                        labelcustomer = LabelCustomer()
-                        labelcustomer.label = obj.label
-                        labelcustomer.customer = details.customer
-                        labelcustomer.creator = user.username
-                        labelcustomer.center = user.department.center
-                        labelcustomer.memo = "来源：%s" % (obj.code)
-                        try:
-                            labelcustomer.save()
-                            logging(labelcustomer, user, LogLabelCustomer, "创建")
-                            details.order_status = 3
-                            details.save()
-                            logging(details, user, LogLabelCustomerOrderDetails, "审核")
-                        except Exception as e:
-                            details.mistake_tag = 3
-                            data["error"].append("%s 创建标签出错" % details.customer.name)
-                            obj.save()
-                            n -= 1
-                            details_error = 1
-                            continue
-                if details_error:
-                    obj.mistake_tag = 2
-                    data["error"].append("存在明细错误")
-                    obj.save()
-                    n -= 1
-                    continue
-
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.save()
@@ -258,151 +190,8 @@ class LabelCustomerOrderSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-
-class LabelCustomerOrdercheckViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定订单
-    list:
-        返回订单列表
-    """
-    serializer_class = LabelCustomerOrderSerializer
-    filter_class = LabelCustomerOrderFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['order.view_OriOrder']
-    }
-
-    def get_queryset(self):
-        if not self.request:
-            return LabelCustomerOrder.objects.none()
-        queryset = LabelCustomerOrder.objects.filter(order_status=2).order_by("-id")
-        return queryset
-
-    @action(methods=['patch'], detail=False)
-    def export(self, request, *args, **kwargs):
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.data
-        f = LabelCustomerOrderFilter(params)
-        serializer = LabelCustomerOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
-        return Response(serializer.data)
-
-    def get_handle_list(self, params):
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 2
-        if all_select_tag:
-            handle_list = LabelCustomerOrderFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = LabelCustomerOrder.objects.filter(id__in=order_ids, order_status=2)
-            else:
-                handle_list = []
-        return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for obj in check_list:
-                if not obj.mobile:
-                    obj.mistake_tag = 1
-                    data["error"].append("%s 先校正订单" % obj.trade_no)
-                    obj.save()
-                    n -= 1
-                    continue
-                _q_customer = Customer.objects.filter(name=obj.mobile)
-                if _q_customer.exists():
-                    customer = _q_customer[0]
-                else:
-                    customer = Customer()
-                    customer.name = obj.mobile
-                    customer.save()
-                order = OriOrder()
-                attr_fields = ['buyer_nick', 'trade_no', 'receiver', 'address', 'mobile', "goods_name", "shop_name",
-                               'deliver_time', 'pay_time', 'receiver_area', 'logistics_no', 'buyer_message', 'cs_remark',
-                               'src_tids', 'num', 'price', 'share_amount', 'spec_code', 'order_category',
-                               'logistics_name', 'warehouse_name', 'print_remark']
-                for keyword in attr_fields:
-                    setattr(order, keyword, getattr(obj, keyword, None))
-                order.customer = customer
-                order.ori_order = obj
-                _q_warehouse = Warehouse.objects.filter(name=obj.warehouse_name)
-                if _q_warehouse.exists():
-                    order.warehouse_name = _q_warehouse[0]
-                else:
-                    obj.mistake_tag = 5
-                    data["error"].append("%s UT中无此仓库，先添加仓库" % obj.trade_no)
-                    obj.save()
-                    n -= 1
-                    continue
-                _q_shop = Shop.objects.filter(name=obj.shop_name)
-                if _q_shop.exists():
-                    order.shop_name = _q_shop[0]
-                else:
-                    obj.mistake_tag = 4
-                    data["error"].append("%s UT中无此店铺，先添加店铺" % obj.trade_no)
-                    obj.save()
-                    n -= 1
-                    continue
-                _q_goods = Goods.objects.filter(goods_id=obj.spec_code)
-                if _q_goods.exists():
-                    order.goods_name = _q_goods[0]
-                else:
-                    obj.mistake_tag = 3
-                    data["error"].append("%s UT中无此货品，先添加货品" % obj.trade_no)
-                    obj.save()
-                    n -= 1
-                    continue
-                area_list = str(obj.receiver_area).split(" ")
-                for city_key in area_list:
-                    _q_city = City.objects.filter(name=city_key)
-                    if _q_city.exists():
-                        order.city = _q_city[0]
-                        break
-                try:
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    data['error'].append("%s 保存出错" % obj.trade_no)
-                    data["false"] += 1
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=0)
+            # reject_list.update(order_status=0)
+            pass
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -494,6 +283,27 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
         return handle_list
 
     @action(methods=['patch'], detail=False)
+    def sign(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        sign_list = self.get_handle_list(params)
+        n = len(sign_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in sign_list:
+                obj.process_tag = 1
+                obj.save()
+                logging(obj, user, LogLabelCustomerOrderDetails, "确认锁定")
+        else:
+            raise serializers.ValidationError("没有可锁定的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
         params = request.data
         user = request.user
@@ -506,19 +316,48 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
+                label_obj = obj.order.label
+                customer_obj = obj.customer
                 if obj.order.order_status != 1:
                     obj.mistake_tag = 1
                     data["error"].append("%s 明细对应标签单状态错误" % obj.order.name)
-                    obj.save()
                     n -= 1
+                    obj.save()
                     continue
-
+                if obj.process_tag != 1:
+                    obj.mistake_tag = 2
+                    data["error"].append("%s 明细未锁定" % customer_obj.name)
+                    n -= 1
+                    obj.save()
+                    continue
+                customer_label_obj = QueryLabel(label_obj, customer_obj)
+                if customer_label_obj:
+                    if customer_label_obj.is_delete:
+                        _recover_result = RecoverLabel(customer_label_obj, label_obj, user)
+                        if not _recover_result:
+                            obj.mistake_tag = 3
+                            data["error"].append("%s 标签已被删除恢复失败" % customer_obj.name)
+                            n -= 1
+                            obj.save()
+                            continue
+                    else:
+                        obj.mistake_tag = 4
+                        data["error"].append("%s 标签已存在不可重复打标" % customer_obj.name)
+                        n -= 1
+                        obj.save()
+                        continue
+                else:
+                    _create_result = CreateLabel(label_obj, customer_obj, user)
+                    if not _create_result:
+                        obj.mistake_tag = 5
+                        data["error"].append("%s 标签打标失败" % customer_obj.name)
+                        n -= 1
+                        obj.save()
+                        continue
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.save()
-                logging(obj, user, LogLabelCustomerOrderDetails, "提交")
-                obj.order.quantity += 1
-                obj.order.save()
+                logging(obj, user, LogLabelCustomerOrderDetails, f"{customer_obj.name}打标{label_obj.name}成功")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -527,6 +366,7 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
@@ -536,7 +376,13 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            for obj in reject_list:
+                obj.order_status = 0
+                obj.save()
+                logging(obj, user, LogLabelCustomerOrderDetails, "取消")
+                obj.order.quantity -= 1
+                obj.order.save()
+                logging(obj.order, user, LogLabelCustomerOrder, f"取消了客户：{obj.customer.name}")
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -618,7 +464,7 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
                         report_dic[k] += v
                 i += 1
             for code in codes:
-                code_dict[code].quantity = code_dict[code].labelcustomerorderdetails_set.filter(order_status=1).count()
+                code_dict[code].quantity = code_dict[code].labelcustomerorderdetails_set.filter(order_status__in=[1, 2]).count()
                 code_dict[code].save()
                 logging(code_dict[code], user, LogLabelCustomerOrder, "更新数量：%s" % code_dict[code].quantity)
             return report_dic

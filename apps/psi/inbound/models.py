@@ -37,13 +37,13 @@ class OriInbound(models.Model):
     goods_id = models.CharField(max_length=50, verbose_name='商家编码')
     goods_name = models.CharField(max_length=90, verbose_name='货品名称')
     quantity = models.CharField(max_length=50, verbose_name='调整后数量')
-    create_time = models.DateTimeField(verbose_name='建单时间')
+    created_time = models.DateTimeField(verbose_name='建单时间')
     handle_time = models.DateTimeField(verbose_name='审核入库时间')
     memorandum = models.CharField(null=True, blank=True, max_length=150, verbose_name='备注')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因')
     order_status = models.IntegerField(choices=STATUS_LIST, default=1, verbose_name='单据状态')
 
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -103,8 +103,8 @@ class Inbound(models.Model):
     order_status = models.IntegerField(choices=STATUS_LIST, default=1, verbose_name='单据状态', help_text='单据状态')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因', help_text='错误原因')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -138,8 +138,8 @@ class InboundDetail(models.Model):
     volume = models.FloatField(null=True, blank=True, verbose_name='体积', help_text='体积')
     weight = models.FloatField(null=True, blank=True, verbose_name='重量', help_text='重量')
 
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -157,8 +157,8 @@ class InboundDetail(models.Model):
 class InboundVerify(models.Model):
     ori_inbound = models.OneToOneField(OriInbound, on_delete=models.CASCADE, verbose_name='原始入库单', help_text='原始入库单')
     inbound_detail = models.OneToOneField(InboundDetail, on_delete=models.CASCADE, verbose_name='入库单', help_text='入库单')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 

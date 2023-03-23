@@ -6,8 +6,8 @@ class Nationality(models.Model):
     abbreviation = models.CharField(unique=True, max_length=3, verbose_name='缩写', help_text='缩写')
     area_code = models.CharField(unique=True, max_length=10, verbose_name='电话区号', help_text='电话区号')
     area = models.CharField(max_length=30, blank=True, null=True, verbose_name='区域', help_text='区域')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -24,8 +24,8 @@ class Province(models.Model):
     nationality = models.ForeignKey(Nationality, on_delete=models.CASCADE, verbose_name='国家', help_text='国家')
     name = models.CharField(unique=True, max_length=150, verbose_name="省份", help_text='省份')
     area_code = models.CharField(unique=True, max_length=10, verbose_name='电话区号', help_text='电话区号')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -43,8 +43,8 @@ class City(models.Model):
     province = models.ForeignKey(Province, on_delete=models.CASCADE, verbose_name='省份', help_text='省份')
     name = models.CharField(unique=True, max_length=100, verbose_name='城市', help_text='城市')
     area_code = models.CharField(max_length=10, verbose_name='电话区号', help_text='电话区号')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
@@ -62,8 +62,8 @@ class District(models.Model):
     province = models.ForeignKey(Province, on_delete=models.CASCADE, verbose_name='省份', help_text='省份')
     city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='城市', help_text='城市')
     name = models.CharField(max_length=100, db_index=True, verbose_name='区县', help_text='区县')
-    create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
-    update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
