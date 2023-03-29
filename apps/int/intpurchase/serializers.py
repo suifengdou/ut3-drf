@@ -261,7 +261,7 @@ class IntPurchaseOrderSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         validated_data["department"] = user.department
 
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
 
         goods_details = validated_data.pop("goods_details", [])
         if goods_details:
@@ -610,7 +610,7 @@ class ExceptionIPOSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         validated_data["department"] = user.department
 
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
 
         goods_details = validated_data.pop("goods_details", [])
         if goods_details:

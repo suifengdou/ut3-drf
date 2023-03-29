@@ -273,7 +273,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         validated_data["department"] = user.department
 
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         address = validated_data.get("address", None)
         if address:
             _spilt_addr = PickOutAdress(address)

@@ -117,8 +117,7 @@ class JobOrderDetails(models.Model):
         (1, '待处理'),
         (2, '待领取'),
         (3, '待执行'),
-        (4, '待审核'),
-        (5, '已完成'),
+        (4, '已完成'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
@@ -129,7 +128,7 @@ class JobOrderDetails(models.Model):
         (5, '标签创建错误'),
         (6, '标签删除错误'),
         (7, '工单默认标签创建错误'),
-
+        (8, '工单添加标签恢复错误'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -205,6 +204,20 @@ class JobOrderDetails(models.Model):
                 return 'verify_field error, must have mandatory field: "{}""'.format(i)
         else:
             return None
+
+
+class JODTOMO(models.Model):
+    obj = models.ForeignKey(JobOrderDetails, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='订单', help_text='订单')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'WOP-JOB-任务-工单-明细-订单'
+        verbose_name_plural = verbose_name
+        db_table = 'wop_job_order_details_order'
+
+    def __str__(self):
+        return str(self.id)
 
 
 class JODFiles(models.Model):

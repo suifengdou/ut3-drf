@@ -38,7 +38,7 @@ class SpecialistSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         user = self.context["request"].user
         all_specialist = user.specialist_set.all().filter(is_default=True)
         if all_specialist.exists():
@@ -109,7 +109,7 @@ class VIPWechatSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 

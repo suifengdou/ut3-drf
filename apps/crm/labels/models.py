@@ -32,7 +32,7 @@ class Label(models.Model):
         ("FAM", '拓展'),
         ("PROD", '产品'),
         ("ORD", '交易'),
-        ("SVC", '售后'),
+        ("SVC", '服务'),
         ("SAT", '体验'),
         ("REFD", '退换'),
         ("OTHS", '其他'),

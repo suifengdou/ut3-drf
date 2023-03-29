@@ -169,7 +169,7 @@ class OriSatisfactionWorkOrderSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
@@ -198,7 +198,7 @@ class OSWOFilesSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
@@ -493,7 +493,7 @@ class SWOSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         create_time = validated_data.pop("create_time", "")
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         try:
             is_solved = validated_data["is_solved"]
         except:
@@ -613,7 +613,7 @@ class SWOProgressSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         user = self.context["request"].user
         if instance.creator != user.username:
             raise serializers.ValidationError({"权限错误": "只有创建人才可以修改"})
@@ -644,7 +644,7 @@ class SWOPFilesSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
@@ -817,7 +817,7 @@ class ServiceWorkOrderSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
@@ -1071,7 +1071,7 @@ class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
         department = Department.objects.filter(name="服务中心-管理")[0]
         validated_data["department"] = department
 
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         address = validated_data.get("address", None)
         if address:
             _spilt_addr = PickOutAdress(address)

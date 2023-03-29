@@ -31,7 +31,10 @@ class JobCategoryFilter(django_filters.FilterSet):
 
 class JobOrderFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    name__in = CharInFilter(lookup_expr='in')
+    label__name = django_filters.CharFilter(lookup_expr='icontains')
+    category__name = django_filters.CharFilter(lookup_expr='icontains')
+    department__name = django_filters.CharFilter(lookup_expr='icontains')
+    order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
         model = JobOrder
@@ -41,24 +44,26 @@ class JobOrderFilter(django_filters.FilterSet):
 class JobOrderDetailsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
     order__code = django_filters.CharFilter(lookup_expr='icontains')
-    customer__name = django_filters.CharFilter(lookup_expr='icontains')
-    customer__name__in = django_filters.CharFilter(method='customer_filter')
+    customer__name = django_filters.CharFilter(method='customer_filter')
     keywords = django_filters.CharFilter(method='keywords_filter')
     add_label = django_filters.CharFilter(method='keywords_filter')
     del_label = django_filters.CharFilter(method='keywords_filter')
+    order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
         model = JobOrderDetails
         fields = "__all__"
 
     def customer_filter(self, queryset, name, *value):
-        name = name[:-4]
-        condition_list = str(value[0]).split(",")
-        condition = orconmbine(condition_list, name)
-        if condition:
-            queryset = queryset.filter(condition)
+        condition_list = str(value[0]).split()
+        if len(condition_list) == 1:
+            queryset = queryset.filter(**{name: condition_list[0]})
         else:
-            queryset = queryset.none()
+            condition = orconmbine(condition_list, name)
+            if condition:
+                queryset = queryset.filter(condition)
+            else:
+                queryset = queryset.none()
         return queryset
 
     def keywords_filter(self, queryset, name, *value):
@@ -67,10 +72,8 @@ class JobOrderDetailsFilter(django_filters.FilterSet):
         if len(condition_list) == 1:
             queryset = queryset.filter(**{name: condition_list[0]})
         else:
-            _condition_dict = {}
             for value in condition_list:
-                _condition_dict[name] = value
-                queryset = queryset.filter(**_condition_dict)
+                queryset = queryset.filter(**{name: value})
         return queryset
 
 

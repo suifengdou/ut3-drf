@@ -24,6 +24,8 @@ from ut3.settings import OSS_CONFIG, EXPORT_TOPLIMIT
 
 from apps.utils.oss.aliyunoss import AliyunOSS
 from apps.utils.logging.loggings import getlogs, logging, getfiles
+from apps.crm.customerlabel.views import QueryLabel, CreateLabel, DeleteLabel, RecoverLabel
+from apps.utils.geography.tools import PickOutAdress
 
 
 class JobCategoryViewset(viewsets.ModelViewSet):
@@ -286,26 +288,6 @@ class JobOrderTrackViewset(viewsets.ModelViewSet):
             else:
                 handle_list = []
         return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        user = request.user
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for obj in check_list:
-                pass
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
@@ -1018,36 +1000,28 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
                     continue
                 if obj.is_complete:
                     obj.is_over = True
-                    _q_default_check_add_label_order = LabelCustomer.objects.filter(customer=obj.customer, label=obj.order.label)
-                    if _q_default_check_add_label_order.exists():
-                        default_check_add_label = _q_default_check_add_label_order[0]
-                        if default_check_add_label.is_delete:
-                            default_check_add_label.is_delete = False
-                            default_check_add_label.save()
-                            logging(default_check_add_label, user, LogLabelCustomer, "恢复于任务工单：%s" % obj.order.code)
-                            logging(obj.customer, user, LogCustomer,
-                                    "恢复标签：%s 于任务工单 %s" % (obj.order.label.name, obj.order.code))
-                        else:
-                            data["error"].append("%s 已存在标签 %s 自动过滤" % (obj.customer.name, str(obj.order.label.name)))
+                    _q_check_add_label_order = QueryLabel(obj.order.label, obj.customer)
+                    if _q_check_add_label_order:
+                        if _q_check_add_label_order.is_delete:
+                            _recover_result = RecoverLabel(_q_check_add_label_order, obj.order.label, user)
+                            if not _recover_result:
+                                data["error"].append(f"{obj.customer.name} 恢复标签 {str(obj.order.label.name)} 失败")
+                                obj.mistake_tag = 7
+                                obj.save()
+                                data["error"].append(f"{obj.customer.name} 工单默认标签恢复错误")
+                                n -= 1
+                                continue
+
                     else:
-                        defualt_label_order_dic = {
-                            "customer": obj.customer,
-                            "label": obj.order.label,
-                            "center": user.department.center,
-                            "memo": "创建于任务工单 %s" % obj.order.code,
-                            "creator": user.username
-                        }
-                        try:
-                            default_label_order = LabelCustomer.objects.create(**defualt_label_order_dic)
-                            logging(default_label_order, user, LogLabelCustomer, "创建于任务工单")
-                            logging(obj.customer, user, LogCustomer, "创建：%s 于任务工单 %s" % (str(obj.order.label.name), obj.order.code))
-                        except Exception as e:
+                        _created_result = CreateLabel(obj.order.label, obj.customer, user)
+                        if not _created_result:
                             data["error"].append("%s 创建标签 %s 失败" % (obj.customer.name, str(obj.order.label.name)))
                             obj.mistake_tag = 7
                             obj.save()
                             data["error"].append("%s 工单默认标签创建错误" % obj.customer.name)
                             n -= 1
                             continue
+
                 if not obj.content:
                     obj.mistake_tag = 4
                     obj.save()
@@ -1057,66 +1031,70 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
                 if obj.add_label:
                     add_labels = str(obj.add_label).split()
                     add_error_tag = 0
+
                     for label in add_labels:
-                        _q_label = Label.objects.filter(name=str(label))
+                        _q_label = Label.objects.filter(name=str(label), is_cancel=False)
                         if len(_q_label) == 1:
                             label_obj = _q_label[0]
-                            _q_check_add_label_order = LabelCustomer.objects.filter(customer=obj.customer, label=label_obj)
-                            if _q_check_add_label_order.exists():
-                                check_add_label = _q_check_add_label_order[0]
-                                if check_add_label.is_delete:
-                                    check_add_label.is_delete = False
-                                    check_add_label.save()
-                                    logging(check_add_label, user, LogLabelCustomer, "恢复于任务工单：%s" % obj.order.code)
-                                    logging(obj.customer, user, LogCustomer, "恢复标签：%s 于任务工单 %s" % (label_obj.name, obj.order.code))
-                                    continue
-                                else:
-                                    data["error"].append("%s 已存在标签 %s 自动过滤" % (obj.customer.name, str(label)))
-                                    continue
-                            label_order_dic = {
-                                "customer": obj.customer,
-                                "label": label_obj,
-                                "center": user.department.center,
-                                "memo": "创建于任务工单 %s" % obj.order.code,
-                                "creator": user.username
-                            }
-                            try:
-                                label_order = LabelCustomer.objects.create(**label_order_dic)
-                                logging(label_order, user, LogLabelCustomer, "创建于任务工单")
-                                logging(obj.customer, user, LogCustomer, "创建：%s 于任务工单 %s" % (str(label), obj.order.code))
-                            except Exception as e:
-                                add_error_tag = 1
-                                data["error"].append("%s 创建标签 %s 失败" % (obj.customer.name, str(label)))
+                            _q_check_add_label_order = QueryLabel(label_obj, obj.customer)
+                            if _q_check_add_label_order:
+                                if _q_check_add_label_order.is_delete:
+                                    _recover_result = RecoverLabel(_q_check_add_label_order, label_obj, user)
+                                    if not _recover_result:
+                                        data["error"].append(f"{obj.customer.name} 恢复添加的标签 {str(obj.order.label.name)} 失败")
+                                        n -= 1
+                                        add_error_tag = 1
+                                        break
+                            else:
+                                _created_result = CreateLabel(label_obj, obj.customer, user)
+                                if not _created_result:
+                                    data["error"].append(f"{obj.customer.name} 创建标签 {str(obj.order.label.name)} 失败")
+                                    obj.save()
+                                    n -= 1
+                                    add_error_tag = 1
+                                    break
                         else:
+                            data["error"].append(f"标签名称错误：{str(label)}，输入非停用的正确的标签名称！")
+                            obj.save()
+                            n -= 1
                             add_error_tag = 1
-                            data["error"].append("标签 %s 名称错误" % str(label))
+                            break
+
                     if add_error_tag:
                         obj.mistake_tag = 5
                         obj.save()
                         data["error"].append("%s 标签创建错误" % obj.customer.name)
                         n -= 1
                         continue
+
                 if obj.del_label:
                     del_labels = str(obj.del_label).split()
                     del_error_tag = 0
                     for label in del_labels:
-                        _q_label = Label.objects.filter(name=str(label))
+                        _q_label = Label.objects.filter(name=str(label), is_cancel=False)
                         if len(_q_label) == 1:
                             label_obj = _q_label[0]
-                            _q_check_del_label_order = LabelCustomer.objects.filter(customer=obj.customer, label=label_obj)
-                            if _q_check_del_label_order.exists():
-                                del_label_order = _q_check_del_label_order[0]
-                                del_label_order.is_delete = True
-                                del_label_order.save()
-                                logging(del_label_order, user, LogLabelCustomer, "删除于任务工单")
-                                logging(obj.customer, user, LogCustomer,
-                                        "删除：%s 于任务工单 %s" % (str(label), obj.order.code))
+                            _q_check_del_label_order = QueryLabel(label_obj, obj.customer)
+                            if _q_check_del_label_order:
+                                _deleted_result = DeleteLabel(label_obj, obj.customer, user)
+                                if not _deleted_result:
+                                    data["error"].append(f"标签名称：{label_obj.name}，删除失败！")
+                                    obj.save()
+                                    n -= 1
+                                    del_error_tag = 1
+                                    break
                             else:
+                                data["error"].append(f"标签名称：{label_obj.name}.在此客户中未找到！")
+                                obj.save()
+                                n -= 1
                                 del_error_tag = 1
-                                data["error"].append("此用户不存在此标签：%s" % str(label))
+                                break
                         else:
+                            data["error"].append(f"标签名称错误：{str(label)}，输入标准标签名称！")
+                            obj.save()
+                            n -= 1
                             del_error_tag = 1
-                            data["error"].append("标签 %s 名称错误" % str(label))
+                            break
                     if del_error_tag:
                         obj.mistake_tag = 6
                         obj.save()
@@ -1199,6 +1177,50 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
         return Response(data)
 
     @action(methods=['patch'], detail=False)
+    def set_over(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        batch_list = self.get_handle_list(params)
+        n = len(batch_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in batch_list:
+                obj.is_over = True
+                obj.save()
+                logging(obj, user, LogJobOrderDetails, "批量设置结束")
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(batch_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def set_complete(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        batch_list = self.get_handle_list(params)
+        n = len(batch_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in batch_list:
+                obj.is_complete = True
+                obj.save()
+                logging(obj, user, LogJobOrderDetails, "批量设置完成")
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(batch_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def file_import(self, request, *args, **kwargs):
         user = request.user
         files = request.FILES.getlist("files", None)
@@ -1263,7 +1285,7 @@ class JobOrderDetailsTrackViewset(viewsets.ModelViewSet):
         if not self.request:
             return JobOrderDetails.objects.none()
         user = self.request.user
-        queryset = JobOrderDetails.objects.filter(order__department=user.department, order_status=2).order_by("-id")
+        queryset = JobOrderDetails.objects.filter(order_status__in=[2, 3]).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)

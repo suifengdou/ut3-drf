@@ -15,6 +15,7 @@ from .serializers import CustomerSerializer, CustomerLabelSerializer
 from .filters import CustomerFilter
 from apps.utils.logging.loggings import logging, getlogs, getfiles
 from apps.wop.job.models import JobOrder, JobOrderDetails, LogJobOrder, LogJobOrderDetails
+from ut3.settings import EXPORT_TOPLIMIT
 
 
 class CustomerViewset(viewsets.ModelViewSet):
@@ -55,7 +56,7 @@ class CustomerViewset(viewsets.ModelViewSet):
         params["company"] = user.company
         params["order_status"] = 1
         f = CustomerFilter(params)
-        serializer = CustomerSerializer(f.qs, many=True)
+        serializer = CustomerSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -164,7 +165,7 @@ class CustomerLabelViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = CustomerFilter(params)
-        serializer = CustomerLabelSerializer(f.qs, many=True)
+        serializer = CustomerLabelSerializer(f.qs[:200], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):

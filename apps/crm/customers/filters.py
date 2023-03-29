@@ -23,7 +23,14 @@ class CharInFilter(BaseInFilter, CharFilter):
 class CustomerFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
     name__in = CharInFilter(field_name='name', lookup_expr='in')
-    labelcustomer__label__name = django_filters.CharFilter(method='clabel_filter')
+    customerlabelperson__label__name = django_filters.CharFilter(method='clabel_filter')
+    customerlabelfamilay__label__name = django_filters.CharFilter(method='clabel_filter')
+    customerlabelproduct__label__name = django_filters.CharFilter(method='clabel_filter')
+    customerlabelorder__label__name = django_filters.CharFilter(method='clabel_filter')
+    customerlabelservice__label__name = django_filters.CharFilter(method='clabel_filter')
+    customerlabelsatisfacition__label__name = django_filters.CharFilter(method='clabel_filter')
+    customerlabelrefund__label__name = django_filters.CharFilter(method='clabel_filter')
+    customerlabelothers__label__name = django_filters.CharFilter(method='clabel_filter')
 
     class Meta:
         model = Customer
@@ -39,9 +46,7 @@ class CustomerFilter(django_filters.FilterSet):
         if len(condition_list) == 1:
             queryset = queryset.filter(**{name: condition_list[0]})
         else:
-            _condition_dict = {}
             for value in condition_list:
-                _condition_dict[name] = value
-                queryset = queryset.filter(**_condition_dict)
+                queryset = queryset.filter(**{name: value})
         return queryset
 

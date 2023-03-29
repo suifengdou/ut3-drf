@@ -36,7 +36,7 @@ class Shop(models.Model):
     platform = models.ForeignKey(Platform, on_delete=models.SET_NULL, verbose_name='平台', null=True, blank=True, help_text='平台')
     group_name = models.CharField(max_length=30, verbose_name='店铺分组', help_text='店铺分组')
     company = models.ForeignKey(Company, on_delete=models.SET_NULL, verbose_name='公司', null=True, blank=True, help_text='公司')
-    order_status = models.IntegerField(choices=ORDER_STATUS, default=1, verbose_name='店铺状态', help_text='店铺状态')
+    order_status = models.BooleanField(default=True, verbose_name='店铺状态', help_text='店铺状态')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')

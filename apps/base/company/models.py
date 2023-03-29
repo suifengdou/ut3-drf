@@ -21,7 +21,7 @@ class Company(models.Model):
     name = models.CharField(unique=True, max_length=30, verbose_name='公司简称', db_index=True, help_text='公司简称')
     company = models.CharField(null=True, blank=True, max_length=60, verbose_name='公司名称', help_text='公司名称')
     tax_fil_number = models.CharField(unique=True, null=True, blank=True, max_length=30, verbose_name='税号', help_text='税号')
-    order_status = models.IntegerField(choices=ORDER_STATUS, default=1, verbose_name='状态', help_text='状态')
+    order_status = models.BooleanField(default=True, verbose_name='状态', help_text='状态')
     category = models.IntegerField(choices=CATEGORY, default=1, verbose_name='公司类型', help_text='公司类型')
     spain_invoice = models.FloatField(null=True, blank=True, verbose_name='普票限额', help_text='普票限额')
     special_invoice = models.FloatField(null=True, blank=True, verbose_name='专票限额', help_text='专票限额')

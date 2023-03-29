@@ -34,6 +34,32 @@ class WarehouseViewset(viewsets.ModelViewSet):
     }
 
 
+class WarehouseActivateViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定仓库
+    list:
+        返回仓库列表
+    update:
+        更新仓库信息
+    destroy:
+        删除仓库信息
+    create:
+        创建仓库信息
+    partial_update:
+        更新部分仓库字段
+    """
+    queryset = Warehouse.objects.filter(order_status=True).order_by("id")
+    serializer_class = WarehouseSerializer
+    filter_class = WarehouseFilter
+    filter_fields = ("name", "warehouse_id", "city", "receiver", "mobile",
+                     "address", "category", "order_status", "create_time", "update_time", "is_delete", "creator")
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['warehouse.view_warehouse']
+    }
+
+
 class WarehouseTypeViewset(viewsets.ModelViewSet):
     """
     retrieve:

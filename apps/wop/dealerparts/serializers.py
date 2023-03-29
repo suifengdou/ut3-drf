@@ -233,7 +233,7 @@ class DealerPartsSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         validated_data["department"] = user.department
 
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
 
         _spilt_addr = PickOutAdress(validated_data["address"])
         _rt_addr = _spilt_addr.pickout_addr()

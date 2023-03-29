@@ -174,7 +174,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         return work_order
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
@@ -203,7 +203,7 @@ class EWOPhotoSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         create_time = validated_data.pop("create_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance

@@ -175,7 +175,7 @@ class IntReceiptSerializer(serializers.ModelSerializer):
         statement_details = validated_data.pop("statement_details", [])
         associated_amount = validated_data.pop("associated_amount", 0)
         photo_details = validated_data.pop("photo_details", [])
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 

@@ -29,7 +29,7 @@ class JobCategorySerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         # 改动内容
         content = []
         for key, value in validated_data.items():
@@ -174,6 +174,11 @@ class JobOrderSerializer(serializers.ModelSerializer):
         ret["order_status"] = self.get_order_status(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["process_tag"] = self.get_process_tag(instance)
+        if instance.order_status == 2 and instance.quantity == ret["over_number"]:
+            user = self.context["request"].user
+            instance.order_status = 3
+            instance.save()
+            logging(instance, user, LogJobOrder, "系统自动完结已完结的任务工单")
         return ret
 
     def create(self, validated_data):
@@ -201,7 +206,7 @@ class JobOrderSerializer(serializers.ModelSerializer):
             validated_data["code"] = '%s-%s-%s' % (validated_data["category"].code, validated_data["label"].code,
                                                    str(instance.id))
         user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         # 改动内容
         content = []
         for key, value in validated_data.items():
@@ -297,9 +302,7 @@ class JobOrderDetailsSerializer(serializers.ModelSerializer):
             1: "待处理",
             2: "待领取",
             3: "待执行",
-            4: "待审核",
-            5: "已完成",
-
+            4: "已完成",
         }
         try:
             ret = {
@@ -329,7 +332,7 @@ class JobOrderDetailsSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         # 改动内容
         content = []
         for key, value in validated_data.items():

@@ -29,7 +29,7 @@ class LabelCategorySerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         # 改动内容
         content = []
         for key, value in validated_data.items():
@@ -71,7 +71,7 @@ class LabelSerializer(serializers.ModelSerializer):
             "FAM": "拓展",
             "PROD": "产品",
             "ORD": "交易",
-            "SVC": "售后",
+            "SVC": "服务",
             "SAT": "体验",
             "REFD": "退换",
             "OTHS": "其他",
@@ -105,7 +105,7 @@ class LabelSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         if "group" in validated_data:
             if validated_data["group"] != instance.group:
                 validated_data["code"] = "%s-%s" % (instance.group, instance.id)
@@ -209,7 +209,7 @@ class LabelCustomerOrderSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         if 'label' in validated_data:
             completed_quantity = self.get_completed_quantity(instance)
             if validated_data["label"] != instance.label:
@@ -287,15 +287,38 @@ class LabelCustomerOrderDetailsSerializer(serializers.ModelSerializer):
             }
         return ret
 
+    def get_order_status(self, instance):
+        order_status = {
+            0: "已取消",
+            1: "未处理",
+            2: "未递交",
+            3: "已完成",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
     def to_representation(self, instance):
         ret = super(LabelCustomerOrderDetailsSerializer, self).to_representation(instance)
         ret["order"] = self.get_order(instance)
         ret["customer"] = self.get_customer(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):
         user = self.context["request"].user
+        _q_detail = self.Meta.model.objects.filter(order=validated_data["order"], customer=validated_data["customer"])
+        if _q_detail.exists():
+            raise serializers.ValidationError({"创建错误": "标签单明细中已存在此客户！"})
         validated_data["creator"] = self.context["request"].user.username
         instance = self.Meta.model.objects.create(**validated_data)
         logging(instance, user, LogLabelCustomerOrderDetails, "创建")
@@ -303,7 +326,7 @@ class LabelCustomerOrderDetailsSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         # 改动内容
         content = []
         for key, value in validated_data.items():
@@ -380,7 +403,7 @@ class LabelCustomerSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         # 改动内容
         content = []
         for key, value in validated_data.items():

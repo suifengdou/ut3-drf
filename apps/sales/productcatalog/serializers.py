@@ -88,7 +88,7 @@ class ProductCatalogSerializer(serializers.ModelSerializer):
         return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        validated_data["update_time"] = datetime.datetime.now()
+        validated_data["updated_time"] = datetime.datetime.now()
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -176,7 +176,7 @@ class ProductCatalogSerializer(serializers.ModelSerializer):
 #
 #     def update(self, instance, validated_data):
 #         user = self.context["request"].user
-#         validated_data["update_time"] = datetime.datetime.now()
+#         validated_data["updated_time"] = datetime.datetime.now()
 #         # 改动内容
 #         content = []
 #         for key, value in validated_data.items():

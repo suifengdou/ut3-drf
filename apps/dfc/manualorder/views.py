@@ -56,7 +56,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
         if not self.request:
             return ManualOrder.objects.none()
         department = self.request.user.department
-        queryset = ManualOrder.objects.filter(order_status=1, department=department).order_by("id")
+        queryset = ManualOrder.objects.filter(order_status=1, department=department).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -486,7 +486,7 @@ class ManualOrderManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ManualOrder.objects.none()
-        queryset = ManualOrder.objects.all().order_by("id")
+        queryset = ManualOrder.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -573,7 +573,7 @@ class MOGoodsManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return MOGoods.objects.none()
-        queryset = MOGoods.objects.all().order_by("id")
+        queryset = MOGoods.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -613,7 +613,7 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ManualOrderExport.objects.none()
-        queryset = ManualOrderExport.objects.filter(order_status=1).order_by("id")
+        queryset = ManualOrderExport.objects.filter(order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -718,7 +718,7 @@ class ManualOrderExportManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ManualOrderExport.objects.none()
-        queryset = ManualOrderExport.objects.all().order_by("id")
+        queryset = ManualOrderExport.objects.all().order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
