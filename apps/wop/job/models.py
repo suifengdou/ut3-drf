@@ -207,14 +207,15 @@ class JobOrderDetails(models.Model):
 
 
 class JODTOMO(models.Model):
-    obj = models.ForeignKey(JobOrderDetails, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    obj = models.ForeignKey(JobOrder, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
     order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='订单', help_text='订单')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
 
     class Meta:
         verbose_name = 'WOP-JOB-任务-工单-明细-订单'
         verbose_name_plural = verbose_name
-        db_table = 'wop_job_order_details_order'
+        unique_together = (("obj", "order"),)
+        db_table = 'wop_job_order_to_manualorder'
 
     def __str__(self):
         return str(self.id)
