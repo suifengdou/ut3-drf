@@ -162,7 +162,7 @@ class ManualOrderExport(models.Model):
         (3, '特殊订单'),
     )
     ori_order = models.OneToOneField(ManualOrder, on_delete=models.CASCADE, verbose_name='手工源单', help_text='手工源单')
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺名称', help_text='店铺名称')
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺', help_text='店铺')
     nickname = models.CharField(max_length=50, verbose_name='网名', help_text='网名')
     receiver = models.CharField(max_length=50, verbose_name='收件人', help_text='收件人')
     address = models.CharField(max_length=250, verbose_name='地址', help_text='地址')
@@ -194,7 +194,7 @@ class ManualOrderExport(models.Model):
 
     process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签', help_text='处理标签')
 
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=True, blank=True, verbose_name='店铺名称', help_text='创建者')
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=True, blank=True, verbose_name='仓库', help_text='仓库')
     track_no = models.CharField(null=True, blank=True, max_length=50, verbose_name='快递单号', help_text='快递单号')
 
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')

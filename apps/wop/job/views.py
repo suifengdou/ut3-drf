@@ -290,6 +290,39 @@ class JobOrderTrackViewset(viewsets.ModelViewSet):
         return handle_list
 
     @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                over_number = obj.joborderdetails_set.filter(is_over=True).count()
+                if over_number != obj.quantity:
+                    obj.mistake_tag = 4
+                    obj.save()
+                    logging(obj, user, LogJobOrder, "审核失败：任务全部结束才可审核")
+                    data["error"].append("%s 任务全部结束才可审核" % obj.code)
+                    n -= 1
+                    continue
+
+                obj.order_status = 3
+                obj.mistake_tag = 0
+                obj.process_tag = 0
+                obj.save()
+                logging(obj, user, LogJobOrder, "完成任务工单")
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
         user = request.user
         params = request.data

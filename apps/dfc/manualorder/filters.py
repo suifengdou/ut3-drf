@@ -50,6 +50,9 @@ class ManualOrderExportFilter(django_filters.FilterSet):
     create_time = django_filters.DateTimeFromToRangeFilter()
     update_time = django_filters.DateTimeFromToRangeFilter()
     erp_order_id = django_filters.CharFilter(field_name="erp_order_id", lookup_expr='icontains')
+    goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
+    goods_name = django_filters.CharFilter(field_name="goods_name", lookup_expr='icontains')
+    warehouse__name = django_filters.CharFilter(field_name="goods_name", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:

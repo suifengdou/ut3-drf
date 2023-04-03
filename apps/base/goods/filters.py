@@ -19,7 +19,7 @@ class CharInFilter(BaseInFilter, CharFilter):
 
 
 class GoodsFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
+    name = django_filters.CharFilter(method='keywords_filter')
     goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     goods_number = django_filters.CharFilter(field_name="goods_number", lookup_expr='icontains')
     goods_id__in = CharInFilter(lookup_expr='in')
@@ -28,6 +28,16 @@ class GoodsFilter(django_filters.FilterSet):
     class Meta:
         model = Goods
         fields = "__all__"
+
+    def keywords_filter(self, queryset, name, *value):
+        name = '%s__icontains' % name
+        condition_list = str(value[0]).split()
+        if len(condition_list) == 1:
+            queryset = queryset.filter(**{name: condition_list[0]})
+        else:
+            for value in condition_list:
+                queryset = queryset.filter(**{name: value})
+        return queryset
 
 
 class GoodsCategoryFilter(django_filters.FilterSet):

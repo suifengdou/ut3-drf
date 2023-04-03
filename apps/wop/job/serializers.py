@@ -126,6 +126,8 @@ class JobOrderSerializer(serializers.ModelSerializer):
             0: "正常",
             1: "任务明细未完整确认",
             2: "先锁定再审核",
+            3: "任务明细非初始状态",
+            4: "任务全部结束才可审核",
         }
         try:
             ret = {
@@ -140,11 +142,8 @@ class JobOrderSerializer(serializers.ModelSerializer):
         order_status = {
             0: "已取消",
             1: "待处理",
-            2: "待领取",
-            3: "待执行",
-            4: "待审核",
-            5: "已完成",
-
+            2: "待执行",
+            3: "已完成",
         }
         try:
             ret = {
@@ -174,11 +173,6 @@ class JobOrderSerializer(serializers.ModelSerializer):
         ret["order_status"] = self.get_order_status(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["process_tag"] = self.get_process_tag(instance)
-        if instance.order_status == 2 and instance.quantity == ret["over_number"]:
-            user = self.context["request"].user
-            instance.order_status = 3
-            instance.save()
-            logging(instance, user, LogJobOrder, "系统自动完结已完结的任务工单")
         return ret
 
     def create(self, validated_data):

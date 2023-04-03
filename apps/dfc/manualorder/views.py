@@ -210,10 +210,10 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                 if len(all_goods_details) > 1:
                     order.cs_memoranda = "#"
                 for goods_detail in all_goods_details:
-                    _q_mo_repeat = MOGoods.objects.filter(manual_order__mobile=obj.mobile, goods_id=goods_detail.goods_id).order_by("-create_time")
+                    _q_mo_repeat = MOGoods.objects.filter(manual_order__mobile=obj.mobile, goods_id=goods_detail.goods_id).order_by("-created_time")
                     if len(_q_mo_repeat) > 1:
                         if obj.process_tag != 3:
-                            delta_date = (obj.create_time - _q_mo_repeat[1].create_time).days
+                            delta_date = (obj.created_time - _q_mo_repeat[1].created_time).days
                             if int(delta_date) < 14:
                                 error_tag = 1
                                 data["error"].append("%s 14天内重复" % obj.id)
@@ -239,7 +239,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                 export_goods_fields = ["goods_name", "goods_id", "quantity"]
                 for i in range(len(export_goods_details)):
                     setattr(order, export_goods_fields[i], export_goods_details[i])
-                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "province", "city", "district", "erp_order_id"]
+                order_fields = ["shop", "nickname", "receiver", "address", "mobile", "province", "city", "district", "erp_order_id", "warehouse"]
 
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))

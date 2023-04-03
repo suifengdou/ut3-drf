@@ -422,6 +422,16 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_warehouse(self, instance):
+        try:
+            ret = {
+                "id": instance.warehouse.id,
+                "name": instance.warehouse.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_province(self, instance):
         try:
             ret = {
@@ -485,6 +495,7 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(ManualOrderExportSerializer, self).to_representation(instance)
         ret["shop"] = self.get_shop(instance)
+        ret["warehouse"] = self.get_warehouse(instance)
         ret["province"] = self.get_province(instance)
         ret["city"] = self.get_city(instance)
         ret["district"] = self.get_district(instance)
