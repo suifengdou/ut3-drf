@@ -45,7 +45,7 @@ class CustomerLabelPersonViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['customers.view_customer']
     }
 
     def get_queryset(self):
@@ -157,7 +157,7 @@ class CustomerLabelFamilyViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['customers.view_customer']
     }
 
     def get_queryset(self):
@@ -269,7 +269,7 @@ class CustomerLabelProductViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['customers.view_customer']
     }
 
     def get_queryset(self):
@@ -381,7 +381,7 @@ class CustomerLabelOrderViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['customers.view_customer']
     }
 
     def get_queryset(self):
@@ -493,7 +493,7 @@ class CustomerLabelServiceViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['customers.view_customer']
     }
 
     def get_queryset(self):
@@ -605,7 +605,7 @@ class CustomerLabelSatisfactionViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['customers.view_customer']
     }
 
     def get_queryset(self):
@@ -717,7 +717,7 @@ class CustomerLabelRefundViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['customers.view_customer']
     }
 
     def get_queryset(self):
@@ -829,7 +829,7 @@ class CustomerLabelOthersViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['woinvoice.view_invoice']
+        "GET": ['customers.view_customer']
     }
 
     def get_queryset(self):

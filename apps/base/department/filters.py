@@ -10,7 +10,7 @@ from .models import Department, Center
 
 class DepartmentFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Department
@@ -19,7 +19,7 @@ class DepartmentFilter(django_filters.FilterSet):
 
 class CenterFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Center

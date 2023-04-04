@@ -10,7 +10,7 @@ from .models import OriInvoice, OriInvoiceGoods, Invoice, InvoiceGoods, DeliverO
 
 class OriInvoiceFilter(django_filters.FilterSet):
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = OriInvoice
@@ -18,7 +18,7 @@ class OriInvoiceFilter(django_filters.FilterSet):
 
 
 class OriInvoiceGoodsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = OriInvoiceGoods
@@ -27,7 +27,7 @@ class OriInvoiceGoodsFilter(django_filters.FilterSet):
 
 class InvoiceFilter(django_filters.FilterSet):
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     work_order = django_filters.ModelChoiceFilter(to_field_name="order_id", queryset=OriInvoice.objects.all())
 
     class Meta:
@@ -36,7 +36,7 @@ class InvoiceFilter(django_filters.FilterSet):
 
 
 class InvoiceGoodsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = InvoiceGoods
@@ -44,8 +44,8 @@ class InvoiceGoodsFilter(django_filters.FilterSet):
 
 
 class DeliverOrderFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = DeliverOrder

@@ -15,7 +15,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 
 class OriInboundFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -24,7 +24,7 @@ class OriInboundFilter(django_filters.FilterSet):
         fields = "__all__"
 
 class InboundFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -35,7 +35,7 @@ class InboundFilter(django_filters.FilterSet):
 
 
 class InboundDetailFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -45,7 +45,7 @@ class InboundDetailFilter(django_filters.FilterSet):
 
 
 class InboundVerifyFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
 
     class Meta:

@@ -4,7 +4,7 @@ import django.utils.timezone as timezone
 from django.core.validators import MaxValueValidator, MinValueValidator
 from apps.base.company.models import Company
 from apps.base.goods.models import Goods
-from apps.crm.customers.models import Customer, Address, Money
+from apps.crm.customers.models import Customer
 from apps.utils.geography.models import Province, City, District
 from apps.base.department.models import Department
 from apps.auth.users.models import UserProfile

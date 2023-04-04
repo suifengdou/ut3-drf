@@ -12,10 +12,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
 from .models import LabelCategory, Label, LogLabelCategory, LogLabel, LabelCustomerOrder, LabelCustomerOrderDetails, \
-    LabelCustomer, LogLabelCustomerOrder, LogLabelCustomer, LogLabelCustomerOrderDetails
+    LogLabelCustomerOrder, LogLabelCustomerOrderDetails
 from apps.utils.logging.loggings import logging
-from .serializers import LabelCategorySerializer, LabelSerializer, LabelCustomerOrderSerializer, LabelCustomerSerializer, LabelCustomerOrderDetailsSerializer
-from .filters import LabelCategoryFilter, LabelFilter, LabelCustomerOrderFilter, LabelCustomerFilter, LabelCustomerOrderDetailsFilter
+from .serializers import LabelCategorySerializer, LabelSerializer, LabelCustomerOrderSerializer, LabelCustomerOrderDetailsSerializer
+from .filters import LabelCategoryFilter, LabelFilter, LabelCustomerOrderFilter, LabelCustomerOrderDetailsFilter
 from apps.utils.logging.loggings import logging, getlogs
 from apps.crm.customers.models import Customer, LogCustomer
 from ut3.settings import EXPORT_TOPLIMIT
@@ -35,7 +35,7 @@ class LabelCategoryViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['order.view_OriOrder']
+        "GET": ['labels.view_labelcategory']
     }
 
     def get_queryset(self):
@@ -75,7 +75,7 @@ class LabelViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['order.view_OriOrder']
+        "GET": ['labels.view_label']
     }
 
     def get_queryset(self):
@@ -115,7 +115,7 @@ class LabelCustomerOrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['order.view_OriOrder']
+        "GET": ['labels.view_labelcustomerorder']
     }
 
     def get_queryset(self):
@@ -210,7 +210,7 @@ class LabelCustomerOrderViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['order.view_OriOrder']
+        "GET": ['labels.view_labelcustomerorder']
     }
 
     def get_queryset(self):
@@ -250,7 +250,7 @@ class LabelCustomerOrderDetailsSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['order.view_OriOrder']
+        "GET": ['labels.view_labelcustomerorder']
     }
 
     def get_queryset(self):
@@ -529,7 +529,7 @@ class LabelCustomerOrderDetailsCheckViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['order.view_OriOrder']
+        "GET": ['labels.view_labelcustomerorder']
     }
 
     def get_queryset(self):
@@ -629,7 +629,7 @@ class LabelCustomerOrderDetailsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['order.view_OriOrder']
+        "GET": ['labels.view_labelcustomerorder']
     }
 
     def get_queryset(self):
@@ -656,189 +656,6 @@ class LabelCustomerOrderDetailsViewset(viewsets.ModelViewSet):
         ret = getlogs(instance, LogLabelCustomerOrderDetails)
         return Response(ret)
 
-
-class LabelCustomerCenterViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定订单
-    list:
-        返回订单列表
-    """
-    serializer_class = LabelCustomerSerializer
-    filter_class = LabelCustomerFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['order.view_OriOrder']
-    }
-
-    def get_queryset(self):
-        user = self.request.user
-        if not user.department.center:
-            return LabelCustomer.objects.none()
-        if not self.request:
-            return LabelCustomer.objects.none()
-        queryset = LabelCustomer.objects.filter(center=user.department.center).order_by("-id")
-        return queryset
-
-    @action(methods=['patch'], detail=False)
-    def export(self, request, *args, **kwargs):
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.data
-        f = LabelCustomerFilter(params)
-        serializer = LabelCustomerSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
-        return Response(serializer.data)
-
-    def get_handle_list(self, params):
-        user = self.request.user
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        params["center"] = user.department.center
-        if all_select_tag:
-            handle_list = LabelCustomerFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = LabelCustomer.objects.filter(id__in=order_ids)
-            else:
-                handle_list = []
-        return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def create_order(self, request, *args, **kwargs):
-        params = request.data
-        user = request.user
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            order = JobOrder()
-            serial_number = re.sub("[- .:]", "", str(datetime.datetime.now()))
-            for obj in check_list:
-                if obj.order.order_status != 1:
-                    obj.mistake_tag = 1
-                    data["error"].append("%s 明细对应标签单状态错误" % obj.order.name)
-                    obj.save()
-                    n -= 1
-                    continue
-                _q_customer_label = LabelCustomer.objects.filter(customer=obj.customer, label=obj.order.label)
-                if _q_customer_label.exists():
-                    obj.mistake_tag = 2
-                    data["error"].append("%s 明细对应客户已存在标签" % obj.customer.name)
-                    obj.save()
-                    n -= 1
-                    continue
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.save()
-                logging(obj, user, LogLabelCustomerOrderDetails, "审核")
-                obj.order.quantity += 1
-                obj.order.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        params = request.data
-        user = request.user
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for obj in check_list:
-                if obj.order.order_status != 1:
-                    obj.mistake_tag = 1
-                    data["error"].append("%s 明细对应标签单状态错误" % obj.order.name)
-                    obj.save()
-                    n -= 1
-                    continue
-                _q_customer_label = LabelCustomer.objects.filter(customer=obj.customer, label=obj.order.label)
-                if _q_customer_label.exists():
-                    obj.mistake_tag = 2
-                    data["error"].append("%s 明细对应客户已存在标签" % obj.customer.name)
-                    obj.save()
-                    n -= 1
-                    continue
-                obj.order_status = 2
-                obj.mistake_tag = 0
-                obj.save()
-                logging(obj, user, LogLabelCustomerOrderDetails, "审核")
-                obj.order.quantity += 1
-                obj.order.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=0)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-
-class LabelCustomerViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定订单
-    list:
-        返回订单列表
-    """
-    serializer_class = LabelCustomerSerializer
-    filter_class = LabelCustomerFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['order.view_OriOrder']
-    }
-
-    def get_queryset(self):
-        if not self.request:
-            return LabelCustomer.objects.none()
-        queryset = LabelCustomer.objects.all().order_by("-id")
-        return queryset
-
-    @action(methods=['patch'], detail=False)
-    def export(self, request, *args, **kwargs):
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.data
-        f = LabelCustomerFilter(params)
-        serializer = LabelCustomerSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
-        return Response(serializer.data)
-
-    @action(methods=['patch'], detail=False)
-    def get_log_details(self, request, *args, **kwargs):
-        id = request.data.get("id", None)
-        if not id:
-            raise serializers.ValidationError("未找到单据！")
-        instance = LabelCustomer.objects.filter(id=id)[0]
-        ret = getlogs(instance, LogLabelCustomer)
-        return Response(ret)
 
 
 

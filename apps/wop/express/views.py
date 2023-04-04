@@ -504,7 +504,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
                         n -= 1
                         continue
                 obj.submit_time = datetime.datetime.now()
-                start_time = datetime.datetime.strptime(str(obj.update_time).split(".")[0],
+                start_time = datetime.datetime.strptime(str(obj.updated_time).split(".")[0],
                                                         "%Y-%m-%d %H:%M:%S")
                 end_time = datetime.datetime.strptime(str(obj.submit_time).split(".")[0],
                                                       "%Y-%m-%d %H:%M:%S")

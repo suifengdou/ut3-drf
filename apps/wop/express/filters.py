@@ -19,10 +19,10 @@ class CharInFilter(BaseInFilter, CharFilter):
 
 
 class ExpressWorkOrderFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     submit_time = django_filters.DateTimeFromToRangeFilter()
     handle_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     information = django_filters.CharFilter(field_name="information", lookup_expr='icontains')
     suggestion = django_filters.CharFilter(field_name="suggestion", lookup_expr='icontains')
     feedback = django_filters.CharFilter(field_name="feedback", lookup_expr='icontains')
@@ -35,7 +35,7 @@ class ExpressWorkOrderFilter(django_filters.FilterSet):
 
 
 class EWOPhotoFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = EWOPhoto

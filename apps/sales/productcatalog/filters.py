@@ -16,8 +16,8 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 
 class ProductCatalogFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     goods__name = django_filters.CharFilter(lookup_expr='icontains')
     company__name = django_filters.CharFilter(lookup_expr='icontains')
 
@@ -27,8 +27,8 @@ class ProductCatalogFilter(django_filters.FilterSet):
 
 
 # class FreightFilter(django_filters.FilterSet):
-#     create_time = django_filters.DateTimeFromToRangeFilter()
-#     update_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
+#     updated_time = django_filters.DateTimeFromToRangeFilter()
 #     goods__name = django_filters.CharFilter(lookup_expr='icontains')
 #     company__name = django_filters.CharFilter(lookup_expr='icontains')
 #

@@ -53,7 +53,7 @@ class CompensationSubmitViewset(viewsets.ModelViewSet):
         user = self.request.user.username
         if not self.request:
             return Compensation.objects.none()
-        queryset = Compensation.objects.filter(order_status=1, creator=user).order_by("-update_time")
+        queryset = Compensation.objects.filter(order_status=1, creator=user).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -128,7 +128,7 @@ class CompensationCheckViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Compensation.objects.none()
-        queryset = Compensation.objects.filter(order_status=1).order_by("-update_time")
+        queryset = Compensation.objects.filter(order_status=1).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -327,7 +327,7 @@ class CompensationViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Compensation.objects.none()
-        queryset = Compensation.objects.all().order_by("-update_time")
+        queryset = Compensation.objects.all().order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -366,7 +366,7 @@ class BatchCompensationSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BatchCompensation.objects.none()
-        queryset = BatchCompensation.objects.filter(order_status=1).order_by("-update_time")
+        queryset = BatchCompensation.objects.filter(order_status=1).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -475,7 +475,7 @@ class BatchCompensationSettleViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BatchCompensation.objects.none()
-        queryset = BatchCompensation.objects.filter(order_status=2).order_by("-update_time")
+        queryset = BatchCompensation.objects.filter(order_status=2).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -577,7 +577,7 @@ class BatchCompensationViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BatchCompensation.objects.none()
-        queryset = BatchCompensation.objects.all().order_by("-update_time")
+        queryset = BatchCompensation.objects.all().order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -617,7 +617,7 @@ class BCDetailSubmitViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BCDetail.objects.none()
-        queryset = BCDetail.objects.filter(order_status=1).order_by("-update_time")
+        queryset = BCDetail.objects.filter(order_status=1).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -700,7 +700,7 @@ class BCDetailSettleViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BCDetail.objects.none()
-        queryset = BCDetail.objects.filter(order_status=2).order_by("-update_time")
+        queryset = BCDetail.objects.filter(order_status=2).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -893,7 +893,7 @@ class BCDetailViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return BCDetail.objects.none()
-        queryset = BCDetail.objects.all().order_by("-update_time")
+        queryset = BCDetail.objects.all().order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)

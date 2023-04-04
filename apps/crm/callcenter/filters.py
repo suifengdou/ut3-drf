@@ -16,7 +16,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 
 class OriCallLogFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     call_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     answer_status = django_filters.CharFilter(field_name="answer_status", lookup_expr='icontains')
     satisfaction = django_filters.CharFilter(field_name="satisfaction", lookup_expr='icontains')
@@ -29,7 +29,7 @@ class OriCallLogFilter(django_filters.FilterSet):
 
 
 class CallLogFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     call_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 

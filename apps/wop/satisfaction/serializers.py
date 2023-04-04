@@ -12,8 +12,8 @@ from apps.utils.geography.tools import PickOutAdress
 
 class OriSatisfactionWorkOrderSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = OriSatisfactionWorkOrder
@@ -170,15 +170,15 @@ class OriSatisfactionWorkOrderSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["updated_time"] = datetime.datetime.now()
-        create_time = validated_data.pop("create_time", "")
+        created_time = validated_data.pop("created_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
         return instance
 
 
 class OSWOFilesSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = OSWOFiles
@@ -199,7 +199,7 @@ class OSWOFilesSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["updated_time"] = datetime.datetime.now()
-        create_time = validated_data.pop("create_time", "")
+        created_time = validated_data.pop("created_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
         return instance
@@ -207,8 +207,8 @@ class OSWOFilesSerializer(serializers.ModelSerializer):
 
 class SWOSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     progress_details = serializers.JSONField(required=False)
 
     class Meta:
@@ -450,7 +450,7 @@ class SWOSerializer(serializers.ModelSerializer):
                 "appointment": progress_detail.appointment,
                 "memo": progress_detail.memo,
                 "creator": progress_detail.creator,
-                "create_time": progress_detail.create_time,
+                "created_time": progress_detail.created_time,
                 "file_details": self.get_file_details(progress_detail)
             }
             ret.append(data)
@@ -492,7 +492,7 @@ class SWOSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        create_time = validated_data.pop("create_time", "")
+        created_time = validated_data.pop("created_time", "")
         validated_data["updated_time"] = datetime.datetime.now()
         try:
             is_solved = validated_data["is_solved"]
@@ -527,8 +527,8 @@ class SWOSerializer(serializers.ModelSerializer):
 
 class SWOProgressSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = SWOProgress
@@ -617,7 +617,7 @@ class SWOProgressSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         if instance.creator != user.username:
             raise serializers.ValidationError({"权限错误": "只有创建人才可以修改"})
-        create_time = validated_data.pop("create_time", "")
+        created_time = validated_data.pop("created_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
@@ -645,7 +645,7 @@ class SWOPFilesSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["updated_time"] = datetime.datetime.now()
-        create_time = validated_data.pop("create_time", "")
+        created_time = validated_data.pop("created_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
         return instance
@@ -653,8 +653,8 @@ class SWOPFilesSerializer(serializers.ModelSerializer):
 
 class ServiceWorkOrderSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     progress_details = serializers.JSONField(required=False)
     goods_details = serializers.JSONField(required=False)
 
@@ -818,7 +818,7 @@ class ServiceWorkOrderSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["updated_time"] = datetime.datetime.now()
-        create_time = validated_data.pop("create_time", "")
+        created_time = validated_data.pop("created_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
         return instance
@@ -826,8 +826,8 @@ class ServiceWorkOrderSerializer(serializers.ModelSerializer):
 
 class InvoiceWorkOrderSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     goods_details = serializers.JSONField(required=False)
 
     class Meta:

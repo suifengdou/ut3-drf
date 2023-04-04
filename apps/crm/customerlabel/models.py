@@ -3,7 +3,7 @@ from django.db import models
 # Create your models here.
 from apps.crm.customers.models import Customer
 from apps.auth.users.models import UserProfile
-from apps.crm.labels.models import Label, LabelCustomer, LogLabelCustomer
+from apps.crm.labels.models import Label
 
 
 class CustomerLabelPerson(models.Model):

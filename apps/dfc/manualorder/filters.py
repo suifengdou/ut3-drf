@@ -16,7 +16,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 
 class ManualOrderFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
     province__name = django_filters.CharFilter(lookup_expr='exact')
@@ -31,7 +31,7 @@ class ManualOrderFilter(django_filters.FilterSet):
 
 
 class MOGoodsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
     manual_order__mobile = django_filters.CharFilter(lookup_expr='icontains')
@@ -47,8 +47,8 @@ class MOGoodsFilter(django_filters.FilterSet):
 
 
 class ManualOrderExportFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     erp_order_id = django_filters.CharFilter(field_name="erp_order_id", lookup_expr='icontains')
     goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     goods_name = django_filters.CharFilter(field_name="goods_name", lookup_expr='icontains')

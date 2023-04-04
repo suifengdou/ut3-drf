@@ -7,8 +7,8 @@ from apps.base.goods.models import Goods
 
 class ExpressWorkOrderSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = ExpressWorkOrder
@@ -175,7 +175,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["updated_time"] = datetime.datetime.now()
-        create_time = validated_data.pop("create_time", "")
+        created_time = validated_data.pop("created_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
 
         return instance
@@ -183,8 +183,8 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
 
 class EWOPhotoSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = EWOPhoto
@@ -204,6 +204,6 @@ class EWOPhotoSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data["updated_time"] = datetime.datetime.now()
-        create_time = validated_data.pop("create_time", "")
+        created_time = validated_data.pop("created_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance

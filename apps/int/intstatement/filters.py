@@ -17,7 +17,7 @@ class IntStatementFilter(django_filters.FilterSet):
     receipt__payment_account = django_filters.CharFilter(lookup_expr='icontains')
     account__name = django_filters.CharFilter(lookup_expr='icontains')
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = IntStatement

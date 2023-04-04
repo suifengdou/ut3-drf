@@ -27,6 +27,7 @@ from apps.base.goods.models import Goods
 from apps.utils.geography.tools import PickOutAdress
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.utils.logging.loggings import getlogs, logging
+from apps.base.warehouse.models import Warehouse
 
 
 class ManualOrderSubmitViewset(viewsets.ModelViewSet):
@@ -106,6 +107,8 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
             2: "圆通",
             3: "韵达",
         }
+        user = request.user
+        warehouse = Warehouse.objects.filter(name="中外运苏州配件仓")[0]
         if n:
             for obj in check_list:
                 if not obj.erp_order_id:
@@ -243,6 +246,9 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
 
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
+                if not order.warehouse:
+                    order.warehouse = warehouse
+                    obj.warehouse = warehouse
                 order.ori_order = obj
                 if obj.assign_express:
                     express = express_list.get(obj.assign_express, None)
@@ -252,6 +258,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                     order.buyer_remark = "%s%s" % (order.buyer_remark, obj.memo)
                     order.creator = request.user.username
                     order.save()
+                    logging(order, user, LogManualOrderExport, "创建")
                 except Exception as e:
                     data["error"].append("%s输出单保存出错: %s" % (obj.id, e))
                     n -= 1
@@ -262,6 +269,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                 obj.order_status = 2
                 obj.mistake_tag = 0
                 obj.save()
+                logging(obj, user, LogManualOrder, "递交发货")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n

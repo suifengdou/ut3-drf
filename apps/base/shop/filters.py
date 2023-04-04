@@ -10,7 +10,7 @@ from .models import Shop, Platform
 
 class ShopFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Shop
@@ -19,7 +19,7 @@ class ShopFilter(django_filters.FilterSet):
 
 class PlatformFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Platform

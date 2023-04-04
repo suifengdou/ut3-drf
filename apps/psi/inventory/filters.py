@@ -13,7 +13,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
 class InventoryFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Inventory

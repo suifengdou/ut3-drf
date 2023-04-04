@@ -15,7 +15,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 
 class StorageWorkOrderFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     submit_time = django_filters.DateTimeFromToRangeFilter()
     handle_time = django_filters.DateTimeFromToRangeFilter()
     keyword = django_filters.CharFilter(field_name="keyword", lookup_expr='icontains')

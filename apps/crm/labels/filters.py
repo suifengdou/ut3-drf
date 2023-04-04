@@ -10,8 +10,9 @@ from django.db.models import F, Q
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
 from .models import LabelCategory, Label, LogLabelCategory, LogLabel, LabelCustomerOrder, LabelCustomerOrderDetails, \
-    LabelCustomer, LogLabelCustomerOrder, LogLabelCustomer
+    LogLabelCustomerOrder
 from apps.utils.orm.queryfunc import andconmbine, orconmbine
+
 
 class NumberInFilter(BaseInFilter, NumberFilter):
     pass
@@ -74,30 +75,6 @@ class LabelCustomerOrderDetailsFilter(django_filters.FilterSet):
                 else:
                     _temp_queryset = queryset.filter(**{name: value})
             queryset = _temp_queryset
-        return queryset
-
-
-class LabelCustomerFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    trade_no = django_filters.CharFilter(field_name="trade_no", lookup_expr='icontains')
-    order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
-    label__name = django_filters.CharFilter(method='label_filter')
-    customer__name = django_filters.CharFilter()
-
-    class Meta:
-        model = LabelCustomer
-        fields = "__all__"
-
-    def label_filter(self, queryset, name, *value):
-        condition_list = str(value[0]).split()
-        if len(condition_list) == 1:
-            queryset = queryset.filter(**{name: condition_list[0]})
-        else:
-            condition = andconmbine(condition_list, name)
-            if condition:
-                queryset = queryset.filter(condition)
-            else:
-                queryset = queryset.none()
         return queryset
 
 

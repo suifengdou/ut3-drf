@@ -10,7 +10,7 @@ from .models import WarehouseType, Warehouse
 
 class WarehouseTypeFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = WarehouseType
@@ -19,7 +19,7 @@ class WarehouseTypeFilter(django_filters.FilterSet):
 
 class WarehouseFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Warehouse

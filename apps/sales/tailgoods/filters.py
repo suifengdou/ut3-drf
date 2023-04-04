@@ -20,7 +20,7 @@ class CharInFilter(BaseInFilter, CharFilter):
 
 class OriTailOrderFilter(django_filters.FilterSet):
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = OriTailOrder
@@ -28,7 +28,7 @@ class OriTailOrderFilter(django_filters.FilterSet):
 
 
 class OTOGoodsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = OTOGoods
@@ -38,8 +38,8 @@ class OTOGoodsFilter(django_filters.FilterSet):
 class TailOrderFilter(django_filters.FilterSet):
     ori_tail_order__order_id = django_filters.CharFilter(lookup_expr='exact')
     order_id__in = CharInFilter(field_name="order_id", lookup_expr="in")
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
     class Meta:
@@ -48,7 +48,7 @@ class TailOrderFilter(django_filters.FilterSet):
 
 
 class TOGoodsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     tail_order__order_id = django_filters.CharFilter(lookup_expr='iexact')
     tail_order__sent_consignee = django_filters.CharFilter(lookup_expr='icontains')
     tail_order__sent_smartphone = django_filters.CharFilter(lookup_expr='icontains')
@@ -64,7 +64,7 @@ class TOGoodsFilter(django_filters.FilterSet):
 class RefundOrderFilter(django_filters.FilterSet):
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     handle_time = django_filters.DateTimeFromToRangeFilter()
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     track_no__in = CharInFilter(field_name="track_no", lookup_expr="in")
 
     class Meta:
@@ -74,7 +74,7 @@ class RefundOrderFilter(django_filters.FilterSet):
 
 class ROGoodsFilter(django_filters.FilterSet):
     refund_order__track_no = django_filters.CharFilter(lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = ROGoods
@@ -83,7 +83,7 @@ class ROGoodsFilter(django_filters.FilterSet):
 #
 # class PayBillOrderFilter(django_filters.FilterSet):
 #     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
 #
 #     class Meta:
 #         model = PayBillOrder
@@ -91,7 +91,7 @@ class ROGoodsFilter(django_filters.FilterSet):
 
 
 # class PBOGoodsFilter(django_filters.FilterSet):
-#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
 #
 #     class Meta:
 #         model = PBOGoods
@@ -100,7 +100,7 @@ class ROGoodsFilter(django_filters.FilterSet):
 #
 # class ArrearsBillOrderFilter(django_filters.FilterSet):
 #     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
 #
 #     class Meta:
 #         model = ArrearsBillOrder
@@ -108,7 +108,7 @@ class ROGoodsFilter(django_filters.FilterSet):
 
 #
 # class ABOGoodsFilter(django_filters.FilterSet):
-#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
 #
 #     class Meta:
 #         model = ABOGoods
@@ -117,7 +117,7 @@ class ROGoodsFilter(django_filters.FilterSet):
 
 # class FinalStatementFilter(django_filters.FilterSet):
 #     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
 #
 #     class Meta:
 #         model = FinalStatement
@@ -125,7 +125,7 @@ class ROGoodsFilter(django_filters.FilterSet):
 #
 #
 # class FinalStatementGoodsFilter(django_filters.FilterSet):
-#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
 #
 #     class Meta:
 #         model = FinalStatementGoods
@@ -134,7 +134,7 @@ class ROGoodsFilter(django_filters.FilterSet):
 
 class AccountInfoFilter(django_filters.FilterSet):
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = AccountInfo
@@ -142,7 +142,7 @@ class AccountInfoFilter(django_filters.FilterSet):
 
 #
 # class PBillToAccountFilter(django_filters.FilterSet):
-#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
 #
 #     class Meta:
 #         model = PBillToAccount
@@ -150,7 +150,7 @@ class AccountInfoFilter(django_filters.FilterSet):
 
 
 # class ABillToAccountFilter(django_filters.FilterSet):
-#     create_time = django_filters.DateTimeFromToRangeFilter()
+#     created_time = django_filters.DateTimeFromToRangeFilter()
 #
 #     class Meta:
 #         model = ABillToAccount
@@ -158,14 +158,14 @@ class AccountInfoFilter(django_filters.FilterSet):
 
 
 class TailToExpenseFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = TailToExpense
         fields = "__all__"
 
 class RefundToPrestoreFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = RefundToPrestore

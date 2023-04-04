@@ -26,6 +26,7 @@ from apps.base.goods.models import Goods
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.utils.geography.tools import PickOutAdress
 from ut3.settings import EXPORT_TOPLIMIT
+from apps.base.warehouse.models import Warehouse
 
 
 
@@ -132,6 +133,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         department = request.user.department
+        warehouse = Warehouse.objects.filter(name="中外运苏州配件仓")[0]
         if n:
             for obj in check_list:
                 if department.name != '财务中心-客审部':
@@ -202,6 +204,7 @@ class OriginDataSubmitViewset(viewsets.ModelViewSet):
                 try:
                     order.memo = obj.buyer_remark
                     order.department = request.user.department
+                    order.warehouse = warehouse
                     order.creator = request.user.username
                     order.save()
                 except Exception as e:

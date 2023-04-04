@@ -19,7 +19,7 @@ class CharInFilter(BaseInFilter, CharFilter):
 
 
 class OriOrderFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
     trade_no__in = CharInFilter(field_name="trade_no", lookup_expr="in")
 
@@ -29,7 +29,7 @@ class OriOrderFilter(django_filters.FilterSet):
 
 
 class DecryptOrderFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     trade_no = django_filters.CharFilter(field_name="trade_no", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
     goods = django_filters.CharFilter(method='goods_filter')

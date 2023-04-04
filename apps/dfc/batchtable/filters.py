@@ -14,7 +14,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
 class OriginDataFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     goods_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -24,7 +24,7 @@ class OriginDataFilter(django_filters.FilterSet):
 
 
 class BatchTableFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 

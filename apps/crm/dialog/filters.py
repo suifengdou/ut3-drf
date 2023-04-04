@@ -15,7 +15,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
 class ServicerFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
 
     class Meta:
@@ -24,7 +24,7 @@ class ServicerFilter(django_filters.FilterSet):
 
 
 class DialogTBFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     customer = django_filters.CharFilter(field_name="customer", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -34,7 +34,7 @@ class DialogTBFilter(django_filters.FilterSet):
 
 
 class DialogTBDetailFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     sayer = django_filters.CharFilter(field_name="sayer", lookup_expr='icontains')
     content = django_filters.CharFilter(field_name="content", lookup_expr='icontains')
     dialog__customer =django_filters.CharFilter(lookup_expr='icontains')
@@ -46,7 +46,7 @@ class DialogTBDetailFilter(django_filters.FilterSet):
 
 
 class DialogTBWordsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     words = django_filters.CharFilter(field_name="words", lookup_expr='icontains')
 
     class Meta:
@@ -55,7 +55,7 @@ class DialogTBWordsFilter(django_filters.FilterSet):
 
 
 class DialogJDFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     customer = django_filters.CharFilter(field_name="customer", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -65,7 +65,7 @@ class DialogJDFilter(django_filters.FilterSet):
 
 
 class DialogJDDetailFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     sayer = django_filters.CharFilter(field_name="sayer", lookup_expr='icontains')
     content = django_filters.CharFilter(field_name="content", lookup_expr='icontains')
     dialog__customer = django_filters.CharFilter(lookup_expr='icontains')
@@ -78,7 +78,7 @@ class DialogJDDetailFilter(django_filters.FilterSet):
 
 
 class DialogJDWordsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     words = django_filters.CharFilter(field_name="words", lookup_expr='icontains')
 
     class Meta:
@@ -87,7 +87,7 @@ class DialogJDWordsFilter(django_filters.FilterSet):
 
 
 class DialogOWFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     customer = django_filters.CharFilter(field_name="customer", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -97,7 +97,7 @@ class DialogOWFilter(django_filters.FilterSet):
 
 
 class DialogOWDetailFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     sayer = django_filters.CharFilter(field_name="sayer", lookup_expr='icontains')
     dialog__customer = django_filters.CharFilter(lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
@@ -108,7 +108,7 @@ class DialogOWDetailFilter(django_filters.FilterSet):
 
 
 class DialogOWWordsFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     words = django_filters.CharFilter(field_name="words", lookup_expr='icontains')
 
     class Meta:

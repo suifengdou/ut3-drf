@@ -18,7 +18,7 @@ from .filters import JobCategoryFilter, JobOrderFilter, JobOrderDetailsFilter, J
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.base.company.models import Company
 from apps.crm.customers.models import Customer, LogCustomer
-from apps.crm.labels.models import Label, LabelCustomer, LogLabelCustomer
+from apps.crm.labels.models import Label
 
 from ut3.settings import OSS_CONFIG, EXPORT_TOPLIMIT
 
@@ -40,7 +40,7 @@ class JobCategoryViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['order.view_OriOrder']
+        "GET": ['job.view_jobcategory']
     }
 
     def get_queryset(self):
@@ -88,7 +88,7 @@ class JobOrderSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['job.view_joborder']
     }
 
     def get_queryset(self):
@@ -251,7 +251,7 @@ class JobOrderTrackViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['job.view_joborder']
     }
 
     def get_queryset(self):
@@ -415,7 +415,7 @@ class JobOrderManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['job.view_joborder', 'job.view_joborderdetails']
     }
 
     def get_queryset(self):
@@ -477,7 +477,7 @@ class JOFilesViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['manualorder.view_manualorder']
+        "GET": ['job.view_joborder', 'job.view_joborderdetails']
     }
 
     def get_queryset(self):
@@ -532,7 +532,7 @@ class JobOrderDetailsSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['job.view_joborder']
     }
 
     def get_queryset(self):
@@ -796,7 +796,7 @@ class JobOrderDetailsAcceptViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['job.view_joborderdetails']
     }
 
     def get_queryset(self):
@@ -978,7 +978,7 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['job.view_joborderdetails']
     }
 
     def get_queryset(self):
@@ -1311,7 +1311,7 @@ class JobOrderDetailsTrackViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['job.view_joborderdetails']
     }
 
     def get_queryset(self):
@@ -1447,7 +1447,7 @@ class JobOrderDetailsManageViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['express.view_expressworkorder']
+        "GET": ['job.view_joborderdetails']
     }
 
     def get_queryset(self):
@@ -1504,7 +1504,7 @@ class JODFilesViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['manualorder.view_manualorder']
+        "GET": ['job.view_joborderdetails']
     }
 
     def get_queryset(self):

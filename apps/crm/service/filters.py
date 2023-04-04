@@ -16,7 +16,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 
 class OriMaintenanceFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     purchase_time = django_filters.DateTimeFromToRangeFilter()
     handle_time = django_filters.DateTimeFromToRangeFilter()
     ori_create_time = django_filters.DateTimeFromToRangeFilter()
@@ -30,7 +30,7 @@ class OriMaintenanceFilter(django_filters.FilterSet):
 
 
 class MaintenanceFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     handle_time = django_filters.DateTimeFromToRangeFilter()
     ori_create_time = django_filters.DateTimeFromToRangeFilter()
     finish_time = django_filters.DateTimeFromToRangeFilter()
@@ -45,7 +45,7 @@ class MaintenanceFilter(django_filters.FilterSet):
 
 
 class FindAndFoundFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = FindAndFound
@@ -53,7 +53,7 @@ class FindAndFoundFilter(django_filters.FilterSet):
 
 
 class MaintenanceSummaryFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = MaintenanceSummary

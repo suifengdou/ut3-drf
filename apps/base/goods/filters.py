@@ -23,7 +23,7 @@ class GoodsFilter(django_filters.FilterSet):
     goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     goods_number = django_filters.CharFilter(field_name="goods_number", lookup_expr='icontains')
     goods_id__in = CharInFilter(lookup_expr='in')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Goods
@@ -43,7 +43,7 @@ class GoodsFilter(django_filters.FilterSet):
 class GoodsCategoryFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
     code = django_filters.CharFilter(field_name="code", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = GoodsCategory

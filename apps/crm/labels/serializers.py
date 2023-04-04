@@ -2,7 +2,7 @@ import datetime, re
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import LabelCategory, Label, LogLabelCategory, LogLabel, LabelCustomerOrder, LabelCustomerOrderDetails, \
-    LabelCustomer, LogLabelCustomerOrder, LogLabelCustomer, LabelCustomerOrderDetails, LogLabelCustomerOrderDetails
+    LogLabelCustomerOrder, LabelCustomerOrderDetails, LogLabelCustomerOrderDetails
 from apps.utils.logging.loggings import logging
 
 
@@ -338,83 +338,4 @@ class LabelCustomerOrderDetailsSerializer(serializers.ModelSerializer):
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogLabelCustomerOrderDetails, "修改内容：%s" % str(content))
         return instance
-
-
-class LabelCustomerSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = LabelCustomer
-        fields = "__all__"
-
-    def get_label(self, instance):
-        try:
-            ret = {
-                "id": instance.label.id,
-                "name": instance.label.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_customer(self, instance):
-        try:
-            ret = {
-                "id": instance.customer.id,
-                "name": instance.customer.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_center(self, instance):
-        try:
-            ret = {
-                "id": instance.center.id,
-                "name": instance.center.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def to_representation(self, instance):
-        ret = super(LabelCustomerSerializer, self).to_representation(instance)
-        ret["label"] = self.get_label(instance)
-        ret["customer"] = self.get_customer(instance)
-        ret["center"] = self.get_center(instance)
-        return ret
-
-    def create(self, validated_data):
-        user = self.context["request"].user
-        validated_data["creator"] = self.context["request"].user.username
-        instance = self.Meta.model.objects.create(**validated_data)
-        logging(instance, user, LogLabelCustomer, "创建")
-        return instance
-
-    def update(self, instance, validated_data):
-        user = self.context["request"].user
-        validated_data["updated_time"] = datetime.datetime.now()
-        # 改动内容
-        content = []
-        for key, value in validated_data.items():
-            if 'time' not in str(key):
-                check_value = getattr(instance, key, None)
-                if value != check_value:
-
-                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
-
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        logging(instance, user, LogLabelCategory, "修改内容：%s" % str(content))
-        return instance
-
 

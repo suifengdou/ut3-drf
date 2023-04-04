@@ -11,7 +11,7 @@ User = get_user_model()
 
 class UserFilter(django_filters.FilterSet):
     username = django_filters.CharFilter(field_name="username", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = User

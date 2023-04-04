@@ -15,8 +15,8 @@ class NumberInFilter(BaseInFilter, NumberFilter):
 
 
 class OriSatisfactionWorkOrderFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     information = django_filters.CharFilter(field_name="information", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -27,8 +27,8 @@ class OriSatisfactionWorkOrderFilter(django_filters.FilterSet):
 
 
 class OSWOFilesFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = OSWOFiles
@@ -38,8 +38,8 @@ class OSWOFilesFilter(django_filters.FilterSet):
 class SWOFilter(django_filters.FilterSet):
     customer__name = django_filters.CharFilter(lookup_expr='icontains')
     goods_name__name = django_filters.CharFilter(lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     completed_time = django_filters.DateTimeFromToRangeFilter()
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
     stage__in = NumberInFilter(field_name="stage", lookup_expr="in")
@@ -53,8 +53,8 @@ class SWOFilter(django_filters.FilterSet):
 
 class SWOProgressFilter(django_filters.FilterSet):
     order__order_id = django_filters.CharFilter(lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     content = django_filters.CharFilter(field_name="information", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -69,8 +69,8 @@ class SWOPFilesFilter(django_filters.FilterSet):
     workorder__title = django_filters.CharFilter(lookup_expr='icontains')
     name = django_filters.CharFilter(lookup_expr='icontains')
     category = django_filters.CharFilter(lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     information = django_filters.CharFilter(field_name="information", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -84,8 +84,8 @@ class ServiceWorkOrderFilter(django_filters.FilterSet):
     swo_order__order_id = django_filters.CharFilter(lookup_expr='icontains')
     swo_order__title = django_filters.CharFilter(lookup_expr='icontains')
     customer__name = django_filters.CharFilter(lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     information = django_filters.CharFilter(field_name="information", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -98,8 +98,8 @@ class ServiceWorkOrderFilter(django_filters.FilterSet):
 class InvoiceWorkOrderFilter(django_filters.FilterSet):
     swo_order__order_id = django_filters.CharFilter(lookup_expr='icontains')
     swo_order__title = django_filters.CharFilter(lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
-    update_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    updated_time = django_filters.DateTimeFromToRangeFilter()
     information = django_filters.CharFilter(field_name="information", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 

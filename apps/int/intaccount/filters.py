@@ -10,7 +10,7 @@ from .models import Currency, IntAccount
 
 class CurrencyFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Currency
@@ -21,7 +21,7 @@ class IntAccountFilter(django_filters.FilterSet):
     currency__name = django_filters.CharFilter(lookup_expr='icontains')
     coompany__name = django_filters.CharFilter(lookup_expr='icontains')
     name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = IntAccount

@@ -42,9 +42,9 @@ class SWOCreateViewset(viewsets.ModelViewSet):
             return StorageWorkOrder.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = StorageWorkOrder.objects.filter(order_status=1, is_forward=user.is_our).order_by("-update_time")
+            queryset = StorageWorkOrder.objects.filter(order_status=1, is_forward=user.is_our).order_by("-updated_time")
         else:
-            queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=1, is_forward=user.is_our).order_by("-update_time")
+            queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=1, is_forward=user.is_our).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -271,9 +271,9 @@ class SWOHandleViewset(viewsets.ModelViewSet):
         if not self.request:
             return StorageWorkOrder.objects.none()
         if user.is_our:
-            queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=is_forward).order_by("-update_time")
+            queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=is_forward).order_by("-updated_time")
         else:
-            queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=is_forward, company=user.company).order_by("-update_time")
+            queryset = StorageWorkOrder.objects.filter(order_status=2, is_forward=is_forward, company=user.company).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -331,7 +331,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                     continue
 
                 obj.submit_time = datetime.datetime.now()
-                start_time = datetime.datetime.strptime(str(obj.update_time).split(".")[0],
+                start_time = datetime.datetime.strptime(str(obj.updated_time).split(".")[0],
                                                         "%Y-%m-%d %H:%M:%S")
                 end_time = datetime.datetime.strptime(str(obj.submit_time).split(".")[0],
                                                       "%Y-%m-%d %H:%M:%S")
@@ -404,10 +404,10 @@ class SWOConfirmViewset(viewsets.ModelViewSet):
             return StorageWorkOrder.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = StorageWorkOrder.objects.filter(order_status=3, is_forward=user.is_our).order_by("-update_time")
+            queryset = StorageWorkOrder.objects.filter(order_status=3, is_forward=user.is_our).order_by("-updated_time")
         else:
             queryset = StorageWorkOrder.objects.filter(company=user.company, order_status=3,
-                                                       is_forward=user.is_our).order_by("-update_time")
+                                                       is_forward=user.is_our).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -555,7 +555,7 @@ class SWOAuditViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return StorageWorkOrder.objects.none()
-        queryset = StorageWorkOrder.objects.filter(order_status=4).order_by("-update_time")
+        queryset = StorageWorkOrder.objects.filter(order_status=4).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -654,9 +654,9 @@ class SWOManageViewset(viewsets.ModelViewSet):
             return StorageWorkOrder.objects.none()
         user = self.request.user
         if user.is_our:
-            queryset = StorageWorkOrder.objects.all().order_by("-update_time")
+            queryset = StorageWorkOrder.objects.all().order_by("-updated_time")
         else:
-            queryset = StorageWorkOrder.objects.filter(company=user.company).order_by("-update_time")
+            queryset = StorageWorkOrder.objects.filter(company=user.company).order_by("-updated_time")
         return queryset
 
     @action(methods=['patch'], detail=False)

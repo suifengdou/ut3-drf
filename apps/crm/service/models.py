@@ -218,7 +218,7 @@ class FindAndFound(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-M-保修统计表'
+        verbose_name = 'CRM-M-二次维修关系'
         verbose_name_plural = verbose_name
         db_table = 'crm_maintenance_ff'
 

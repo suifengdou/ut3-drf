@@ -13,7 +13,7 @@ class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
 class DealerWorkOrderFilter(django_filters.FilterSet):
-    create_time = django_filters.DateTimeFromToRangeFilter()
+    created_time = django_filters.DateTimeFromToRangeFilter()
     submit_time = django_filters.DateTimeFromToRangeFilter()
     handle_time = django_filters.DateTimeFromToRangeFilter()
     information = django_filters.CharFilter(field_name="information", lookup_expr='icontains')

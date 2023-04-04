@@ -2,7 +2,7 @@ import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import Customer, LogCustomer
-from apps.crm.labels.models import Label, LabelCustomer, LogLabelCustomer
+from apps.crm.labels.models import Label
 from apps.utils.logging.loggings import logging
 from apps.crm.customerlabel.views import QueryLabel, CreateLabel, DeleteLabel, RecoverLabel
 
