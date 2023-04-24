@@ -54,7 +54,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return OriMaintenance.objects.none()
-        queryset = OriMaintenance.objects.filter(towork_status=1).exclude(order_status="已完成").order_by("-id")
+        queryset = OriMaintenance.objects.filter(order_status=1).exclude(ori_order_status="已完成").order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -62,7 +62,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["towork_status"] = 1
+        params["order_status"] = 1
         f = OriMaintenanceFilter(params)
         serializer = OriMaintenanceSerializer(f.qs, many=True)
         return Response(serializer.data)
@@ -70,13 +70,13 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["towork_status"] = 1
+        params["order_status"] = 1
         if all_select_tag:
             handle_list = OriMaintenanceFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = OriMaintenance.objects.filter(id__in=order_ids, towork_status=1)
+                handle_list = OriMaintenance.objects.filter(id__in=order_ids, order_status=1)
             else:
                 handle_list = []
         return handle_list
@@ -92,7 +92,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            check_list.update(mark_name=0)
+            check_list.update(order_status=2)
         else:
             raise serializers.ValidationError("没有可清除的单据！")
         data["successful"] = n
@@ -109,7 +109,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(towork_status=0)
+            reject_list.update(order_status=0)
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -131,7 +131,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
         ALLOWED_EXTENSIONS = ['xls', 'xlsx']
         INIT_FIELDS_DIC = {
             "保修单号": "order_id",
-            "保修单状态": "order_status",
+            "保修单状态": "ori_order_status",
             "收发仓库": "warehouse",
             "处理登记人": "completer",
             "保修类型": "maintenance_type",
@@ -210,7 +210,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             ret_columns_key = dict(zip(columns_key_ori, columns_key))
             df.rename(columns=ret_columns_key, inplace=True)
             if len(df) > 1000:
-                queryset = OriMaintenance.objects.filter(towork_status=1).exclude(order_status="已完成")
+                queryset = OriMaintenance.objects.filter(order_status=1).exclude(order_status="已完成")
                 queryset.update(process_tag=1)
             # 更改一下DataFrame的表名称
             num_end = 0
@@ -242,29 +242,45 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
     def save_resources(request, resource):
         # 设置初始报告
         report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
-        before_status = ["待审核", "逆向待推送", "逆向推送失败", "待筛单", "不可达", "待取件", "取件失败", "待入库"]
-        working_status = ["待维修", "已换新-待打单", "待打印", "已打印"]
+        exception_type = {
+            "已取消": 0,
+            "待审核": 1,
+            "逆向待推送": 2,
+            "逆向推送失败": 2,
+            "待筛单": 2,
+            "不可达": 3,
+            "待取件": 3,
+            "取件失败": 3,
+            "待入库": 4,
+            "待维修": 5,
+            "已换新-待打单": 5,
+            "待打印": 5,
+            "已打印": 5,
+        }
+        check_warning = ["待取件", "待入库", "待维修", "待打印", "已打印"]
+        check_exception = ["逆向推送失败", "待筛单", "不可达", "取件失败", "已换新-待打单"]
+        check_handling = ["待审核", "逆向待推送"]
         near_provinces = ["浙江", "山东", "安徽", "福建", "河南", "湖北", "湖南", "江西", "江苏", "上海"]
+
         for row in resource:
             _q_repeat_order = OriMaintenance.objects.filter(order_id=row["order_id"])
             if _q_repeat_order.exists():
                 order =_q_repeat_order[0]
-                if order.order_status == "已完成" or order.towork_status > 1:
+                if order.order_status == "已完成":
                     report_dic["discard"] += 1
                     continue
                 else:
-                    order.towork_status = 1
-                    order.process_tag = 0
+                    pass
             else:
                 order = OriMaintenance()
             for keyword in ["purchase_time", "ori_create_time", "handle_time", "finish_time", "last_handle_time"]:
                 if row[keyword] == "0000-00-00 00:00:00":
                     row[keyword] = None
 
-            order_fields = ["order_id", "order_status", "warehouse", "completer", "maintenance_type",
+            order_fields = ["order_id", "ori_order_status", "warehouse", "completer", "maintenance_type",
                             "fault_type", "transport_type", "machine_sn", "new_machine_sn", "send_order_id",
                             "appraisal", "shop", "purchase_time", "ori_create_time", "ori_creator", "handle_time",
-                            "handler_name", "finish_time", "fee", "quantity",  "buyer_nick",
+                            "handler_name", "finish_time", "fee", "quantity",  "buyer_nick", "last_handle_time",
                             "sender_name", "sender_mobile", "sender_area", "sender_address", "send_logistics_company",
                             "send_logistics_no", "send_memory", "return_name", "return_mobile", "return_area",
                             "return_address", "return_logistics_company", "return_logistics_no", "return_memory",
@@ -293,8 +309,6 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
                 calc_day = (current_time - last_handle_time).days
                 if calc_day > 2:
                     order.process_tag = 4
-            if order.order_status == '已取消':
-                order.towork_status = 0
             try:
                 order.creator = request.user.username
                 order.save()

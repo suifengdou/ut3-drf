@@ -4,6 +4,7 @@ import django.utils.timezone as timezone
 
 from apps.base.company.models import Company
 from apps.base.goods.models import Goods
+from apps.auth.users.models import UserProfile
 
 
 class ExpressWorkOrder(models.Model):
@@ -126,6 +127,21 @@ class EWOPhoto(models.Model):
         verbose_name = 'WOP-快递工单-图片'
         verbose_name_plural = verbose_name
         db_table = 'wop_express_photo'
+
+    def __str__(self):
+        return str(self.id)
+
+
+class LogExpressOrder(models.Model):
+    obj = models.ForeignKey(ExpressWorkOrder, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    name = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='操作人', help_text='操作人')
+    content = models.CharField(max_length=240, verbose_name='操作内容', help_text='操作内容')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'WOP-快递工单-日志'
+        verbose_name_plural = verbose_name
+        db_table = 'wop_express_logging'
 
     def __str__(self):
         return str(self.id)

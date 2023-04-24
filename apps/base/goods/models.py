@@ -2,6 +2,7 @@ from django.db import models
 
 # Create your models here.
 
+
 class GoodsCategory(models.Model):
     name = models.CharField(unique=True, max_length=30, verbose_name='类型名称', db_index=True, help_text='类型名称')
     code = models.CharField(unique=True, max_length=30, verbose_name='类型编码', db_index=True, help_text='类型编码')
@@ -17,7 +18,6 @@ class GoodsCategory(models.Model):
 
     def __str__(self):
         return self.name
-
 
 
 class Goods(models.Model):
@@ -68,3 +68,6 @@ class Goods(models.Model):
                 return 'verify_field error, must have mandatory field: "{}""'.format(i)
         else:
             return None
+
+
+

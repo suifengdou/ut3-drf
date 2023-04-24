@@ -35,7 +35,7 @@ class LabelCategorySerializer(serializers.ModelSerializer):
         for key, value in validated_data.items():
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
-                if value != check_value:
+                if str(value) != str(check_value):
                     content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
@@ -114,7 +114,7 @@ class LabelSerializer(serializers.ModelSerializer):
         for key, value in validated_data.items():
             if 'time' not in str(key):
                 check_value = getattr(instance, key, None)
-                if value != check_value:
+                if str(value) != str(check_value):
                     content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)

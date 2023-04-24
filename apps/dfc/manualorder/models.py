@@ -88,7 +88,7 @@ class ManualOrder(models.Model):
 
     track_no = models.CharField(null=True, blank=True, max_length=50, verbose_name='快递单号', help_text='快递单号')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=True, blank=True, verbose_name='仓库', help_text='仓库')
-    settle_category = models.SmallIntegerField(choices=SETTLE_CATEGORY, default=1, verbose_name='结算类型', help_text='结算类型')
+    settle_category = models.SmallIntegerField(choices=SETTLE_CATEGORY, default=0, verbose_name='结算类型', help_text='结算类型')
     settle_info = models.CharField(null=True, blank=True, max_length=50, verbose_name='结算信息', help_text='结算信息')
     deliver_time = models.DateTimeField(null=True, blank=True, verbose_name='发货时间', help_text='发货时间')
     amount = models.FloatField(default=0, verbose_name='结算金额', help_text='结算金额')
