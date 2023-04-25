@@ -23,6 +23,7 @@ class CharInFilter(BaseInFilter, CharFilter):
 class CSGoodsFilter(django_filters.FilterSet):
     customer__name = django_filters.CharFilter()
     goods__name = django_filters.CharFilter()
+    purchase_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = CSGoods

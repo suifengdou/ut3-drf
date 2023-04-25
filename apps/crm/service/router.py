@@ -1,7 +1,7 @@
 from rest_framework.routers import DefaultRouter
 from .views import OriMaintenanceSubmitViewset, OriMaintenanceBeforeViewset, \
     OriMaintenanceViewset, MaintenanceSubmitViewset, MaintenanceJudgmentViewset, MaintenanceViewset, \
-    MaintenanceSummaryViewset, FindAndFoundViewset
+    MaintenanceSummaryViewset
 
 
 service_router = DefaultRouter()
@@ -11,7 +11,6 @@ service_router.register(r'crm/service/orimaintenance', OriMaintenanceViewset, ba
 service_router.register(r'crm/service/maintenancesubmit', MaintenanceSubmitViewset, basename='maintenancesubmit')
 service_router.register(r'crm/service/maintenancejudgment', MaintenanceJudgmentViewset, basename='maintenancejudgment')
 service_router.register(r'crm/service/maintenance', MaintenanceViewset, basename='maintenance')
-service_router.register(r'crm/service/findandfound', FindAndFoundViewset, basename='findandfound')
 service_router.register(r'crm/service/maintenancesummary', MaintenanceSummaryViewset, basename='maintenancesummary')
 
 

@@ -2,14 +2,15 @@ import datetime
 from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import OriMaintenance, Maintenance, FindAndFound, MaintenanceSummary
+from .models import OriMaintenance, Maintenance, MaintenanceSummary
 
 
 class OriMaintenanceSerializer(serializers.ModelSerializer):
-    purchase_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="购买时间", help_text="购买时间")
-    handle_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="审核时间", help_text="审核时间")
-    ori_create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="原始创建时间", help_text="原始创建时间")
-    finish_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="完成时间", help_text="完成时间")
+    check_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=False, label="预约时间", help_text="预约时间")
+    purchase_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=False, label="购买时间", help_text="购买时间")
+    handle_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=False, label="审核时间", help_text="审核时间")
+    ori_created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=False, label="原始创建时间", help_text="原始创建时间")
+    finish_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=False, label="完成时间", help_text="完成时间")
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
     update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
@@ -17,16 +18,16 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
         model = OriMaintenance
         fields = "__all__"
 
-    def get_towork_status(self, instance):
+    def get_order_status(self, instance):
         status_list = {
             0: "已取消",
             1: "未处理",
-            2: "已导入",
+            2: "已递交",
         }
         try:
             ret = {
-                "id": instance.towork_status,
-                "name": status_list.get(instance.towork_status, None)
+                "id": instance.order_status,
+                "name": status_list.get(instance.order_status, None)
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -35,11 +36,12 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
     def get_process_tag(self, instance):
         process_list = {
             0: "无异常",
-            1: "未更新到",
-            2: "取件超时",
-            3: "到库超时",
-            4: "维修超时",
-            5: "特殊订单"
+            1: "审核异常",
+            2: "逆向异常",
+            3: "取件异常",
+            4: "入库异常",
+            5: "维修异常",
+            6: "超期异常",
         }
         try:
             ret = {
@@ -50,21 +52,21 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_mark_name(self, instance):
-        mark_list = {
-            0: "正常",
-            1: "配件缺货",
-            2: "快递异常",
-            3: "客户沟通",
-            4: "检测无故",
-            5: "OA拆机",
-            6: "无效保修",
+    def get_sign(self, instance):
+        SIGN_LIST = {
+            0: "无",
+            1: "处理完毕",
+            2: "配件缺货",
+            3: "延后处理",
+            4: "快递异常",
+            5: "特殊问题",
+            6: "处理收费",
             7: "其他情况"
         }
         try:
             ret = {
-                "id": instance.mark_name,
-                "name": mark_list.get(instance.mark_name, None)
+                "id": instance.sign,
+                "name": SIGN_LIST.get(instance.sign, None)
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -90,12 +92,23 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_goods(self, instance):
+        try:
+            ret = {
+                "id": instance.goods.id,
+                "name": instance.goods.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(OriMaintenanceSerializer, self).to_representation(instance)
-        ret["towork_status"] = self.get_towork_status(instance)
+        ret["order_status"] = self.get_order_status(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
-        ret["mark_name"] = self.get_mark_name(instance)
+        ret["sign"] = self.get_sign(instance)
+        ret["goods"] = self.get_goods(instance)
         return ret
 
     def create(self, validated_data):
@@ -234,81 +247,6 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         ret["customer"] = self.get_customer(instance)
         ret["repeat_tag"] = self.get_repeat_tag(instance)
         ret["order_status"] = self.get_order_status(instance)
-        return ret
-
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data["updated_time"] = datetime.datetime.now()
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        return instance
-
-
-class FindAndFoundSerializer(serializers.ModelSerializer):
-
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
-
-    class Meta:
-        model = FindAndFound
-        fields = "__all__"
-
-    def get_find(self, instance):
-        try:
-            ret = {
-                "finish_date": instance.find.finish_date,
-                "id": instance.find.id,
-                "shop": instance.find.shop.name,
-                "goods_name": instance.find.goods_name.name,
-                "name": instance.find.order_id,
-                "warehouse": instance.find.warehouse,
-                "machine_sn": instance.find.machine_sn,
-                "appraisal": instance.find.appraisal,
-                "description": instance.find.description,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_found(self, instance):
-        try:
-            ret = {
-                "finish_date": instance.find.finish_date,
-                "id": instance.found.id,
-                "name": instance.found.order_id,
-                "appraisal": instance.found.appraisal,
-                "description": instance.found.description,
-                "goods_name": instance.found.goods_name.name,
-                "memo": instance.found.memo
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_repeat_tag(self, instance):
-        repeat_list = {
-            0: "正常",
-            1: "未处理",
-            2: "产品",
-            3: "维修",
-            4: "其他",
-        }
-        try:
-            ret = {
-                "id": instance.found.repeat_tag,
-                "name": repeat_list.get(instance.found.repeat_tag, None)
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def to_representation(self, instance):
-        ret = super(FindAndFoundSerializer, self).to_representation(instance)
-        ret["find"] = self.get_find(instance)
-        ret["found"] = self.get_found(instance)
-        ret["repeat_tag"] = self.get_repeat_tag(instance)
         return ret
 
     def create(self, validated_data):
