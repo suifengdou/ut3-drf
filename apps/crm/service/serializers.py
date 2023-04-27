@@ -2,7 +2,8 @@ import datetime
 from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import OriMaintenance, Maintenance, MaintenanceSummary
+from .models import OriMaintenance, Maintenance, MaintenanceSummary, OriMaintenanceGoods, MaintenanceGoods, LogOriMaintenance, LogOriMaintenanceGoods, LogMaintenance, LogMaintenanceGoods, LogMaintenanceSummary
+from apps.utils.logging.loggings import logging
 
 
 class OriMaintenanceSerializer(serializers.ModelSerializer):
@@ -112,12 +113,28 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
         return ret
 
     def create(self, validated_data):
+        user = self.context["request"].user
+        _q_detail = self.Meta.model.objects.filter(order_id=validated_data["order_id"])
+        if _q_detail.exists():
+            raise serializers.ValidationError({"创建错误": "标签单明细中已存在此单据！"})
         validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
+        instance = self.Meta.model.objects.create(**validated_data)
+        logging(instance, user, LogOriMaintenance, "创建")
+        return instance
 
     def update(self, instance, validated_data):
+        user = self.context["request"].user
         validated_data["updated_time"] = datetime.datetime.now()
+        # 改动内容
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if value != check_value:
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
+
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        logging(instance, user, LogOriMaintenance, "修改内容：%s" % str(content))
         return instance
 
 
@@ -250,12 +267,28 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         return ret
 
     def create(self, validated_data):
+        user = self.context["request"].user
+        _q_detail = self.Meta.model.objects.filter(order_id=validated_data["order_id"])
+        if _q_detail.exists():
+            raise serializers.ValidationError({"创建错误": "标签单明细中已存在此单据！"})
         validated_data["creator"] = self.context["request"].user.username
-        return self.Meta.model.objects.create(**validated_data)
+        instance = self.Meta.model.objects.create(**validated_data)
+        logging(instance, user, LogMaintenance, "创建")
+        return instance
 
     def update(self, instance, validated_data):
+        user = self.context["request"].user
         validated_data["updated_time"] = datetime.datetime.now()
+        # 改动内容
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if value != check_value:
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
+
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        logging(instance, user, LogMaintenance, "修改内容：%s" % str(content))
         return instance
 
 
@@ -271,6 +304,261 @@ class MaintenanceSummarySerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(MaintenanceSummarySerializer, self).to_representation(instance)
         return ret
+
+
+class OriMaintenanceGoodsSerializer(serializers.ModelSerializer):
+    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = OriMaintenanceGoods
+        fields = "__all__"
+
+    def get_order_status(self, instance):
+        status_list = {
+            0: "已取消",
+            1: "未处理",
+            2: "已递交",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": status_list.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_process_tag(self, instance):
+        process_list = {
+            0: "无异常",
+            1: "审核异常",
+            2: "逆向异常",
+            3: "取件异常",
+            4: "入库异常",
+            5: "维修异常",
+            6: "超期异常",
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process_list.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_sign(self, instance):
+        SIGN_LIST = {
+            0: "无",
+            1: "处理完毕",
+            2: "配件缺货",
+            3: "延后处理",
+            4: "快递异常",
+            5: "特殊问题",
+            6: "处理收费",
+            7: "其他情况"
+        }
+        try:
+            ret = {
+                "id": instance.sign,
+                "name": SIGN_LIST.get(instance.sign, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "尝试修复数据",
+            2: "二级市错误",
+            3: "寄件地区出错",
+            4: "UT无此店铺",
+            5: "UT此型号整机未创建",
+            6: "UT系统无此店铺",
+            7: "递交到保修单错乱",
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_goods(self, instance):
+        try:
+            ret = {
+                "id": instance.goods.id,
+                "name": instance.goods.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def to_representation(self, instance):
+        ret = super(OriMaintenanceGoodsSerializer, self).to_representation(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["sign"] = self.get_sign(instance)
+        ret["goods"] = self.get_goods(instance)
+        return ret
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        _q_detail = self.Meta.model.objects.filter(order_id=validated_data["order_id"])
+        if _q_detail.exists():
+            raise serializers.ValidationError({"创建错误": "标签单明细中已存在此单据！"})
+        validated_data["creator"] = self.context["request"].user.username
+        instance = self.Meta.model.objects.create(**validated_data)
+        logging(instance, user, LogOriMaintenanceGoods, "创建")
+        return instance
+
+    def update(self, instance, validated_data):
+        user = self.context["request"].user
+        validated_data["updated_time"] = datetime.datetime.now()
+        # 改动内容
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if value != check_value:
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
+
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        logging(instance, user, LogOriMaintenanceGoods, "修改内容：%s" % str(content))
+        return instance
+
+
+class MaintenanceGoodsSerializer(serializers.ModelSerializer):
+    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = MaintenanceGoods
+        fields = "__all__"
+
+    def get_order_status(self, instance):
+        status_list = {
+            0: "已取消",
+            1: "未处理",
+            2: "已递交",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": status_list.get(instance.order_status, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_process_tag(self, instance):
+        process_list = {
+            0: "无异常",
+            1: "审核异常",
+            2: "逆向异常",
+            3: "取件异常",
+            4: "入库异常",
+            5: "维修异常",
+            6: "超期异常",
+        }
+        try:
+            ret = {
+                "id": instance.process_tag,
+                "name": process_list.get(instance.process_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_sign(self, instance):
+        SIGN_LIST = {
+            0: "无",
+            1: "处理完毕",
+            2: "配件缺货",
+            3: "延后处理",
+            4: "快递异常",
+            5: "特殊问题",
+            6: "处理收费",
+            7: "其他情况"
+        }
+        try:
+            ret = {
+                "id": instance.sign,
+                "name": SIGN_LIST.get(instance.sign, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "尝试修复数据",
+            2: "二级市错误",
+            3: "寄件地区出错",
+            4: "UT无此店铺",
+            5: "UT此型号整机未创建",
+            6: "UT系统无此店铺",
+            7: "递交到保修单错乱",
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_goods(self, instance):
+        try:
+            ret = {
+                "id": instance.goods.id,
+                "name": instance.goods.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def to_representation(self, instance):
+        ret = super(MaintenanceGoodsSerializer, self).to_representation(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["sign"] = self.get_sign(instance)
+        ret["goods"] = self.get_goods(instance)
+        return ret
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        _q_detail = self.Meta.model.objects.filter(order_id=validated_data["order_id"])
+        if _q_detail.exists():
+            raise serializers.ValidationError({"创建错误": "标签单明细中已存在此单据！"})
+        validated_data["creator"] = self.context["request"].user.username
+        instance = self.Meta.model.objects.create(**validated_data)
+        logging(instance, user, LogOriMaintenance, "创建")
+        return instance
+
+    def update(self, instance, validated_data):
+        user = self.context["request"].user
+        validated_data["updated_time"] = datetime.datetime.now()
+        # 改动内容
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if value != check_value:
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
+
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        logging(instance, user, LogOriMaintenance, "修改内容：%s" % str(content))
+        return instance
+
 
 
 

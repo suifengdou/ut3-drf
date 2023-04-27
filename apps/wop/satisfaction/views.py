@@ -1473,7 +1473,7 @@ class SWOHandleViewset(viewsets.ModelViewSet):
                     obj.specialist = specialist
                 obj.handler = request.user.username
                 obj.handle_time = datetime.datetime.now()
-                start_time = datetime.datetime.strptime(str(obj.update_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                start_time = datetime.datetime.strptime(str(obj.updated_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
                 end_time = datetime.datetime.strptime(str(obj.handle_time).split(".")[0], "%Y-%m-%d %H:%M:%S")
                 d_value = end_time - start_time
                 days_seconds = d_value.days * 3600

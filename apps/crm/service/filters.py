@@ -7,11 +7,15 @@
 
 
 import django_filters
-from django_filters.filters import BaseInFilter, NumberFilter
-from .models import OriMaintenance, Maintenance, MaintenanceSummary
+from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
+from .models import OriMaintenance, Maintenance, MaintenanceSummary, OriMaintenanceGoods, MaintenanceGoods
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
+    pass
+
+
+class CharInFilter(BaseInFilter, CharFilter):
     pass
 
 
@@ -67,7 +71,20 @@ class MaintenanceSummaryFilter(django_filters.FilterSet):
         fields = "__all__"
 
 
+class OriMaintenanceGoodsFilter(django_filters.FilterSet):
+    created_time = django_filters.DateTimeFromToRangeFilter()
 
+    class Meta:
+        model = OriMaintenanceGoods
+        fields = "__all__"
+
+
+class MaintenanceGoodsFilter(django_filters.FilterSet):
+    created_time = django_filters.DateTimeFromToRangeFilter()
+
+    class Meta:
+        model = MaintenanceGoods
+        fields = "__all__"
 
 
 

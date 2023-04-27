@@ -1,4 +1,4 @@
-import datetime
+import datetime, re
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from .models import Customer, LogCustomer
@@ -19,6 +19,8 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context["request"].user
+        if not re.match('^[19]\d{10}', validated_data["name"]):
+            raise serializers.ValidationError({"创建错误": "用户识别码错误，请确认手机的准确！"})
         instance = self.Meta.model.objects.create(**validated_data)
         logging(instance, user, LogCustomer, "创建")
         return instance

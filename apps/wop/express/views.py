@@ -680,6 +680,12 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
                         data["error"].append("%s 理赔必须设置需理赔才可以审核" % obj.track_id)
                         n -= 1
                         continue
+                    if obj.indemnification == 0:
+                        obj.mistake_tag = 7
+                        obj.save()
+                        data["error"].append("%s 理赔必须设置金额" % obj.track_id)
+                        n -= 1
+                        continue
 
                 obj.handle_time = datetime.datetime.now()
                 start_time = datetime.datetime.strptime(str(obj.submit_time).split(".")[0],

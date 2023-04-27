@@ -83,6 +83,7 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
             4: "丢件必须为需理赔才可以审核",
             5: "驳回原因为空",
             6: "无执行内容, 不可以审核",
+            7: "理赔必须设置金额",
 
         }
         try:

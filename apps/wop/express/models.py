@@ -36,6 +36,7 @@ class ExpressWorkOrder(models.Model):
         (4, '理赔必须设置需理赔才可以审核'),
         (5, '驳回原因为空'),
         (6, '无反馈内容, 不可以审核'),
+        (7, '理赔必须设置金额'),
     )
 
     PROCESSTAG = (
