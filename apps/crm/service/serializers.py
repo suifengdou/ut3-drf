@@ -76,13 +76,16 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "尝试修复数据",
-            2: "二级市错误",
-            3: "寄件地区出错",
-            4: "UT无此店铺",
-            5: "UT此型号整机未创建",
-            6: "UT系统无此店铺",
-            7: "递交到保修单错乱",
+            1: "单据货品为空导致出错",
+            2: "货品名称无法提取到整机型号",
+            3: "备注格式错误",
+            4: "不可重复递交",
+            5: "UT系统无此店铺",
+            6: "UT系统无此仓库",
+            7: "未解密的单据不可递交",
+            8: "以旧换新类型",
+            9: "寄回区域无法提取省市",
+            10: "创建出错",
         }
         try:
             ret = {
@@ -160,6 +163,16 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_goods(self, instance):
+        try:
+            ret = {
+                "id": instance.goods.id,
+                "name": instance.goods.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_province(self, instance):
         try:
             ret = {
@@ -180,31 +193,21 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_district(self, instance):
+    def get_ori_order(self, instance):
         try:
             ret = {
-                "id": instance.district.id,
-                "name": instance.district.name,
+                "id": instance.ori_order.id,
+                "name": instance.ori_order.order_id,
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_maintenance(self, instance):
+    def get_goods(self, instance):
         try:
             ret = {
-                "id": instance.maintenance.id,
-                "name": instance.maintenance.order_id,
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
-    def get_goods_name(self, instance):
-        try:
-            ret = {
-                "id": instance.goods_name.id,
-                "name": instance.goods_name.name,
+                "id": instance.goods.id,
+                "name": instance.goods.name,
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -220,18 +223,18 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_repeat_tag(self, instance):
-        repeat_list = {
-            0: "正常",
+
+    def get_process_tag(self, instance):
+        status_list = {
+            0: "未锁定",
             1: "未处理",
-            2: "产品",
-            3: "维修",
-            4: "其他",
+            2: "已处理",
+            9: "特殊订单",
         }
         try:
             ret = {
-                "id": instance.repeat_tag,
-                "name": repeat_list.get(instance.repeat_tag, None)
+                "id": instance.process_tag,
+                "name": status_list.get(instance.process_tag, None)
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -240,9 +243,8 @@ class MaintenanceSerializer(serializers.ModelSerializer):
     def get_order_status(self, instance):
         status_list = {
             0: "已取消",
-            1: "未计算",
-            2: "未处理",
-            3: "已完成",
+            1: "未处理",
+            2: "已递交",
         }
         try:
             ret = {
@@ -256,13 +258,13 @@ class MaintenanceSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super(MaintenanceSerializer, self).to_representation(instance)
         ret["shop"] = self.get_shop(instance)
+        ret["goods"] = self.get_goods(instance)
         ret["province"] = self.get_province(instance)
         ret["city"] = self.get_city(instance)
-        ret["district"] = self.get_district(instance)
-        ret["maintenance"] = self.get_maintenance(instance)
-        ret["goods_name"] = self.get_goods_name(instance)
+        ret["ori_order"] = self.get_ori_order(instance)
+        ret["goods"] = self.get_goods(instance)
         ret["customer"] = self.get_customer(instance)
-        ret["repeat_tag"] = self.get_repeat_tag(instance)
+        ret["process_tag"] = self.get_process_tag(instance)
         ret["order_status"] = self.get_order_status(instance)
         return ret
 

@@ -1785,23 +1785,6 @@ class SWOMyselfViewset(viewsets.ModelViewSet):
                         vipwechat.save()
                     except Exception as e:
                         pass
-                _q_satisfaction = Satisfaction.objects.filter(source_id=obj.order_id)
-                if _q_satisfaction.exists():
-                    order = _q_satisfaction[0]
-                else:
-                    order = Satisfaction()
-                order.customer = obj.customer
-                order.source_id = obj.order_id
-                order.index = obj.feeling_index
-                try:
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    obj.mistake_tag = 5
-                    data["error"].append("%s 创建客户体验指数错误" % obj.order_id)
-                    n -= 1
-                    obj.save()
-                    continue
 
                 obj.completer = request.user.username
                 obj.completed_time = datetime.datetime.now()
@@ -2026,23 +2009,6 @@ class SWOExecuteViewset(viewsets.ModelViewSet):
                         vipwechat.save()
                     except Exception as e:
                         pass
-                _q_satisfaction = Satisfaction.objects.filter(source_id=obj.order_id)
-                if _q_satisfaction.exists():
-                    order = _q_satisfaction[0]
-                else:
-                    order = Satisfaction()
-                order.customer = obj.customer
-                order.source_id = obj.order_id
-                order.index = obj.feeling_index
-                try:
-                    order.creator = request.user.username
-                    order.save()
-                except Exception as e:
-                    obj.mistake_tag = 5
-                    data["error"].append("%s 创建客户体验指数错误" % obj.order_id)
-                    n -= 1
-                    obj.save()
-                    continue
 
                 obj.completer = request.user.username
                 obj.completed_time = datetime.datetime.now()

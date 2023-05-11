@@ -24,9 +24,12 @@ from .filters import OriMaintenanceFilter, MaintenanceFilter, MaintenanceSummary
 from apps.utils.geography.models import Province, City, District
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
-from apps.crm.customers.models import Customer
+from apps.base.warehouse.models import Warehouse
+from apps.crm.customers.models import Customer, LogCustomer
 from apps.utils.logging.loggings import logging, getlogs
 from apps.utils.geography.tools import PickOutAdress
+from apps.crm.customers.serializers import CustomerLabelSerializer
+from ut3.settings import EXPORT_TOPLIMIT
 
 
 class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
@@ -90,7 +93,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = OriMaintenanceFilter(params)
-        serializer = OriMaintenanceSerializer(f.qs, many=True)
+        serializer = OriMaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -469,7 +472,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             if new_order and order.machine_sn != "unknown" and order.order_status == 1:
                 end_time = order.ori_created_time - datetime.timedelta(days=1)
                 start_time = order.ori_created_time - datetime.timedelta(days=31)
-                _q_order_count = OriMaintenance.objects.filter(machine_sn=order.machine_sn, ori_created_time__lt=end_time, ori_created_time__gt=start_time, order_status__gt=0).count()
+                _q_order_count = OriMaintenance.objects.filter(machine_sn=order.machine_sn, finish_time__lt=end_time, finish_time__gt=start_time, order_status__gt=0).count()
                 if _q_order_count > 0:
                     order.is_repeated = True
                     order.save()
@@ -514,7 +517,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
         params["order_status"] = 1
         params["ori_order_status"] = "已完成"
         f = OriMaintenanceFilter(params)
-        serializer = OriMaintenanceSerializer(f.qs, many=True)
+        serializer = OriMaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -534,6 +537,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -543,247 +547,105 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
             "discard": 0,
             "error": []
         }
-        special_city = ['仙桃市', '天门市', '神农架林区', '潜江市', '济源市', '五家渠市', '图木舒克市', '铁门关市', '石河子市', '阿拉尔市',
-                        '嘉峪关市', '五指山市', '文昌市', '万宁市', '屯昌县', '三亚市', '三沙市', '琼中黎族苗族自治县', '琼海市',
-                        '陵水黎族自治县', '临高县', '乐东黎族自治县', '东方市', '定安县', '儋州市', '澄迈县', '昌江黎族自治县', '保亭黎族苗族自治县',
-                        '白沙黎族自治县', '中山市', '东莞市']
         if n:
-            jieba.load_userdict("apps/dfc/manualorder/addr_key_words.txt")
             for obj in check_list:
-                if obj.warehouse != "苏州小狗维修仓":
+                if not obj.is_decrypted:
+                    data["error"].append("%s未解密的单据不可递交" % obj.id)
                     n -= 1
-                    data["discard"] += 1
-                    obj.towork_status = 3
+                    obj.mistake_tag = 7
                     obj.save()
                     continue
-                if obj.maintenance_type == "以旧换新":
-                    n -= 1
-                    data["discard"] += 1
-                    obj.towork_status = 3
-                    obj.save()
-                    continue
-                _q_repeat_order = Maintenance.objects.filter(ori_maintenance=obj)
+
+                _q_repeat_order = Maintenance.objects.filter(ori_order=obj)
                 if _q_repeat_order.exists():
                     order = _q_repeat_order[0]
                     if order.order_status in [0, 1]:
                         order.order_status = 1
-                    elif order.order_status == 3:
-                        obj.towork_status = 2
-                        obj.mistake_tag = 0
-                        obj.process_tag = 1
-                        obj.save()
-                        continue
                     else:
-                        data["error"].append("%s 递交到保修单错乱" % obj.id)
                         n -= 1
-                        obj.mistake_tag = 7
+                        data['error'].append("%s 已递交过的单据不可重复递交" % obj.order_id)
+                        obj.mistake_tag = 4
                         obj.save()
                         continue
                 else:
                     order = Maintenance()
-                obj.sender_mobile = re.sub("[ !$%&\'()*+,-./:;<=>?，。?★、…【】《》？]", "", str(obj.sender_mobile))
-                if not re.match("^1[3-9][0-9]{9}$", obj.sender_mobile):
-                    if obj.process_tag != 5:
-                        data["error"].append("%s 尝试修复数据" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 1
-                        obj.save()
-                        continue
-                else:
-                    _q_customer = Customer.objects.filter(name=obj.sender_mobile)
-                    if _q_customer.exists():
-                        order.customer = _q_customer[0]
-                    else:
-                        customer = Customer()
-                        customer.name = obj.sender_mobile
-                        customer.save()
-                        order.customer = customer
-                if re.match("^\d+$", obj.goods_code):
-                    _q_goods = Goods.objects.filter(goods_number=obj.goods_code[:3])
-                    if _q_goods.exists():
-                        order.goods_name = _q_goods[0]
-                    else:
-                        data["error"].append("%s 此序号整机未创建" % obj.goods_code[:3])
-                        n -= 1
-                        obj.mistake_tag = 5
-                        obj.save()
-                        continue
-                else:
-                    _q_goods = Goods.objects.filter(goods_code=obj.goods_code)
-                    if _q_goods.exists():
-                        order.goods_name = _q_goods[0]
-                    else:
-                        data["error"].append("%s 此型号整机未创建" % obj.goods_code[:3])
-                        n -= 1
-                        obj.mistake_tag = 5
-                        obj.save()
-                        continue
-                obj.sender_area = str(obj.sender_area).strip().replace("  ", " ")
-                area = str(obj.sender_area).split(" ")
-                if len(area) == 3:
-                    _q_province = Province.objects.filter(name__icontains=area[0][:2])
-                    if _q_province.exists():
-                        province = _q_province[0]
-                        order.province = province
-                    _q_city = City.objects.filter(name=area[1])
-                    if _q_city.exists():
-                        order.city = _q_city[0]
-                        order.province = _q_city[0].province
-                    else:
-                        _q_city = City.objects.filter(name__icontains=area[1][:2])
-                        if _q_city.exists():
-                            order.city = _q_city[0]
-                            order.province = _q_city[0].province
-                        else:
-                            if province:
-                                _q_district = District.objects.filter(province=province, name=area[1])
-                                if _q_district.exists():
-                                    order.district = _q_district[0]
-                                    order.city = _q_district[0].city
-                            else:
-                                data["error"].append("%s 二级市错误" % obj.id)
-                                n -= 1
-                                obj.mistake_tag = 2
-                                obj.save()
-                                continue
-                    if not order.district and str(area[1]) not in special_city:
-                        _q_district = District.objects.filter(name=area[2])
-                        if _q_district.exists():
-                            order.district = _q_district[0]
-                        else:
-                            try:
-                                order.district = District.objects.filter(city=order.city, name="其他区")[0]
-                            except Exception as e:
-                                pass
 
-                elif len(area) == 2:
-                    _q_city = City.objects.filter(name=area[1])
-                    if _q_city.exists():
-                        order.city = _q_city[0]
-                        order.province = _q_city[0].province
-                    else:
-                        _q_city = City.objects.filter(name=area[0])
-                        if _q_city.exists():
-                            order.city = _q_city[0]
-                            order.province = _q_city[0].province
-                        else:
-                            data["error"].append("%s 二级市错误" % obj.id)
-                            n -= 1
-                            obj.mistake_tag = 2
-                            obj.save()
-                            continue
-                elif len(area) == 1:
-                    address = re.sub("[0-9!$%&\'()*+,-./:;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "", str(obj.sender_address))
-                    seg_list = jieba.lcut(address)
-                    num = 0
-                    for words in seg_list:
-                        num += 1
-                        if not order.province_id:
-                            _q_province = Province.objects.filter(name__contains=words[:2])
-                            if _q_province.exists():
-                                order.province = _q_province[0]
-
-                        if not order.city_id:
-                            _q_city = City.objects.filter(name__contains=words)
-                            if len(_q_city) == 1:
-                                if not _q_city.exists():
-                                    _q_city_again = City.objects.filter(name__contains=words[:2])
-                                    if _q_city_again.exists():
-                                        order.city = _q_city_again[0]
-                                        if num < 3 and not order.province_id:
-                                            order.province = order.city.province
-                                else:
-                                    order.city = _q_city[0]
-                                    if num < 3 and not order.province_id:
-                                        order.province = order.city.province
-                        if not order.district_id:
-                            if not order.city_id:
-                                if order.province_id:
-                                    _q_district_direct = District.objects.filter(province=order.province,
-                                                                                 name__contains=words)
-                                    if len(_q_district_direct) == 1:
-                                        if _q_district_direct.exists():
-                                            order.district = _q_district_direct[0]
-                                            order.city = order.district.city
-                                            break
-                            else:
-                                if order.city.name in special_city:
-                                    break
-                                _q_district = District.objects.filter(city=order.city, name__contains=words)
-                                if not _q_district:
-                                    if order.province_id:
-                                        _q_district_again = District.objects.filter(province=order.province,
-                                                                                    name__contains=words)
-                                        if len(_q_district_again) == 1:
-                                            if _q_district_again.exists():
-                                                order.district = _q_district_again[0]
-                                                order.city = order.district.city
-                                                break
-                                else:
-                                    order.district = _q_district[0]
-                                    break
-                    if not order.city_id:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 3
-                        obj.save()
-                        continue
-
-                    if order.province_id != order.city.province.id:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 3
-                        obj.save()
-                        continue
-                    if address.find(str(order.province.name)[:2]) == -1 and address.find(
-                            str(order.city.name)[:2]) == -1:
-                        data["error"].append("%s 地址无法提取省市区" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 3
-                        obj.save()
+                _q_customer = Customer.objects.filter(name=obj.return_mobile)
+                if _q_customer.exists():
+                    order.customer = _q_customer[0]
                 else:
-                    data["error"].append("%s寄件地区出错" % obj.id)
-                    n -= 1
-                    obj.mistake_tag = 3
-                    obj.save()
-                    continue
-                if obj.shop == "小狗电器旗舰店":
-                    obj.shop = "小狗吸尘器官方旗舰店"
+                    order.customer = Customer.objects.create(**{"name": str(obj.return_mobile), "memo": "保修单递交创建"})
+                    logging(order.customer, user, LogCustomer, "保修单递交创建")
+
                 _q_shop = Shop.objects.filter(name=obj.shop)
                 if _q_shop.exists():
                     order.shop = _q_shop[0]
                 else:
                     data["error"].append("%sUT系统无此店铺" % obj.id)
                     n -= 1
-                    obj.mistake_tag = 4
+                    obj.mistake_tag = 5
                     obj.save()
                     continue
-                finish_date = obj.finish_time.strftime("%Y-%m-%d")
-                order.finish_date = datetime.datetime.strptime(finish_date, "%Y-%m-%d")
-                order.finish_month = obj.finish_time.strftime("%Y-%m")
-                order.finish_year = obj.finish_time.strftime("%Y")
-                order.ori_maintenance = obj
 
-                order_fields = ["order_id", "warehouse", "maintenance_type", "fault_type", "machine_sn", "appraisal",
-                                "description", "buyer_nick", "sender_name", "sender_mobile", "is_guarantee",
-                                "charge_status", "charge_amount", "charge_memory", "ori_creator", "ori_created_time",
-                                "handler_name", "handle_time", "completer", "finish_time"]
+                _q_warehouse = Warehouse.objects.filter(name=obj.warehouse)
+                if _q_warehouse.exists():
+                    order.warehouse = _q_warehouse[0]
+                else:
+                    data["error"].append("%sUT系统无此仓库" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 6
+                    obj.save()
+                    continue
+
+                if obj.maintenance_type == "以旧换新":
+                    n -= 1
+                    data["false"] += 1
+                    obj.mistake_tag = 8
+                    obj.save()
+                    continue
+
+                _spilt_addr = PickOutAdress(obj.return_area)
+                _rt_addr = _spilt_addr.pickout_addr()
+                if not isinstance(_rt_addr, dict):
+                    n -= 1
+                    data['error'].append(f"{obj.order_id}寄回区域无法提取省市")
+                    obj.mistake_tag = 9
+                    obj.save()
+                    continue
+                order.province = _rt_addr["province"]
+                order.city = _rt_addr["city"]
+
+                order_fields = ["ori_order", "order_id", "maintenance_type", "fault_type", "machine_sn", "is_repeated",
+                                "appraisal", "description", "buyer_nick", "return_name", "return_mobile", "goods",
+                                "is_guarantee", "charge_status", "charge_amount", "charge_memory", "ori_creator",
+                                "ori_created_time", "completer", "finish_time", "memo"]
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
-
+                _q_maintenance_count = OriMaintenance.objects.filter(machine_sn=obj.machine_sn, order_status=2)
+                maintenance_count = _q_maintenance_count.count() + 1
+                if not order.is_repeated:
+                    order.process_tag = 2
+                if not re.match('^99\d+', str(obj.return_mobile)):
+                    order.add_labels = f"保修{maintenance_count}次"
+                    if order.is_repeated:
+                        repeated_count = _q_maintenance_count.filter(is_repeated=True).count() + 1
+                        order.add_labels = f"{order.add_labels} 返修{repeated_count}次"
                 try:
+                    order.ori_order = obj
                     order.creator = request.user.username
                     order.save()
                     data["successful"] += 1
+                    logging(order, user, LogMaintenance, "递交创建")
                 except Exception as e:
                     n -= 1
-                    data['error'].append("%s 保存出错" % obj.order_id)
-                    data["false"] += 1
+                    data['error'].append(f"{obj.order_id} 保存出错：{e}")
+                    obj.mistake_tag = 10
+                    obj.save()
                     continue
 
-                obj.towork_status = 2
+                obj.order_status = 2
                 obj.mistake_tag = 0
-                obj.process_tag = 1
+                obj.process_tag = 0
                 obj.save()
         else:
             raise serializers.ValidationError("没有可审核的单据！")
@@ -807,8 +669,10 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
             for obj in check_list:
                 if obj.is_decrypted:
                     n -= 1
-                    data["false"] += 1
                     data['error'].append(f"{obj.order_id}已解密无需解密")
+                    obj.is_decrypted = True
+                    obj.save()
+                    logging(obj, user, LogOriMaintenance, "执行解密成功")
                     continue
                 _q_customer_info = re.findall('{.*}', str(obj.return_memory))
                 if len(_q_customer_info) == 1:
@@ -819,8 +683,9 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                         obj.return_mobile = _q_mobile[0]
                     else:
                         n -= 1
-                        data["false"] += 1
                         data['error'].append(f"{obj.order_id}备注格式错误，手机号码错误")
+                        obj.mistake_tag = 3
+                        obj.save()
                         continue
                     _q_customer_other = re.split(r'\d{11}', customer_info)
                     if len(_q_customer_other) == 2:
@@ -830,29 +695,95 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                         else:
                             obj.return_name = _q_customer_other[0]
                             address = _q_customer_other[1]
-                        _spilt_addr = PickOutAdress(address)
-                        _rt_addr = _spilt_addr.pickout_addr()
-                        if not isinstance(_rt_addr, dict):
+                        if address:
+                            _spilt_addr = PickOutAdress(address)
+                            _rt_addr = _spilt_addr.pickout_addr()
+                            if not isinstance(_rt_addr, dict):
+                                obj.return_address = f"{obj.return_area}{address}"
+                            else:
+                                check_words = str(_rt_addr["city"].name)[:2]
+                                if check_words in obj.return_area:
+                                    obj.return_address = address
+                                else:
+                                    obj.return_address = f"{obj.return_area}{address}"
+                        else:
                             n -= 1
-                            data["false"] += 1
-                            data['error'].append(f"{obj.order_id}备注格式错误，地址无法提取省市区")
+                            data['error'].append(f"{obj.order_id}没有地址")
+                            obj.mistake_tag = 3
+                            obj.save()
                             continue
-                        obj.return_address = _rt_addr["address"]
+
 
                     else:
                         n -= 1
-                        data["false"] += 1
                         data['error'].append(f"{obj.order_id}备注格式错误，存在多个手机号码")
+                        obj.mistake_tag = 3
+                        obj.save()
                         continue
                 else:
                     n -= 1
-                    data["false"] += 1
                     data['error'].append(f"{obj.order_id}备注格式错误，大括号格式错误")
+                    obj.mistake_tag = 3
+                    obj.save()
                     continue
 
                 obj.is_decrypted = True
                 obj.save()
                 logging(obj, user, LogOriMaintenance, "执行解密成功")
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def brute_force_attack(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "discard": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.mistake_tag == 0:
+                    n -= 1
+                    data['error'].append(f"{obj.order_id}未操作单据不可直接暴力解密")
+                    continue
+                if obj.is_decrypted:
+                    n -= 1
+                    data['error'].append(f"{obj.order_id}已解密无需解密")
+                    obj.is_decrypted = True
+                    obj.save()
+                    logging(obj, user, LogOriMaintenance, "执行解密成功")
+                    continue
+                series_number = obj.id
+                if series_number > 999999999:
+                    series_number = str(series_number)[:9]
+                else:
+                    series_number = str(series_number)
+                filler_number = 9 - len(series_number)
+                filler = '0' * filler_number
+                return_mobile = f"99{filler}{series_number}"
+                _q_customer = Customer.objects.filter(name=return_mobile)
+                if not _q_customer:
+                    cs_serializer = CustomerLabelSerializer(data={"name": return_mobile})
+                    valid = cs_serializer.is_valid()
+                    if not valid:
+                        n -= 1
+                        data['error'].append(f"{obj.order_id}暴力破解失败，需要联系管理员处理！")
+                        continue
+                    cs_serializer.save()
+                obj.return_mobile = return_mobile
+                obj.return_name = return_mobile
+                obj.return_address = "暴力覆写地址"
+                obj.is_decrypted = True
+                obj.save()
+                logging(obj, user, LogOriMaintenance, "执行暴解成功")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1117,7 +1048,7 @@ class OriMaintenanceViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = OriMaintenanceFilter(params)
-        serializer = OriMaintenanceSerializer(f.qs, many=True)
+        serializer = OriMaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     @action(methods=['patch'], detail=False)
@@ -1166,7 +1097,7 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = MaintenanceFilter(params)
-        serializer = MaintenanceSerializer(f.qs, many=True)
+        serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1500,7 +1431,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Maintenance.objects.none()
-        queryset = Maintenance.objects.filter(order_status=2).order_by("-id")
+        queryset = Maintenance.objects.filter(process_tag__in=[0, 1]).order_by("machine_sn")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1508,28 +1439,26 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["order_status"] = 2
         f = MaintenanceFilter(params)
-        serializer = MaintenanceSerializer(f.qs, many=True)
+        serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 2
-        params["company"] = self.request.user.company
         if all_select_tag:
             handle_list = MaintenanceFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = Maintenance.objects.filter(id__in=order_ids, order_status=2)
+                handle_list = Maintenance.objects.filter(id__in=order_ids)
             else:
                 handle_list = []
         return handle_list
 
     @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
+    def get_fault(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1540,19 +1469,70 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                if not obj.found_tag:
-                    if obj.repeat_tag == 1:
-                        data["error"].append("%s二次维修未操作不可以审核" % obj.id)
+                if obj.machine_sn != "unknown" and obj.order_status == 1:
+                    end_time = obj.ori_created_time - datetime.timedelta(days=1)
+                    start_time = obj.ori_created_time - datetime.timedelta(days=31)
+                    _q_order = Maintenance.objects.filter(machine_sn=obj.machine_sn,
+                                                          finish_time__lt=end_time, finish_time__gt=start_time,
+                                                          order_status__gt=0).order_by("-finish_time")
+                    if _q_order.exists():
+                        fault_order = _q_order[0]
+                        fault_order.is_fault = True
+                        fault_order.process_tag = 1
+                        fault_order.save()
+                        logging(fault_order, user, LogMaintenance, "缺陷标记")
+                        pass
+                    else:
                         n -= 1
+                        data['error'].append("%s 单据递交顺序错误" % obj.order_id)
+                        obj.mistake_tag = 1
+                        obj.save()
                         continue
                 try:
-                    obj.order_status = 3
+                    obj.process_tag = 1
                     obj.save()
+                    logging(obj, user, LogMaintenance, "完成缺陷锁定")
                 except Exception as e:
                     data["error"].append("%s保修单保存出错: %s" % (obj.id, e))
                     n -= 1
                     obj.save()
                     continue
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.is_repeated:
+                    if obj.repeat_tag == 0:
+                        data["error"].append("%s返修单据未锁定缺陷" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 2
+                        obj.save()
+                        continue
+                if obj.is_fault:
+                    if obj.fault_cause == 0:
+                        data["error"].append("%s缺陷单据未确认原因" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 3
+                        obj.save()
+                        continue
+                obj.process_tag = 2
+                obj.save()
+                logging(obj, user, LogMaintenance, "判责流程处理完成")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1575,160 +1555,6 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def excel_import(self, request, *args, **kwargs):
-        file = request.FILES.get('file', None)
-        if file:
-            data = self.handle_upload_file(request, file)
-        else:
-            data = {
-                "error": "上传文件未找到！"
-            }
-
-        return Response(data)
-
-    def handle_upload_file(self, request, _file):
-        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
-        INIT_FIELDS_DIC = {
-            "通话ID": "call_id",
-            "类型": "category",
-            "开启服务时间": "start_time",
-            "结束服务时间": "end_time",
-            "服务时长": "total_duration",
-            "通话时长": "call_duration",
-            "排队时长": "queue_time",
-            "振铃时长": "ring_time",
-            "静音时长": "muted_duration",
-            "静音次数": "muted_time",
-            "主叫号码": "calling_num",
-            "被叫号码": "called_num",
-            "号码归属地": "attribution",
-            "用户名": "nickname",
-            "手机号码": "smartphone",
-            "ivr语音导航": "ivr",
-            "分流客服组": "group",
-            "接待客服": "servicer",
-            "重复咨询": "repeated_num",
-            "接听状态": "answer_status",
-            "挂机方": "on_hook",
-            "满意度": "satisfaction",
-            "服务录音": "call_recording",
-            "一级分类": "primary_classification",
-            "二级分类": "secondary_classification",
-            "三级分类": "three_level_classification",
-            "四级分类": "four_level_classification",
-            "五级分类": "five_level_classification",
-            "咨询备注": "remark",
-            "问题解决状态": "problem_status",
-            "购买日期": "purchase_time",
-            "购买店铺": "shop",
-            "产品型号": "goods_type",
-            "出厂序列号": "m_sn",
-            "是否建配件工单": "is_order",
-            "补寄原因": "order_category",
-            "配件信息": "goods_details",
-            "损坏部位": "broken_part",
-            "损坏描述": "description",
-            "收件人姓名": "receiver",
-            "建单手机": "mobile",
-            "省市区": "area",
-            "详细地址": "address"
-        }
-
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
-        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
-            df = pd.read_excel(_file, sheet_name=0, dtype=str)
-
-            FILTER_FIELDS = ["通话ID", "类型", "开启服务时间", "结束服务时间", "服务时长", "通话时长", "排队时长",
-                             "振铃时长", "静音时长", "静音次数", "主叫号码", "被叫号码", "号码归属地", "用户名",
-                             "手机号码", "ivr语音导航", "分流客服组", "接待客服", "重复咨询", "接听状态", "挂机方",
-                             "满意度", "服务录音", "一级分类", "二级分类", "三级分类", "四级分类", "五级分类",
-                             "咨询备注", "问题解决状态", "购买日期", "购买店铺", "产品型号", "出厂序列号",
-                             "是否建配件工单", "补寄原因", "配件信息", "损坏部位", "损坏描述", "收件人姓名",
-                             "建单手机", "省市区", "详细地址"]
-
-            try:
-                df = df[FILTER_FIELDS]
-            except Exception as e:
-                report_dic["error"].append("必要字段不全或者错误")
-                return report_dic
-
-            # 获取表头，对表头进行转换成数据库字段名
-            columns_key = df.columns.values.tolist()
-            for i in range(len(columns_key)):
-                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
-                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
-
-            # 验证一下必要的核心字段是否存在
-            _ret_verify_field = Maintenance.verify_mandatory(columns_key)
-            if _ret_verify_field is not None:
-                return _ret_verify_field
-
-            # 更改一下DataFrame的表名称
-            columns_key_ori = df.columns.values.tolist()
-            ret_columns_key = dict(zip(columns_key_ori, columns_key))
-            df.rename(columns=ret_columns_key, inplace=True)
-
-            # 更改一下DataFrame的表名称
-            num_end = 0
-            step = 300
-            step_num = int(len(df) / step) + 2
-            i = 1
-            while i < step_num:
-                num_start = num_end
-                num_end = step * i
-                intermediate_df = df.iloc[num_start: num_end]
-
-                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
-                _ret_list = intermediate_df.to_dict(orient='records')
-                intermediate_report_dic = self.save_resources(request, _ret_list)
-                for k, v in intermediate_report_dic.items():
-                    if k == "error":
-                        if intermediate_report_dic["error"]:
-                            report_dic[k].append(v)
-                    else:
-                        report_dic[k] += v
-                i += 1
-            return report_dic
-
-        else:
-            report_dic["error"].append('只支持excel文件格式！')
-            return report_dic
-
-    @staticmethod
-    def save_resources(request, resource):
-        # 设置初始报告
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
-
-        for row in resource:
-            _q_calllog = Maintenance.objects.filter(call_id=row["call_id"])
-            if _q_calllog.exists():
-                report_dic["discard"] += 1
-                report_dic["error"].append("%s提交重复" % row["call_id"])
-                continue
-            order = Maintenance()
-            order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
-                            "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
-                            "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
-                            "servicer", "repeated_num", "answer_status", "on_hook", "satisfaction",
-                            "call_recording", "primary_classification", "secondary_classification",
-                            "three_level_classification", "four_level_classification", "five_level_classification",
-                            "remark", "problem_status", "purchase_time", "shop", "goods_type", "m_sn", "is_order",
-                            "order_category", "goods_details", "broken_part", "description", "receiver", "mobile",
-                            "area", "address"]
-            for field in order_fields:
-                setattr(order, field, row[field])
-
-            try:
-                order.creator = request.user.username
-                order.save()
-                report_dic["successful"] += 1
-            except Exception as e:
-                report_dic['error'].append("%s 保存出错" % row["call_id"])
-                report_dic["false"] += 1
-
-        return report_dic
 
 
 class MaintenanceViewset(viewsets.ModelViewSet):
@@ -1766,7 +1592,7 @@ class MaintenanceViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = MaintenanceFilter(params)
-        serializer = MaintenanceSerializer(f.qs, many=True)
+        serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1836,7 +1662,7 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = MaintenanceSummaryFilter(params)
-        serializer = MaintenanceSummarySerializer(f.qs, many=True)
+        serializer = MaintenanceSummarySerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -2099,7 +1925,7 @@ class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = OriMaintenanceGoodsFilter(params)
-        serializer = OriMaintenanceGoodsSerializer(f.qs, many=True)
+        serializer = OriMaintenanceGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -2410,7 +2236,7 @@ class OriMaintenanceGoodsViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = OriMaintenanceGoodsFilter(params)
-        serializer = OriMaintenanceGoodsSerializer(f.qs, many=True)
+        serializer = OriMaintenanceGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     @action(methods=['patch'], detail=False)
@@ -2477,7 +2303,7 @@ class MaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = MaintenanceGoodsFilter(params)
-        serializer = MaintenanceGoodsSerializer(f.qs, many=True)
+        serializer = MaintenanceGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -2899,7 +2725,7 @@ class MaintenanceGoodsViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = MaintenanceGoodsFilter(params)
-        serializer = MaintenanceGoodsSerializer(f.qs, many=True)
+        serializer = MaintenanceGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     @action(methods=['patch'], detail=False)

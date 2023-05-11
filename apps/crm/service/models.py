@@ -5,6 +5,7 @@ import datetime
 from django.db import models
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
+from apps.base.warehouse.models import Warehouse
 from apps.utils.geography.models import Province, City, District
 from apps.crm.customers.models import Customer
 from apps.auth.users.models import UserProfile
@@ -56,11 +57,14 @@ class OriMaintenance(models.Model):
         (0, '正常'),
         (1, '单据货品为空导致出错'),
         (2, '货品名称无法提取到整机型号'),
-        (3, '寄件地区出错'),
-        (4, 'UT无此店铺'),
-        (5, 'UT此型号整机未创建'),
-        (6, 'UT系统无此店铺'),
-        (7, '递交到保修单错乱'),
+        (3, '备注格式错误'),
+        (4, '不可重复递交'),
+        (5, 'UT系统无此店铺'),
+        (6, 'UT系统无此仓库'),
+        (7, '未解密的单据不可递交'),
+        (8, '以旧换新类型'),
+        (9, '寄回区域无法提取省市'),
+        (10, '创建出错'),
     )
     SIGN_LIST = (
         (0, '无'),
@@ -279,39 +283,52 @@ class Maintenance(models.Model):
 
     ODER_STATUS = (
         (0, '已取消'),
-        (1, '未计算'),
-        (2, '未处理'),
-        (3, '已完成'),
+        (1, '未统计'),
+        (2, '已完成'),
+    )
+
+    PROCESS_LIST = (
+        (0, '未锁定'),
+        (1, '未处理'),
+        (2, '已处理'),
+        (9, '特殊订单'),
     )
 
     REPEAT_TAG_STATUS = (
         (0, '正常'),
-        (1, '未处理'),
-        (2, '产品'),
-        (3, '维修'),
-        (4, '客服'),
+        (1, '产品'),
+        (2, '维修'),
+        (3, '客服'),
         (4, '快递'),
-        (4, '用户'),
+        (5, '用户'),
+    )
+    MISTAKE_LIST = (
+        (0, '正常'),
+        (1, '单据递交顺序错误'),
+        (2, '返修单据未锁定缺陷'),
+        (3, '缺陷单据未确认原因'),
+
     )
 
-    ori_order = models.ForeignKey(OriMaintenance, on_delete=models.CASCADE, verbose_name='原始保修单', help_text='原始保修单')
+    ori_order = models.OneToOneField(OriMaintenance, on_delete=models.CASCADE, verbose_name='原始保修单', help_text='原始保修单')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺', help_text='店铺')
-    province = models.ForeignKey(Province, on_delete=models.CASCADE, verbose_name='省', help_text='省')
-    city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='市', help_text='市')
+
     goods = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品', help_text='货品')
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True, verbose_name='客户', help_text='客户')
 
     order_id = models.CharField(unique=True, max_length=50, verbose_name='保修单号', help_text='保修单号')
-    warehouse = models.CharField(max_length=50, verbose_name='收发仓库', help_text='收发仓库')
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, verbose_name='仓库', help_text='仓库')
     maintenance_type = models.CharField(max_length=50, verbose_name='保修类型', help_text='保修类型')
     fault_type = models.CharField(max_length=50, verbose_name='故障类型', help_text='故障类型')
     machine_sn = models.CharField(null=True, blank=True, db_index=True, max_length=50, verbose_name='序列号', help_text='序列号')
     appraisal = models.CharField(max_length=200, verbose_name='保修结束语', help_text='保修结束语')
     description = models.CharField(max_length=500, verbose_name='故障描述', help_text='故障描述')
 
-    buyer_nick = models.CharField(max_length=200, verbose_name='客户网名', help_text='客户网名')
-    sender_name = models.CharField(max_length=100, verbose_name='寄件客户姓名', help_text='寄件客户姓名')
-    sender_mobile = models.CharField(max_length=50, verbose_name='寄件客户手机', help_text='寄件客户手机')
+    return_name = models.CharField(max_length=100, verbose_name='寄回姓名', help_text='寄件客户姓名')
+    return_mobile = models.CharField(max_length=50, verbose_name='寄回手机', help_text='寄件客户手机')
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, verbose_name='省', help_text='省')
+    city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='市', help_text='市')
+    return_address = models.CharField(max_length=200, verbose_name='寄回地址', help_text='寄回地址')
 
     is_guarantee = models.CharField(max_length=50, verbose_name='是否在保', help_text='是否在保')
     charge_status = models.CharField(default='', max_length=30, verbose_name='收费状态', help_text='收费状态')
@@ -319,18 +336,22 @@ class Maintenance(models.Model):
     charge_memory = models.TextField(default='', verbose_name='收费说明', help_text='收费说明')
 
     ori_creator = models.CharField(null=True, blank=True, max_length=50, verbose_name='创建人', help_text='创建人')
-    ori_created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间', help_text='创建时间')
-    handler_name = models.CharField(max_length=50, verbose_name='审核人', help_text='审核人')
-    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='审核时间', help_text='审核时间')
+    ori_created_time = models.DateTimeField(null=True, blank=True, verbose_name='原始创建时间', help_text='原始创建时间')
     completer = models.CharField(null=True, blank=True, max_length=50, verbose_name='处理登记人', help_text='处理登记人')
     finish_time = models.DateTimeField(verbose_name='保修完成时间', help_text='保修完成时间')
+    process_tag = models.SmallIntegerField(choices=PROCESS_LIST, default=0, verbose_name='处理标签',
+                                           help_text='处理标签')
+    mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, db_index=True, verbose_name='错误标签',
+                                           help_text='错误标签')
+    judge_description = models.CharField(null=True, blank=True, max_length=230, verbose_name='判责说明', help_text='判责说明')
+    memo = models.CharField(null=True, blank=True, max_length=230, verbose_name='备注', help_text='备注')
 
-    memo = models.CharField(null=True, blank=True, max_length=230, verbose_name='判责说明', help_text='判责说明')
-
-    fault_cause = models.SmallIntegerField(choices=REPEAT_TAG_STATUS, default=0, db_index=True, verbose_name='重复维修标记', help_text='重复维修标记')
+    fault_cause = models.SmallIntegerField(choices=REPEAT_TAG_STATUS, default=0, verbose_name='缺陷原因', help_text='缺陷原因')
     order_status = models.SmallIntegerField(default=1, choices=ODER_STATUS, db_index=True, verbose_name='单据状态', help_text='单据状态')
     is_repeated = models.BooleanField(default=False, verbose_name="是否返修", help_text="是否返修")
     is_fault = models.BooleanField(default=False, verbose_name="是否缺陷", help_text="是否缺陷")
+
+    add_labels = models.CharField(null=True, blank=True, max_length=250, verbose_name='添加标签', help_text='添加标签')
 
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')

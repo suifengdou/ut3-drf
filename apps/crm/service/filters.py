@@ -55,8 +55,7 @@ class MaintenanceFilter(django_filters.FilterSet):
     finish_time = django_filters.DateTimeFromToRangeFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
-    repeat_tag__in = NumberInFilter(field_name="repeat_tag", lookup_expr="in")
-    goods_name__in = NumberInFilter(field_name="goods_name", lookup_expr="in")
+    fault_cause__in = NumberInFilter(field_name="fault_cause", lookup_expr="in")
 
     class Meta:
         model = Maintenance
