@@ -136,6 +136,7 @@ class OriMaintenance(models.Model):
     is_repeated = models.BooleanField(default=False, verbose_name="是否返修", help_text="是否返修")
     is_month_filter = models.BooleanField(default=False, verbose_name="是否过滤返修", help_text="是否过滤返修")
     is_decrypted = models.BooleanField(default=False, verbose_name="是否解密", help_text="是否解密")
+    is_part = models.BooleanField(default=False, verbose_name="是否配件", help_text="是否配件")
     check_time = models.DateTimeField(null=True, blank=True, verbose_name='预约时间', help_text='预约时间')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -229,6 +230,10 @@ class OriMaintenanceGoods(models.Model):
         (2, '信息缺失无法解密'),
         (3, '不存在对应的保修单'),
         (4, '手机格式错误无法解密'),
+        (5, '保修单未递交不可审核'),
+        (6, '不可重复递交'),
+        (7, 'UT不存在此配件'),
+        (8, '创建保修货品失败'),
     )
 
     order_id = models.CharField(max_length=50, db_index=True, verbose_name='保修单号', help_text='保修单号')
@@ -284,7 +289,8 @@ class Maintenance(models.Model):
     ODER_STATUS = (
         (0, '已取消'),
         (1, '未统计'),
-        (2, '已完成'),
+        (2, '未打标'),
+        (4, '已完成'),
     )
 
     PROCESS_LIST = (
@@ -304,9 +310,12 @@ class Maintenance(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '单据递交顺序错误'),
+        (1, '未查询到缺陷单'),
         (2, '返修单据未锁定缺陷'),
         (3, '缺陷单据未确认原因'),
+        (4, '保存统计出错'),
+        (5, '打标标签被禁用'),
+        (6, '创建客户标签失败'),
 
     )
 
@@ -334,7 +343,7 @@ class Maintenance(models.Model):
     charge_status = models.CharField(default='', max_length=30, verbose_name='收费状态', help_text='收费状态')
     charge_amount = models.IntegerField(default=0, verbose_name='收费金额', help_text='收费金额')
     charge_memory = models.TextField(default='', verbose_name='收费说明', help_text='收费说明')
-
+    purchase_time = models.DateTimeField(null=True, blank=True, verbose_name='购买时间', help_text='购买时间')
     ori_creator = models.CharField(null=True, blank=True, max_length=50, verbose_name='创建人', help_text='创建人')
     ori_created_time = models.DateTimeField(null=True, blank=True, verbose_name='原始创建时间', help_text='原始创建时间')
     completer = models.CharField(null=True, blank=True, max_length=50, verbose_name='处理登记人', help_text='处理登记人')
@@ -352,7 +361,7 @@ class Maintenance(models.Model):
     is_fault = models.BooleanField(default=False, verbose_name="是否缺陷", help_text="是否缺陷")
 
     add_labels = models.CharField(null=True, blank=True, max_length=250, verbose_name='添加标签', help_text='添加标签')
-
+    is_part = models.BooleanField(default=False, verbose_name="是否配件", help_text="是否配件")
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
@@ -377,7 +386,7 @@ class MaintenanceGoods(models.Model):
     ODER_STATUS = (
         (0, '已取消'),
         (1, '未处理'),
-        (2, '已递交'),
+        (2, '已完成'),
     )
 
     PROCESS_LIST = (
@@ -387,10 +396,12 @@ class MaintenanceGoods(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '尝试修复数据'),
+        (1, '统计失败'),
+
     )
     order = models.ForeignKey(Maintenance, on_delete=models.CASCADE, verbose_name='保修单', help_text='保修单')
-    part = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name="part", verbose_name='配件', help_text='配件')
+    ori_order = models.OneToOneField(OriMaintenanceGoods, on_delete=models.CASCADE, verbose_name='保修单货品', help_text='保修单货品')
+    part = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='配件', help_text='配件')
     quantity = models.IntegerField(verbose_name='配件数量', help_text='配件数量')
     part_memo = models.CharField(max_length=200, null=True, blank=True, verbose_name='配件备注', help_text='配件备注')
 
@@ -400,7 +411,7 @@ class MaintenanceGoods(models.Model):
                                             help_text='单据状态')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, db_index=True, verbose_name='错误标签',
                                            help_text='错误标签')
-
+    finish_time = models.DateTimeField(null=True, blank=True, verbose_name='保修完成时间', help_text='保修完成时间')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
@@ -416,10 +427,13 @@ class MaintenanceGoods(models.Model):
 
 
 class MaintenanceSummary(models.Model):
-    finish_date = models.DateField(db_index=True, verbose_name='保修完成日期', help_text='保修完成日期')
-    order_count = models.IntegerField(default=0, verbose_name='完成保修数量', help_text='完成保修数量')
-    repeat_found = models.IntegerField(default=0, verbose_name='当天发现30天二次维修量', help_text='当天发现30天二次维修量')
-    repeat_today = models.IntegerField(default=0, verbose_name='当天二次维修量', help_text='当天二次维修量')
+    summary_date = models.DateField(db_index=True, unique=True, verbose_name='统计日期', help_text='统计日期')
+    created_count_p = models.IntegerField(default=0, verbose_name='配件创建数量', help_text='配件创建数量')
+    created_count = models.IntegerField(default=0, verbose_name='非配件创建数量', help_text='配件创建数量')
+    finished_count_p = models.IntegerField(default=0, verbose_name='配件完成数量', help_text='配件完成数量')
+    finished_count = models.IntegerField(default=0, verbose_name='非配件完成数量', help_text='非配件完成数量')
+    repeat_count = models.IntegerField(default=0, verbose_name='返修数量', help_text='返修数量')
+    fault_count = models.IntegerField(default=0, verbose_name='缺陷数量', help_text='缺陷数量')
 
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -427,12 +441,32 @@ class MaintenanceSummary(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'CRM-保修统计表'
+        verbose_name = 'CRM-保修单据统计表'
         verbose_name_plural = verbose_name
         db_table = 'crm_maintenance_summary'
 
     def __str__(self):
-        return str(self.finish_date)
+        return str(self.id)
+
+
+class MaintenancePartSummary(models.Model):
+    summary_date = models.DateField(db_index=True, verbose_name='统计日期', help_text='统计日期')
+    part = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='配件', help_text='配件')
+    quantity = models.IntegerField(verbose_name='配件数量', help_text='配件数量')
+
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+
+    class Meta:
+        verbose_name = 'CRM-保修配件统计表'
+        verbose_name_plural = verbose_name
+        unique_together = (("summary_date", "part"), )
+        db_table = 'crm_maintenance_part_summary'
+
+    def __str__(self):
+        return str(self.id)
 
 
 class LogOriMaintenance(models.Model):
@@ -502,13 +536,27 @@ class LogMaintenanceSummary(models.Model):
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
 
     class Meta:
-        verbose_name = 'CRM-保修统计表-日志'
+        verbose_name = 'CRM-保修单据统计表-日志'
         verbose_name_plural = verbose_name
         db_table = 'crm_maintenance_summary_logging'
 
     def __str__(self):
         return str(self.id)
 
+
+class LogMaintenancePartSummary(models.Model):
+    obj = models.ForeignKey(MaintenancePartSummary, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    name = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='操作人', help_text='操作人')
+    content = models.CharField(max_length=240, verbose_name='操作内容', help_text='操作内容')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'CRM-保修配件统计表-日志'
+        verbose_name_plural = verbose_name
+        db_table = 'crm_maintenance_part_summary_logging'
+
+    def __str__(self):
+        return str(self.id)
 
 
 

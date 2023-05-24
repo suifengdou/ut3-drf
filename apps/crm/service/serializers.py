@@ -2,7 +2,9 @@ import datetime
 from functools import reduce
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import OriMaintenance, Maintenance, MaintenanceSummary, OriMaintenanceGoods, MaintenanceGoods, LogOriMaintenance, LogOriMaintenanceGoods, LogMaintenance, LogMaintenanceGoods, LogMaintenanceSummary
+from .models import OriMaintenance, Maintenance, MaintenanceSummary, OriMaintenanceGoods, MaintenanceGoods, \
+    LogOriMaintenance, LogOriMaintenanceGoods, LogMaintenance, LogMaintenanceGoods, LogMaintenanceSummary, \
+    MaintenancePartSummary, LogMaintenancePartSummary
 from apps.utils.logging.loggings import logging
 
 
@@ -12,8 +14,8 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
     handle_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=False, label="审核时间", help_text="审核时间")
     ori_created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=False, label="原始创建时间", help_text="原始创建时间")
     finish_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=False, label="完成时间", help_text="完成时间")
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = OriMaintenance
@@ -143,11 +145,11 @@ class OriMaintenanceSerializer(serializers.ModelSerializer):
 
 class MaintenanceSerializer(serializers.ModelSerializer):
     handle_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="审核时间", help_text="审核时间")
-    ori_create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="原始创建时间",
+    ori_created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="原始创建时间",
                                                 help_text="原始创建时间")
     finish_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="完成时间", help_text="完成时间")
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_timdate_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_timdate_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = Maintenance
@@ -309,8 +311,8 @@ class MaintenanceSummarySerializer(serializers.ModelSerializer):
 
 
 class OriMaintenanceGoodsSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = OriMaintenanceGoods
@@ -436,8 +438,8 @@ class OriMaintenanceGoodsSerializer(serializers.ModelSerializer):
 
 
 class MaintenanceGoodsSerializer(serializers.ModelSerializer):
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = MaintenanceGoods
@@ -447,7 +449,7 @@ class MaintenanceGoodsSerializer(serializers.ModelSerializer):
         status_list = {
             0: "已取消",
             1: "未处理",
-            2: "已递交",
+            2: "已完成",
         }
         try:
             ret = {
@@ -460,13 +462,9 @@ class MaintenanceGoodsSerializer(serializers.ModelSerializer):
 
     def get_process_tag(self, instance):
         process_list = {
-            0: "无异常",
-            1: "审核异常",
-            2: "逆向异常",
-            3: "取件异常",
-            4: "入库异常",
-            5: "维修异常",
-            6: "超期异常",
+            0: "未处理",
+            1: "已处理",
+            9: "特殊订单",
         }
         try:
             ret = {
@@ -477,36 +475,11 @@ class MaintenanceGoodsSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_sign(self, instance):
-        SIGN_LIST = {
-            0: "无",
-            1: "处理完毕",
-            2: "配件缺货",
-            3: "延后处理",
-            4: "快递异常",
-            5: "特殊问题",
-            6: "处理收费",
-            7: "其他情况"
-        }
-        try:
-            ret = {
-                "id": instance.sign,
-                "name": SIGN_LIST.get(instance.sign, None)
-            }
-        except:
-            ret = {"id": -1, "name": "显示错误"}
-        return ret
-
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "尝试修复数据",
-            2: "二级市错误",
-            3: "寄件地区出错",
-            4: "UT无此店铺",
-            5: "UT此型号整机未创建",
-            6: "UT系统无此店铺",
-            7: "递交到保修单错乱",
+            1: "统计失败",
+
         }
         try:
             ret = {
@@ -517,11 +490,21 @@ class MaintenanceGoodsSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-    def get_goods(self, instance):
+    def get_part(self, instance):
         try:
             ret = {
-                "id": instance.goods.id,
-                "name": instance.goods.name,
+                "id": instance.part.id,
+                "name": instance.part.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def get_order(self, instance):
+        try:
+            ret = {
+                "id": instance.order.id,
+                "name": instance.order.order_id,
             }
         except:
             ret = {"id": -1, "name": "显示错误"}
@@ -532,8 +515,8 @@ class MaintenanceGoodsSerializer(serializers.ModelSerializer):
         ret["order_status"] = self.get_order_status(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
-        ret["sign"] = self.get_sign(instance)
-        ret["goods"] = self.get_goods(instance)
+        ret["part"] = self.get_part(instance)
+        ret["order"] = self.get_order(instance)
         return ret
 
     def create(self, validated_data):
@@ -562,6 +545,29 @@ class MaintenanceGoodsSerializer(serializers.ModelSerializer):
         return instance
 
 
+class MaintenancePartSummarySerializer(serializers.ModelSerializer):
+
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = MaintenancePartSummary
+        fields = "__all__"
+
+    def get_part(self, instance):
+        try:
+            ret = {
+                "id": instance.part.id,
+                "name": instance.part.name,
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
+    def to_representation(self, instance):
+        ret = super(MaintenancePartSummarySerializer, self).to_representation(instance)
+        ret["part"] = self.get_part(instance)
+        return ret
 
 
 

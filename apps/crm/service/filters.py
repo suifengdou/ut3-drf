@@ -8,7 +8,7 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
-from .models import OriMaintenance, Maintenance, MaintenanceSummary, OriMaintenanceGoods, MaintenanceGoods
+from .models import OriMaintenance, Maintenance, MaintenanceSummary, OriMaintenanceGoods, MaintenanceGoods, MaintenancePartSummary
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
@@ -80,9 +80,45 @@ class OriMaintenanceGoodsFilter(django_filters.FilterSet):
 
 class MaintenanceGoodsFilter(django_filters.FilterSet):
     created_time = django_filters.DateTimeFromToRangeFilter()
+    order__order_id = django_filters.CharFilter(method='order_id_filter')
+    part__name = django_filters.CharFilter(method='part_filter')
 
     class Meta:
         model = MaintenanceGoods
+        fields = "__all__"
+
+    def order_id_filter(self, queryset, name, *value):
+        condition_list = str(value[0]).split()
+        if len(condition_list) == 1:
+            queryset = queryset.filter(**{name: condition_list[0]})
+        else:
+            _temp_queryset = None
+            for value in condition_list:
+                if _temp_queryset:
+                    _temp_queryset = _temp_queryset | queryset.filter(**{name: value})
+                else:
+                    _temp_queryset = queryset.filter(**{name: value})
+            queryset = _temp_queryset
+        return queryset
+
+    def part_filter(self, queryset, name, *value):
+        name = '%s__icontains' % name
+        condition_list = str(value[0]).split()
+        if len(condition_list) == 1:
+            queryset = queryset.filter(**{name: condition_list[0]})
+        else:
+            _condition_dict = {}
+            for value in condition_list:
+                _condition_dict[name] = value
+                queryset = queryset.filter(**_condition_dict)
+        return queryset
+
+
+class MaintenancePartSummaryFilter(django_filters.FilterSet):
+    created_time = django_filters.DateTimeFromToRangeFilter()
+
+    class Meta:
+        model = MaintenancePartSummary
         fields = "__all__"
 
 

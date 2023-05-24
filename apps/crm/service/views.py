@@ -18,9 +18,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
 from .models import OriMaintenance, Maintenance, MaintenanceSummary, LogOriMaintenance, LogOriMaintenanceGoods, \
-    LogMaintenance, MaintenanceGoods, OriMaintenanceGoods, LogMaintenanceSummary, LogMaintenanceGoods
-from .serializers import OriMaintenanceSerializer, MaintenanceSerializer, MaintenanceSummarySerializer, MaintenanceGoodsSerializer, OriMaintenanceGoodsSerializer
-from .filters import OriMaintenanceFilter, MaintenanceFilter, MaintenanceSummaryFilter, MaintenanceGoodsFilter, OriMaintenanceGoodsFilter
+    LogMaintenance, MaintenanceGoods, OriMaintenanceGoods, LogMaintenanceSummary, LogMaintenanceGoods, MaintenancePartSummary, LogMaintenancePartSummary
+from .serializers import OriMaintenanceSerializer, MaintenanceSerializer, MaintenanceSummarySerializer, MaintenanceGoodsSerializer, OriMaintenanceGoodsSerializer, MaintenancePartSummarySerializer
+from .filters import OriMaintenanceFilter, MaintenanceFilter, MaintenanceSummaryFilter, MaintenanceGoodsFilter, OriMaintenanceGoodsFilter, MaintenancePartSummaryFilter
 from apps.utils.geography.models import Province, City, District
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
@@ -29,6 +29,9 @@ from apps.crm.customers.models import Customer, LogCustomer
 from apps.utils.logging.loggings import logging, getlogs
 from apps.utils.geography.tools import PickOutAdress
 from apps.crm.customers.serializers import CustomerLabelSerializer
+from apps.crm.labels.models import LabelCategory, Label
+from apps.crm.labels.serializers import LabelSerializer
+from apps.crm.customerlabel.views import QueryLabel, CreateLabel
 from ut3.settings import EXPORT_TOPLIMIT
 
 
@@ -449,6 +452,9 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
                     order.warning_time = order.last_handle_time
                     order.sign = 0
                     order.cause = ''
+                if new_order:
+                    if re.match('^配件', row['goods_name']):
+                        order.is_part = True
                 try:
                     order.creator = request.user.username
                     order.save()
@@ -458,6 +464,26 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
                     report_dic['error'].append(f"{row['order_id']} 保存出错 {e}")
                     report_dic["false"] += 1
                     continue
+                if new_order:
+                    summary_date = order.ori_created_time.date()
+                    _q_summary_order = MaintenanceSummary.objects.filter(summary_date=summary_date)
+                    if _q_summary_order.exists():
+                        summary_order = _q_summary_order[0]
+                    else:
+                        summary_order = MaintenanceSummary()
+                        summary_order.summary_date = summary_date
+                    if order.is_part:
+                        summary_order.created_count_p += 1
+                    else:
+                        summary_order.created_count += 1
+                    try:
+                        summary_order.creator = request.user.username
+                        summary_order.save()
+                        logging(summary_order, user, LogMaintenanceSummary, f'{order.order_id}新建增加')
+                    except Exception as e:
+                        report_dic['error'].append(f"{row['order_id']} 保存统计出错 {e}")
+                        report_dic["false"] += 1
+                        continue
 
             except_func = self.__class__.except_function_dict.get(order.ori_order_status, None)
             if except_func:
@@ -465,6 +491,25 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             else:
                 report_dic["error"].append(f"{order.order_id} 原单状态错误，请修正后导入")
                 continue
+            if except_func == 'handle_cancel':
+                summary_date = order.ori_created_time.date()
+                _q_summary_order = MaintenanceSummary.objects.filter(summary_date=summary_date)
+                if _q_summary_order.exists():
+                    summary_order = _q_summary_order[0]
+                else:
+                    continue
+                if order.is_part:
+                    summary_order.created_count_p -= 1
+                else:
+                    summary_order.created_count -= 1
+                try:
+                    summary_order.creator = request.user.username
+                    summary_order.save()
+                    logging(summary_order, user, LogMaintenanceSummary, f"{order.order_id}取消减少")
+                except Exception as e:
+                    report_dic['error'].append(f"{row['order_id']} 保存统计出错 {e}")
+                    report_dic["false"] += 1
+                    continue
             if order.process_tag != 0 or order.order_status == 0 or order.ori_order_status == '已完成':
                 order.save()
                 logging(order, user, LogOriMaintenance, "自动过滤，进行标记更新")
@@ -547,8 +592,16 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
             "discard": 0,
             "error": []
         }
+        warehouse_fields = ['苏州小狗维修仓', '北京维修仓']
         if n:
             for obj in check_list:
+                if obj.warehouse not in warehouse_fields:
+                    obj.order_status = 2
+                    obj.mistake_tag = 0
+                    obj.process_tag = 0
+                    obj.save()
+                    logging(obj, user, LogOriMaintenance, "无需递交")
+                    continue
                 if not obj.is_decrypted:
                     data["error"].append("%s未解密的单据不可递交" % obj.id)
                     n -= 1
@@ -618,7 +671,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                 order_fields = ["ori_order", "order_id", "maintenance_type", "fault_type", "machine_sn", "is_repeated",
                                 "appraisal", "description", "buyer_nick", "return_name", "return_mobile", "goods",
                                 "is_guarantee", "charge_status", "charge_amount", "charge_memory", "ori_creator",
-                                "ori_created_time", "completer", "finish_time", "memo"]
+                                "ori_created_time", "completer", "finish_time", "purchase_time", "memo"]
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
                 _q_maintenance_count = OriMaintenance.objects.filter(machine_sn=obj.machine_sn, order_status=2)
@@ -647,6 +700,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                 obj.mistake_tag = 0
                 obj.process_tag = 0
                 obj.save()
+                logging(obj, user, LogOriMaintenance, "递交完成")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1061,6 +1115,200 @@ class OriMaintenanceViewset(viewsets.ModelViewSet):
         return Response(ret)
 
 
+class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MaintenanceSerializer
+    filter_class = MaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['service.view_maintenance']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return Maintenance.objects.none()
+        queryset = Maintenance.objects.filter(process_tag__in=[0, 1]).order_by("machine_sn")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = MaintenanceFilter(params)
+        serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = MaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = Maintenance.objects.filter(id__in=order_ids)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def get_fault(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.process_tag == 1:
+                    n -= 1
+                    data['error'].append("%s 已锁定过缺陷单，不可重复锁定" % obj.order_id)
+                    continue
+                if obj.machine_sn != "unknown" and obj.order_status == 1:
+                    end_time = obj.ori_created_time - datetime.timedelta(days=1)
+                    start_time = obj.ori_created_time - datetime.timedelta(days=31)
+                    _q_order = Maintenance.objects.filter(machine_sn=obj.machine_sn,
+                                                          finish_time__lt=end_time, finish_time__gt=start_time,
+                                                          order_status__gt=0).order_by("-finish_time")
+                    if _q_order.exists():
+                        fault_order = _q_order[0]
+                        fault_order.is_fault = True
+                        fault_order.process_tag = 1
+                        fault_order.save()
+                        logging(fault_order, user, LogMaintenance, "缺陷标记")
+                        pass
+                    else:
+                        n -= 1
+                        data['error'].append("%s 未查询到缺陷单" % obj.order_id)
+                        obj.mistake_tag = 1
+                        obj.save()
+                        continue
+                try:
+                    obj.process_tag = 1
+                    obj.save()
+                    logging(obj, user, LogMaintenance, "完成缺陷锁定")
+                except Exception as e:
+                    data["error"].append("%s保修单保存出错: %s" % (obj.id, e))
+                    n -= 1
+                    obj.save()
+                    continue
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.is_repeated:
+                    if obj.process_tag == 0:
+                        data["error"].append("%s返修单据未锁定缺陷" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 2
+                        obj.save()
+                        continue
+                if obj.is_fault:
+                    if obj.fault_cause == 0:
+                        data["error"].append("%s缺陷单据未确认原因" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 3
+                        obj.save()
+                        continue
+                if obj.is_repeated and not obj.is_fault:
+                    summary_date = obj.ori_created_time.date()
+                    _q_summary_order = MaintenanceSummary.objects.filter(summary_date=summary_date)
+                    if _q_summary_order.exists():
+                        summary_order = _q_summary_order[0]
+                    else:
+                        summary_order = MaintenanceSummary()
+                        summary_order.summary_date = summary_date
+                    summary_order.repeat_count += 1
+                    try:
+                        summary_order.creator = request.user.username
+                        summary_order.save()
+                        logging(summary_order, user, LogMaintenanceSummary, f'{obj.order_id}返修增加')
+                    except Exception as e:
+                        data['error'].append(f"{obj.order_id} 保存统计出错 {e}")
+                        data["false"] += 1
+                        obj.mistake_tag = 4
+                        obj.save()
+                        continue
+                else:
+                    summary_date = obj.finish_time.date()
+                    _q_summary_order = MaintenanceSummary.objects.filter(summary_date=summary_date)
+                    if _q_summary_order.exists():
+                        summary_order = _q_summary_order[0]
+                    else:
+                        summary_order = MaintenanceSummary()
+                        summary_order.summary_date = summary_date
+                    summary_order.fault_count += 1
+                    try:
+                        summary_order.creator = request.user.username
+                        summary_order.save()
+                        logging(summary_order, user, LogMaintenanceSummary, f'{obj.order_id}返修增加')
+                    except Exception as e:
+                        data['error'].append(f"{obj.order_id} 保存统计出错 {e}")
+                        data["false"] += 1
+                        obj.mistake_tag = 4
+                        obj.save()
+                        continue
+                obj.process_tag = 2
+                obj.save()
+                logging(obj, user, LogMaintenance, "判责流程处理完成")
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=1)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+
 class MaintenanceSubmitViewset(viewsets.ModelViewSet):
     """
     retrieve:
@@ -1116,113 +1364,44 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
             "successful": 0,
             "false": 0,
-            "tag_successful": 0,
             "error": []
         }
         if n:
-            days_list_ori = list(check_list.order_by("finish_date").values_list("finish_date", flat=True).distinct())
+            if check_list.filter(process_tag__in=[0, 1]).exists():
+                raise serializers.ValidationError({"error": "存在未处理的单据！"})
 
-            if days_list_ori:
-                min_date = min(days_list_ori)
-                max_date = max(days_list_ori) + datetime.timedelta(days=1)
-                current_date = min_date
-
-                max_date_exists = MaintenanceSummary.objects.all().aggregate(Max("finish_date"))["finish_date__max"]
-                if max_date_exists:
-                    if min_date <= max_date_exists:
-                        if max_date < max_date_exists:
-                            max_date = max_date_exists
-
-            while current_date < max_date:
-                    repeat_dic = {"successful": 0, "tag_successful": 0, "false": 0, "error": []}
-
-                    # 当前天减去一天，作为前一天，作为前三十天的基准时间。
-                    end_date = current_date - datetime.timedelta(days=1)
-                    start_date = current_date - datetime.timedelta(days=31)
-                    # 查询近三十天到所有单据，准备进行匹配查询。
-                    maintenance_checked = Maintenance.objects.filter(finish_date__gte=start_date,
-                                                                                 finish_date__lte=end_date)
-
-                    # 创建二次维修率的表单对象，
-                    verify_condition = MaintenanceSummary.objects.filter(finish_date=current_date)
-                    current_update_orders = check_list.filter(finish_date=current_date)
-                    if verify_condition.exists():
-                        current_summary = verify_condition[0]
-                        current_summary.order_count += current_update_orders.count()
-                        try:
-                            current_summary.save()
-                            repeat_dic['error'].append("%s 更新了这个日期的当日保修单数量，之前保修单导入时有遗漏！" % current_date)
-                        except Exception as e:
-                            repeat_dic['error'].append(e)
-                    else:
-                        current_summary = MaintenanceSummary()
-                        current_summary.finish_date = current_date
-                        current_summary.order_count = current_update_orders.count()
-                        current_summary.creator = request.user.username
-                        try:
-                            current_summary.save()
-                        except Exception as e:
-                            repeat_dic['error'].append(e)
-
-                    # 首先生成统计表，然后更新累加统计表在每个循环。然后查询出二次维修，则检索二次维修当天统计表，进而更新二次维修数量。
-                    # 当天的二次维修检查数量，是发现二次维修数量，而不是当天的二次维修数量，是客户在当天的不满意数量。
-                    # 循环当前天的订单数据，根据当前天的sn查询出前三十天的二次维修问题。
-                    for order in current_update_orders:
-                        if not order.machine_sn or not re.match("^[0-9].+", str(order.machine_sn)):
-                            try:
-                                order.order_status = 3
-                                order.save()
-                                repeat_dic['successful'] += 1
-                                continue
-                            except Exception as e:
-                                repeat_dic['error'].append(e)
-                                repeat_dic['false'] += 1
-                                continue
-                        result_checked = maintenance_checked.filter(machine_sn=order.machine_sn, repeat_tag=0)
-                        if result_checked.exists():
-
-                            order.found_tag = True
-                            order.order_status = 2
-                            found_order = result_checked[0]
-                            found_order.repeat_tag = 1
-                            found_order.order_status = 2
-
-
-                            try:
-                                order.save()
-                                found_order.save()
-                                current_summary.save()
-                                repeat_dic['successful'] += 1
-                                repeat_dic['tag_successful'] += 1
-                            except Exception as e:
-                                repeat_dic['error'].append(e)
-                                repeat_dic['false'] += 1
-
-                        else:
-                            try:
-                                order.order_status = 3
-                                order.save()
-                                repeat_dic['successful'] += 1
-                            except Exception as e:
-                                repeat_dic['error'].append(e)
-                                repeat_dic['false'] += 1
-
-                    # 对数据进行汇总，累加到repeat_dic_total的字典里面
-                    data['successful'] += repeat_dic['successful']
-                    data['false'] += repeat_dic['false']
-                    data['tag_successful'] = repeat_dic['tag_successful']
-                    if repeat_dic['error']:
-                        data['error'].append(repeat_dic['error'])
-
-                    current_date = current_date + datetime.timedelta(days=1)
-
-
+            for obj in check_list:
+                summary_date = obj.finish_time.date()
+                _q_summary_order = MaintenanceSummary.objects.filter(summary_date=summary_date)
+                if _q_summary_order.exists():
+                    summary_order = _q_summary_order[0]
+                else:
+                    summary_order = MaintenanceSummary()
+                    summary_order.summary_date = summary_date
+                if obj.is_part:
+                    summary_order.finished_count_p += 1
+                else:
+                    summary_order.finished_count += 1
+                try:
+                    summary_order.creator = request.user.username
+                    summary_order.save()
+                    logging(summary_order, user, LogMaintenanceSummary, f'{obj.order_id}完成增加')
+                except Exception as e:
+                    data['error'].append(f"{obj.order_id} 保存统计出错 {e}")
+                    data["false"] += 1
+                    obj.mistake_tag = 4
+                    obj.save()
+                    continue
+                obj.order_status = 2
+                obj.save()
+                logging(obj, user, LogMaintenance, "完成统计")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1405,7 +1584,7 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
         return report_dic
 
 
-class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
+class MaintenanceSignLabelViewset(viewsets.ModelViewSet):
     """
     retrieve:
         返回指定货品明细
@@ -1431,7 +1610,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return Maintenance.objects.none()
-        queryset = Maintenance.objects.filter(process_tag__in=[0, 1]).order_by("machine_sn")
+        queryset = Maintenance.objects.filter(order_status=2).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -1439,6 +1618,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["order_status"] = 2
         f = MaintenanceFilter(params)
         serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -1457,7 +1637,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         return handle_list
 
     @action(methods=['patch'], detail=False)
-    def get_fault(self, request, *args, **kwargs):
+    def check(self, request, *args, **kwargs):
         user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
@@ -1465,38 +1645,55 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         data = {
             "successful": 0,
             "false": 0,
+            "tag_successful": 0,
             "error": []
         }
+        label_category = LabelCategory.objects.filter(name="系统内置")[0]
         if n:
+            if check_list.filter(process_tag__in=[0, 1]).exsits():
+                raise serializers.ValidationError({"error": "存在未处理的单据！"})
+
             for obj in check_list:
-                if obj.machine_sn != "unknown" and obj.order_status == 1:
-                    end_time = obj.ori_created_time - datetime.timedelta(days=1)
-                    start_time = obj.ori_created_time - datetime.timedelta(days=31)
-                    _q_order = Maintenance.objects.filter(machine_sn=obj.machine_sn,
-                                                          finish_time__lt=end_time, finish_time__gt=start_time,
-                                                          order_status__gt=0).order_by("-finish_time")
-                    if _q_order.exists():
-                        fault_order = _q_order[0]
-                        fault_order.is_fault = True
-                        fault_order.process_tag = 1
-                        fault_order.save()
-                        logging(fault_order, user, LogMaintenance, "缺陷标记")
-                        pass
-                    else:
-                        n -= 1
-                        data['error'].append("%s 单据递交顺序错误" % obj.order_id)
-                        obj.mistake_tag = 1
-                        obj.save()
-                        continue
-                try:
-                    obj.process_tag = 1
-                    obj.save()
-                    logging(obj, user, LogMaintenance, "完成缺陷锁定")
-                except Exception as e:
-                    data["error"].append("%s保修单保存出错: %s" % (obj.id, e))
+                if obj.add_labels:
+                    add_labels = str(obj.add_label).split()
+                    add_error_tag = 0
+                    for label in add_labels:
+                        _q_label = Label.objects.filter(name=str(label))
+                        if _q_label.exists():
+                            label_obj = _q_label[0]
+                            if label_obj.is_cancel:
+                                data["error"].append(f"必须先恢复标签 {str(label_obj.name)} 后再操作")
+                                obj.mistake_tag = 5
+                                add_error_tag = 1
+                                break
+                        else:
+                            label_data = {
+                                "name": label,
+                                "group": "SVC",
+                                "category": label_category
+                            }
+                            label_serializer = LabelSerializer(data=label_data)
+                            label_serializer.is_valid()
+                            label_serializer.save()
+                            label_obj = label_serializer.instance
+
+                        _q_check_add_label_order = QueryLabel(label_obj, obj.customer)
+                        if not _q_check_add_label_order:
+                            _created_result = CreateLabel(label_obj, obj.customer, user)
+                            if not _created_result:
+                                data["error"].append(f"{obj.customer.name} 创建标签 {str(label_obj.name)} 失败")
+                                obj.mistake_tag = 6
+                                add_error_tag = 1
+                                break
+                if add_error_tag:
                     n -= 1
                     obj.save()
                     continue
+                obj.mistake_tag = 0
+                obj.order_status = 4
+                obj.save()
+                logging(obj, user, LogMaintenance, "完成打标")
+                # todo: 完善审核逻辑
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1504,7 +1701,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         return Response(data)
 
     @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
+    def sign_area(self, request, *args, **kwargs):
         user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
@@ -1512,27 +1709,50 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         data = {
             "successful": 0,
             "false": 0,
+            "tag_successful": 0,
             "error": []
         }
+        label_category = LabelCategory.objects.filter(name="系统内置")[0]
         if n:
             for obj in check_list:
-                if obj.is_repeated:
-                    if obj.repeat_tag == 0:
-                        data["error"].append("%s返修单据未锁定缺陷" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 2
-                        obj.save()
-                        continue
-                if obj.is_fault:
-                    if obj.fault_cause == 0:
-                        data["error"].append("%s缺陷单据未确认原因" % obj.id)
-                        n -= 1
-                        obj.mistake_tag = 3
-                        obj.save()
-                        continue
-                obj.process_tag = 2
-                obj.save()
-                logging(obj, user, LogMaintenance, "判责流程处理完成")
+                if obj.province and obj.city:
+                    add_labels = [obj.province.name, obj.city.name]
+                    add_error_tag = 0
+                    for label in add_labels:
+                        _q_label = Label.objects.filter(name=str(label))
+                        if _q_label.exists():
+                            label_obj = _q_label[0]
+                            if label_obj.is_cancel:
+                                data["error"].append(f"必须先恢复标签 {str(label_obj.name)} 后再操作")
+                                add_error_tag = 1
+                                break
+                        else:
+                            label_data = {
+                                "name": label,
+                                "group": "PPL",
+                                "category": label_category
+                            }
+                            label_serializer = LabelSerializer(data=label_data)
+                            label_serializer.is_valid()
+                            label_serializer.save()
+                            label_obj = label_serializer.instance
+
+                        _q_check_add_label_order = QueryLabel(label_obj, obj.customer)
+                        if not _q_check_add_label_order:
+                            _created_result = CreateLabel(label_obj, obj.customer, user)
+                            if not _created_result:
+                                data["error"].append(f"{obj.customer.name} 创建标签 {str(label_obj.name)} 失败")
+                                add_error_tag = 1
+                                break
+                else:
+                    data["error"].append(f"单据省市区不全")
+                    n -= 1
+                    continue
+                if add_error_tag:
+                    n -= 1
+                    obj.save()
+                    continue
+                # todo: 完善审核逻辑
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1550,171 +1770,14 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=1)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-
-class MaintenanceViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定货品明细
-    list:
-        返回货品明细
-    update:
-        更新货品明细
-    destroy:
-        删除货品明细
-    create:
-        创建货品明细
-    partial_update:
-        更新部分货品明细
-    """
-    serializer_class = MaintenanceSerializer
-    filter_class = MaintenanceFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['service.view_maintenance']
-    }
-
-    def get_queryset(self):
-        if not self.request:
-            return Maintenance.objects.none()
-        queryset = Maintenance.objects.all().order_by("-id")
-        return queryset
-
-    @action(methods=['patch'], detail=False)
-    def export(self, request, *args, **kwargs):
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.data
-        f = MaintenanceFilter(params)
-        serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
-        return Response(serializer.data)
-
-    def get_handle_list(self, params):
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 3
-        if all_select_tag:
-            handle_list = MaintenanceFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = Maintenance.objects.filter(id__in=order_ids, order_status=3)
-            else:
-                handle_list = []
-        return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=2)
-        else:
-            raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
-        return Response(data)
-
-
-class MaintenanceSummaryViewset(viewsets.ModelViewSet):
-    """
-    retrieve:
-        返回指定货品明细
-    list:
-        返回货品明细
-    update:
-        更新货品明细
-    destroy:
-        删除货品明细
-    create:
-        创建货品明细
-    partial_update:
-        更新部分货品明细
-    """
-    serializer_class = MaintenanceSummarySerializer
-    filter_class = MaintenanceSummaryFilter
-    filter_fields = "__all__"
-    permission_classes = (IsAuthenticated, Permissions)
-    extra_perm_map = {
-        "GET": ['service.view_maintenance']
-    }
-
-    def get_queryset(self):
-        if not self.request:
-            return MaintenanceSummary.objects.none()
-        queryset = MaintenanceSummary.objects.all().order_by("-id")
-        return queryset
-
-    @action(methods=['patch'], detail=False)
-    def export(self, request, *args, **kwargs):
-        request.data.pop("page", None)
-        request.data.pop("allSelectTag", None)
-        params = request.data
-        f = MaintenanceSummaryFilter(params)
-        serializer = MaintenanceSummarySerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
-        return Response(serializer.data)
-
-    def get_handle_list(self, params):
-        params.pop("page", None)
-        all_select_tag = params.pop("allSelectTag", None)
-        if all_select_tag:
-            handle_list = MaintenanceSummaryFilter(params).qs
-        else:
-            order_ids = params.pop("ids", None)
-            if order_ids:
-                handle_list = MaintenanceSummary.objects.filter(id__in=order_ids)
-            else:
-                handle_list = []
-        return handle_list
-
-    @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            for obj in check_list:
-                current_data = Maintenance.objects.filter(finish_date=obj.finish_date)
-                obj.repeat_found = current_data.filter(found_tag=True).count()
-                obj.repeat_today = current_data.filter(repeat_tag__in=[1, 2, 3, 4]).count()
-                obj.creator = request.user.username
+            for obj in reject_list:
+                obj.ori_maintenance.towork_status = 1
+                obj.ori_maintenance.save()
+                obj.order_status = 0
                 obj.save()
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def reject(self, request, *args, **kwargs):
-        params = request.data
-        reject_list = self.get_handle_list(params)
-        n = len(reject_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            reject_list.update(order_status=0)
+                data["successful"] += 1
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
-        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1802,7 +1865,7 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
                     columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
 
             # 验证一下必要的核心字段是否存在
-            _ret_verify_field = MaintenanceSummary.verify_mandatory(columns_key)
+            _ret_verify_field = Maintenance.verify_mandatory(columns_key)
             if _ret_verify_field is not None:
                 return _ret_verify_field
 
@@ -1843,12 +1906,12 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
         report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
 
         for row in resource:
-            _q_calllog = MaintenanceSummary.objects.filter(call_id=row["call_id"])
+            _q_calllog = Maintenance.objects.filter(call_id=row["call_id"])
             if _q_calllog.exists():
                 report_dic["discard"] += 1
                 report_dic["error"].append("%s提交重复" % row["call_id"])
                 continue
-            order = MaintenanceSummary()
+            order = Maintenance()
             order_fields = ["call_id", "category", "start_time", "end_time", "total_duration", "call_duration",
                             "queue_time", "ring_time", "muted_duration", "muted_time", "calling_num",
                             "called_num", "attribution", "nickname", "smartphone", "ivr", "group",
@@ -1870,6 +1933,180 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
                 report_dic["false"] += 1
 
         return report_dic
+
+
+class MaintenanceViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MaintenanceSerializer
+    filter_class = MaintenanceFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['service.view_maintenance']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return Maintenance.objects.none()
+        queryset = Maintenance.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = MaintenanceFilter(params)
+        serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 3
+        if all_select_tag:
+            handle_list = MaintenanceFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = Maintenance.objects.filter(id__in=order_ids, order_status=3)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=2)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = Maintenance.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogMaintenance)
+        return Response(ret)
+
+
+class MaintenanceSummaryViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MaintenanceSummarySerializer
+    filter_class = MaintenanceSummaryFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['service.view_maintenance']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return MaintenanceSummary.objects.none()
+        queryset = MaintenanceSummary.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = MaintenanceSummaryFilter(params)
+        serializer = MaintenanceSummarySerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = MaintenanceSummaryFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = MaintenanceSummary.objects.filter(id__in=order_ids)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                start_time = datetime.datetime.combine(obj.summary_date, datetime.datetime.min.time())
+                end_time = start_time + datetime.timedelta(days=1)
+
+                finish_data = Maintenance.objects.filter(finish_time__gt=start_time, finish_time__lt=end_time)
+                created_data = Maintenance.objects.filter(ori_created_time__gt=start_time, ori_created_time__lt=end_time)
+
+                obj.created_count_p = created_data.filter(is_part=True).count()
+                obj.created_count = created_data.filter(is_part=False).count()
+                obj.repeat_count = created_data.filter(is_repeated=True).count()
+
+                obj.finished_count_p = finish_data.filter(is_part=True).count()
+                obj.finished_count = finish_data.filter(is_part=False).count()
+                obj.fault_count = finish_data.filter(is_fault=True).count()
+
+                obj.save()
+                logging(obj, user, LogMaintenanceSummary, "手工更新统计数据")
+        else:
+            raise serializers.ValidationError("没有可更新的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = MaintenanceSummary.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogMaintenanceSummary)
+        return Response(ret)
 
 
 class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
@@ -2018,6 +2255,7 @@ class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -2027,10 +2265,68 @@ class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            check_list.update(order_status=2)
+            for obj in check_list:
+                if not obj.is_decrypted:
+                    n -= 1
+                    data["false"] += 1
+                    data['error'].append(f"{obj.order_id}未推送解密不可审核")
+                    obj.mistake_tag = 4
+                    obj.save()
+                    continue
+                _q_order = Maintenance.objects.filter(order_id=obj.order_id)
+                if _q_order.exists():
+                    order = _q_order[0]
+                else:
+                    n -= 1
+                    data["false"] += 1
+                    data['error'].append(f"{obj.order_id}保修单未递交不可审核")
+                    obj.mistake_tag = 5
+                    obj.save()
+                    continue
+                try:
+                    goods_order = obj.maintenancegoods
+                    n -= 1
+                    data["false"] += 1
+                    data['error'].append(f"{obj.order_id}已递交，不可重复递交")
+                    obj.mistake_tag = 6
+                    obj.save()
+                    continue
+                except Exception as e:
+                    goods_order = MaintenanceGoods()
+                _q_part = Goods.objects.filter(goods_id=obj.part_code)
+                if _q_part.exists():
+                    part = _q_part[0]
+                else:
+                    n -= 1
+                    data["false"] += 1
+                    data['error'].append(f"{obj.order_id}UT不存在此配件")
+                    obj.mistake_tag = 7
+                    obj.save()
+                    continue
+                goods_order.order = order
+                goods_order.ori_order = obj
+                goods_order.part = part
+                goods_order.quantity = obj.quantity
+                goods_order.finish_time = obj.finish_time
+                goods_order.creator = user.username
+                try:
+                    goods_order.save()
+                    logging(goods_order, user, LogMaintenanceGoods, "创建")
+                except Exception as e:
+                    n -= 1
+                    data["false"] += 1
+                    data['error'].append(f"{obj.order_id}创建保修货品失败")
+                    obj.mistake_tag = 8
+                    obj.save()
+                    continue
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.save()
+                logging(obj, user, LogOriMaintenanceGoods, "审核单据")
         else:
             raise serializers.ValidationError("没有可清除的单据！")
         data["successful"] = n
+        data["false"] = len(check_list) - n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -2272,28 +2568,10 @@ class MaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
         "GET": ['service.view_orimaintenance']
     }
 
-    except_function_dict = {
-        "已取消": "handle_cancel",
-        "待审核": "handle_check",
-        "逆向待推送": "handle_error",
-        "逆向推送失败": "handle_error",
-        "待筛单": "handle_error",
-        "不可达": "handle_error",
-        "待取件": "handle_daily",
-        "取件失败": "handle_error",
-        "待入库": "handle_daterange",
-        "待维修": "handle_multidays",
-        "已换新-待打单": "handle_error",
-        "待打印": "handle_daily",
-        "已打印": "handle_daily",
-        "已完成": "handle_completed"
-    }
-
     def get_queryset(self):
         if not self.request:
             return MaintenanceGoods.objects.none()
-        queryset = MaintenanceGoods.objects.filter(order_status=1).exclude(ori_order_status="已完成").order_by("-id")
-        today_date = datetime.datetime.now().date()
+        queryset = MaintenanceGoods.objects.filter(order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -2321,112 +2599,8 @@ class MaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
         return handle_list
 
     @action(methods=['patch'], detail=False)
-    def batch_sign(self, request, *args, **kwargs):
-        user = request.user
-        params = request.data
-        sign_list = self.get_handle_list(params)
-        n = len(sign_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        SIGN_LIST = {
-            0: '无',
-            1: '处理完毕',
-            2: '配件缺货',
-            3: '延后处理',
-            4: '快递异常',
-            5: '特殊问题',
-            6: '上报待批',
-            7: '其他情况',
-        }
-        if n:
-            standard_order = sign_list.last()
-            standard_sign = standard_order.sign
-            sign_name = SIGN_LIST.get(standard_sign, None)
-            for obj in sign_list:
-                obj.sign = standard_sign
-                obj.save()
-
-                logging(obj, user, LogOriMaintenance, f'批量设置标记为：{sign_name}')
-        else:
-            raise serializers.ValidationError("没有可清除的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def batchtext(self, request, *args, **kwargs):
-        user = request.user
-        params = request.data
-        update_data = params.pop("data", None)
-        if not update_data:
-            raise serializers.ValidationError("批量修改内容为空！")
-        batch_list = self.get_handle_list(params)
-        n = len(batch_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        keys = list(update_data.keys())
-        if len(keys) != 1:
-            raise serializers.ValidationError("批量修改内容错误！")
-        key = str(keys[0])
-        if n:
-            for obj in batch_list:
-                origin_data = getattr(obj, key, None)
-                if origin_data:
-                    update_value = "%s %s" % (origin_data, update_data[key])
-                else:
-                    update_value = update_data[key]
-                setattr(obj, key, update_value)
-                obj.save()
-                logging(obj, user, LogOriMaintenance, "{%s}:%s替换为%s" % (key, origin_data, update_data[key]))
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(batch_list) - n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def set_appointment(self, request, *args, **kwargs):
-        user = request.user
-        days = request.data.get("days", None)
-        id = request.data.get("id", None)
-        today = datetime.datetime.now()
-        data = {"successful": 0}
-        if all([days, id]):
-            order = OriMaintenanceGoods.objects.filter(id=id)[0]
-            if days == 1:
-                order.check_time = today + datetime.timedelta(days=1)
-            else:
-                order.check_time = today + datetime.timedelta(days=3)
-            order.sign = 3
-            order.save()
-            data["successful"] = 1
-            logging(order, user, LogOriMaintenanceGoods, f"延后{days}天处理")
-
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def set_recover(self, request, *args, **kwargs):
-        user = request.user
-        id = request.data.get("id", None)
-        today = datetime.datetime.now()
-        data = {"successful": 0}
-        if id:
-            order = OriMaintenanceGoods.objects.filter(id=id)[0]
-            order.check_time = today
-            order.sign = 0
-            order.check_time = None
-            order.save()
-            data["successful"] = 1
-            logging(order, user, LogOriMaintenanceGoods, f"重置延后")
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -2436,7 +2610,31 @@ class MaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            check_list.update(order_status=2)
+            for obj in check_list:
+                _q_summary_part = MaintenancePartSummary.objects.filter(summary_date=obj.finish_time.date(), part=obj.part)
+                if _q_summary_part.exists():
+                    summary_part = _q_summary_part[0]
+                    summary_part.quantity += obj.quantity
+                else:
+                    summary_part = MaintenancePartSummary()
+                    summary_part.summary_date = obj.finish_time.date()
+                    summary_part.part = obj.part
+                    summary_part.quantity = obj.quantity
+                    summary_part.creator = user.username
+                try:
+                    summary_part.save()
+                    logging(summary_part, user, LogMaintenancePartSummary, f"{obj.order.order_id}完成统计")
+                except Exception as e:
+                    data["error"].append("%s统计失败" % obj.id)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                obj.order_status = 2
+                obj.mistake_tag = 0
+                obj.process_tag = 0
+                obj.save()
+                logging(obj, user, LogMaintenanceGoods, "统计完成")
         else:
             raise serializers.ValidationError("没有可清除的单据！")
         data["successful"] = n
@@ -2467,227 +2665,6 @@ class MaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def excel_import(self, request, *args, **kwargs):
-        file = request.FILES.get('file', None)
-        if file:
-            data = self.handle_upload_file(request, file)
-        else:
-            data = {
-                "error": "上传文件未找到！"
-            }
-
-        return Response(data)
-
-    def handle_upload_file(self, request, _file):
-        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
-        INIT_FIELDS_DIC = {
-            "保修单号": "order_id",
-            "保修单状态": "ori_order_status",
-            "收发仓库": "warehouse",
-            "处理登记人": "completer",
-            "保修类型": "maintenance_type",
-            "故障类型": "fault_type",
-            "送修类型": "transport_type",
-            "序列号": "machine_sn",
-            "换新序列号": "new_machine_sn",
-            "关联订单号": "send_order_id",
-            "保修结束语": "appraisal",
-            "关联店铺": "shop",
-            "购买时间": "purchase_time",
-            "创建时间": "ori_created_time",
-            "创建人": "ori_creator",
-            "审核时间": "handle_time",
-            "审核人": "handler_name",
-            "保修完成时间": "finish_time",
-            "保修金额": "fee",
-            "保修数量": "quantity",
-            "最后修改时间": "last_handle_time",
-            "客户网名": "buyer_nick",
-            "寄件客户姓名": "sender_name",
-            "寄件客户手机": "sender_mobile",
-            "寄件客户省市县": "sender_area",
-            "寄件客户地址": "sender_address",
-            "收件物流公司": "send_logistics_company",
-            "收件物流单号": "send_logistics_no",
-            "收件备注": "send_memory",
-            "寄回客户姓名": "return_name",
-            "寄回客户手机": "return_mobile",
-            "寄回省市区": "return_area",
-            "寄回地址": "return_address",
-            "寄件指定物流公司": "return_logistics_company",
-            "寄件物流单号": "return_logistics_no",
-            "寄件备注": "return_memory",
-            "保修货品商家编码": "goods_code",
-            "保修货品名称": "goods_name",
-            "保修货品简称": "goods_abbreviation",
-            "故障描述": "description",
-            "是否在保修期内": "is_guarantee",
-            "收费状态": "charge_status",
-            "收费金额": "charge_amount",
-            "收费说明": "charge_memory"
-        }
-
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
-        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
-            df = pd.read_excel(_file, sheet_name=0, dtype=str)
-
-            FILTER_FIELDS = ["保修单号", "保修单状态", "收发仓库", "处理登记人", "保修类型", "故障类型", "送修类型", "序列号",
-                             "换新序列号", "关联订单号", "保修结束语", "关联店铺", "购买时间", "创建时间", "创建人", "审核时间",
-                             "审核人", "保修完成时间", "保修金额", "保修数量", "最后修改时间", "客户网名", "寄件客户姓名",
-                             "寄件客户手机", "寄件客户省市县", "寄件客户地址", "收件物流公司", "收件物流单号", "收件备注",
-                             "寄回客户姓名", "寄回客户手机", "寄回省市区", "寄回地址", "寄件指定物流公司", "寄件物流单号",
-                             "寄件备注", "保修货品商家编码", "保修货品名称", "保修货品简称", "故障描述", "是否在保修期内",
-                             "收费状态", "收费金额", "收费说明"]
-
-            try:
-                df = df[FILTER_FIELDS]
-            except Exception as e:
-                report_dic["error"].append("必要字段不全或者错误")
-                return report_dic
-
-            # 获取表头，对表头进行转换成数据库字段名
-            columns_key = df.columns.values.tolist()
-            for i in range(len(columns_key)):
-                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
-                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
-
-            # 验证一下必要的核心字段是否存在
-            _ret_verify_field = OriMaintenance.verify_mandatory(columns_key)
-            if _ret_verify_field is not None:
-                return _ret_verify_field
-
-            # 更改一下DataFrame的表名称
-            columns_key_ori = df.columns.values.tolist()
-            ret_columns_key = dict(zip(columns_key_ori, columns_key))
-            df.rename(columns=ret_columns_key, inplace=True)
-
-            # 更改一下DataFrame的表名称
-            num_end = 0
-            step = 300
-            step_num = int(len(df) / step) + 2
-            i = 1
-            while i < step_num:
-                num_start = num_end
-                num_end = step * i
-                intermediate_df = df.iloc[num_start: num_end]
-
-                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
-                _ret_list = intermediate_df.to_dict(orient='records')
-                intermediate_report_dic = self.save_resources(request, _ret_list)
-                for k, v in intermediate_report_dic.items():
-                    if k == "error":
-                        if intermediate_report_dic["error"]:
-                            report_dic[k].append(v)
-                    else:
-                        report_dic[k] += v
-                i += 1
-            return report_dic
-
-        else:
-            report_dic["error"].append('只支持excel文件格式！')
-            return report_dic
-
-    def save_resources(self, request, resource):
-        user = request.user
-        # 设置初始报告
-        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
-
-        for row in resource:
-            update_sign = 0
-            new_order = 0
-            if not re.match("^BX", row['order_id']):
-                report_dic["discard"] += 1
-                report_dic['error'].append(f"{row['order_id']} 单据内容错误")
-                continue
-            row["machine_sn"] = str(row["machine_sn"]).upper()
-            if not re.match("[A-Z0-9]{16}|\d{8}", str(row["machine_sn"])):
-                row["machine_sn"] = "unknown"
-            _q_repeat_order = OriMaintenance.objects.filter(order_id=row["order_id"])
-            if _q_repeat_order.exists():
-                order =_q_repeat_order[0]
-                if order.ori_order_status in ["已完成", "已取消"]:
-                    report_dic["discard"] += 1
-                    continue
-                else:
-                    if order.ori_order_status != row["ori_order_status"]:
-                        update_sign = 1
-            else:
-                order = OriMaintenance()
-                update_sign = 1
-                new_order = 1
-            if update_sign:
-                # 新版数据库不支持全是0的时间格式。需要处理为空值
-                for keyword in ["purchase_time", "ori_created_time", "handle_time", "finish_time", "last_handle_time"]:
-                    if row[keyword] == "0000-00-00 00:00:00" or str(row[keyword]) == 'nan':
-                        row[keyword] = None
-                for keyword in ["ori_created_time", "last_handle_time"]:
-                    if isinstance(row[keyword], str):
-                        row[keyword] = datetime.datetime.strptime(str(row[keyword]).split(".")[0], "%Y-%m-%d %H:%M:%S")
-                # 单据对象的解密标记决定由哪个更新列表进行更新。
-                order_fields_partial = ["order_id", "ori_order_status", "warehouse", "completer", "maintenance_type",
-                                        "fault_type", "transport_type", "machine_sn", "new_machine_sn", "send_order_id",
-                                        "appraisal", "shop", "purchase_time", "ori_created_time", "ori_creator", "handle_time",
-                                        "handler_name", "finish_time", "fee", "quantity", "buyer_nick", "last_handle_time",
-                                        "sender_name", "sender_mobile", "sender_area", "sender_address", "send_logistics_company",
-                                        "send_logistics_no", "send_memory", "return_logistics_company", "return_logistics_no", "return_memory",
-                                        "goods_code", "goods_name", "goods_abbreviation", "description", "is_guarantee",
-                                        "charge_status", "charge_amount", "charge_memory"]
-                order_fields_entire = ["order_id", "ori_order_status", "warehouse", "completer", "maintenance_type",
-                                       "fault_type", "transport_type", "machine_sn", "new_machine_sn", "send_order_id",
-                                       "appraisal", "shop", "purchase_time", "ori_created_time", "ori_creator", "handle_time",
-                                       "handler_name", "finish_time", "fee", "quantity",  "buyer_nick", "last_handle_time",
-                                       "sender_name", "sender_mobile", "sender_area", "sender_address", "send_logistics_company",
-                                       "send_logistics_no", "send_memory", "return_name", "return_mobile", "return_area",
-                                       "return_address", "return_logistics_company", "return_logistics_no", "return_memory",
-                                       "goods_code", "goods_name", "goods_abbreviation", "description", "is_guarantee",
-                                       "charge_status", "charge_amount", "charge_memory"]
-
-                if order.is_decrypted:
-                    for field in order_fields_partial:
-                        if str(row[field]) != 'nan':
-                            setattr(order, field, row[field])
-                else:
-                    for field in order_fields_entire:
-                        if str(row[field]) != 'nan':
-                            setattr(order, field, row[field])
-
-                if update_sign:
-                    if order.ori_creator == '系统' and order.handler:
-                        order.ori_creator = order.handler
-                    order.warning_time = order.last_handle_time
-                    order.sign = 0
-                    order.cause = ''
-                try:
-                    order.creator = request.user.username
-                    order.save()
-                    logging(order, user, LogOriMaintenance, '创建或更新')
-                    report_dic["successful"] += 1
-                except Exception as e:
-                    report_dic['error'].append(f"{row['order_id']} 保存出错 {e}")
-                    report_dic["false"] += 1
-                    continue
-
-            except_func = self.__class__.except_function_dict.get(order.ori_order_status, None)
-            if except_func:
-                getattr(order, except_func)()
-            else:
-                report_dic["error"].append(f"{order.order_id} 原单状态错误，请修正后导入")
-                continue
-            if order.process_tag != 0 or order.order_status == 0 or order.ori_order_status == '已完成':
-                order.save()
-                logging(order, user, LogOriMaintenance, "自动过滤，进行标记更新")
-
-            if new_order and order.machine_sn != "unknown" and order.order_status == 1:
-                end_time = order.ori_created_time - datetime.timedelta(days=1)
-                start_time = order.ori_created_time - datetime.timedelta(days=31)
-                _q_order_count = OriMaintenance.objects.filter(machine_sn=order.machine_sn, ori_created_time__lt=end_time, ori_created_time__gt=start_time, order_status__gt=0).count()
-                if _q_order_count > 0:
-                    order.is_repeated = True
-                    order.save()
-                    logging(order, user, LogOriMaintenance, "自动判定为返修单")
-        return report_dic
 
 
 class MaintenanceGoodsViewset(viewsets.ModelViewSet):
@@ -2737,4 +2714,103 @@ class MaintenanceGoodsViewset(viewsets.ModelViewSet):
         ret = getlogs(instance, LogMaintenanceGoods)
         return Response(ret)
 
+
+class MaintenancePartSummaryViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MaintenancePartSummarySerializer
+    filter_class = MaintenancePartSummaryFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['service.view_maintenance']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return MaintenancePartSummary.objects.none()
+        queryset = MaintenancePartSummary.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = MaintenancePartSummaryFilter(params)
+        serializer = MaintenancePartSummarySerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        if all_select_tag:
+            handle_list = MaintenancePartSummaryFilter(params).qs
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = MaintenancePartSummary.objects.filter(id__in=order_ids)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                current_data = Maintenance.objects.filter(finish_date=obj.finish_date)
+                obj.repeat_found = current_data.filter(found_tag=True).count()
+                obj.repeat_today = current_data.filter(repeat_tag__in=[1, 2, 3, 4]).count()
+                obj.creator = request.user.username
+                obj.save()
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            reject_list.update(order_status=0)
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = MaintenancePartSummary.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogMaintenancePartSummary)
+        return Response(ret)
 
