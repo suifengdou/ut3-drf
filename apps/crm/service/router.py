@@ -2,7 +2,8 @@ from rest_framework.routers import DefaultRouter
 from .views import OriMaintenanceSubmitViewset, OriMaintenanceBeforeViewset, \
     OriMaintenanceViewset, MaintenanceSubmitViewset, MaintenanceJudgmentViewset, MaintenanceViewset, \
     MaintenanceSummaryViewset, OriMaintenanceGoodsSubmitViewset, OriMaintenanceGoodsViewset, \
-    MaintenanceGoodsSubmitViewset, MaintenanceGoodsViewset, MaintenanceSignLabelViewset, MaintenancePartSummaryViewset
+    MaintenanceGoodsSubmitViewset, MaintenanceGoodsViewset, MaintenanceSignLabelViewset, MaintenancePartSummaryViewset, \
+    ServiceOrderChartViewset
 
 
 service_router = DefaultRouter()
@@ -19,5 +20,6 @@ service_router.register(r'crm/service/orimaintenancegoodssubmit', OriMaintenance
 service_router.register(r'crm/service/orimaintenancegoods', OriMaintenanceGoodsViewset, basename='orimaintenancegoods')
 service_router.register(r'crm/service/maintenancegoodssubmit', MaintenanceGoodsSubmitViewset, basename='maintenancegoodssubmit')
 service_router.register(r'crm/service/maintenancegoods', MaintenanceGoodsViewset, basename='maintenancegoods')
+service_router.register(r'crm/service/serviceorderchart', ServiceOrderChartViewset, basename='serviceorderchart')
 
 

@@ -29,7 +29,7 @@ from apps.crm.customers.models import Customer, LogCustomer
 from apps.utils.logging.loggings import logging, getlogs
 from apps.utils.geography.tools import PickOutAdress
 from apps.crm.customers.serializers import CustomerLabelSerializer
-from apps.crm.labels.models import LabelCategory, Label
+from apps.crm.labels.models import LabelCategory, Label, LogLabel
 from apps.crm.labels.serializers import LabelSerializer
 from apps.crm.customerlabel.views import QueryLabel, CreateLabel
 from ut3.settings import EXPORT_TOPLIMIT
@@ -406,6 +406,8 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
                 else:
                     if order.ori_order_status != row["ori_order_status"]:
                         update_sign = 1
+                    else:
+                        report_dic["discard"] += 1
             else:
                 order = OriMaintenance()
                 update_sign = 1
@@ -484,35 +486,35 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
                         report_dic['error'].append(f"{row['order_id']} 保存统计出错 {e}")
                         report_dic["false"] += 1
                         continue
-
-            except_func = self.__class__.except_function_dict.get(order.ori_order_status, None)
-            if except_func:
-                getattr(order, except_func)()
-            else:
-                report_dic["error"].append(f"{order.order_id} 原单状态错误，请修正后导入")
-                continue
-            if except_func == 'handle_cancel':
-                summary_date = order.ori_created_time.date()
-                _q_summary_order = MaintenanceSummary.objects.filter(summary_date=summary_date)
-                if _q_summary_order.exists():
-                    summary_order = _q_summary_order[0]
+            if update_sign or new_order:
+                except_func = self.__class__.except_function_dict.get(order.ori_order_status, None)
+                if except_func:
+                    getattr(order, except_func)()
                 else:
+                    report_dic["error"].append(f"{order.order_id} 原单状态错误，请修正后导入")
                     continue
-                if order.is_part:
-                    summary_order.created_count_p -= 1
-                else:
-                    summary_order.created_count -= 1
-                try:
-                    summary_order.creator = request.user.username
-                    summary_order.save()
-                    logging(summary_order, user, LogMaintenanceSummary, f"{order.order_id}取消减少")
-                except Exception as e:
-                    report_dic['error'].append(f"{row['order_id']} 保存统计出错 {e}")
-                    report_dic["false"] += 1
-                    continue
-            if order.process_tag != 0 or order.order_status == 0 or order.ori_order_status == '已完成':
-                order.save()
-                logging(order, user, LogOriMaintenance, "自动过滤，进行标记更新")
+                if except_func == 'handle_cancel':
+                    summary_date = order.ori_created_time.date()
+                    _q_summary_order = MaintenanceSummary.objects.filter(summary_date=summary_date)
+                    if _q_summary_order.exists():
+                        summary_order = _q_summary_order[0]
+                    else:
+                        continue
+                    if order.is_part:
+                        summary_order.created_count_p -= 1
+                    else:
+                        summary_order.created_count -= 1
+                    try:
+                        summary_order.creator = request.user.username
+                        summary_order.save()
+                        logging(summary_order, user, LogMaintenanceSummary, f"{order.order_id}取消减少")
+                    except Exception as e:
+                        report_dic['error'].append(f"{row['order_id']} 保存统计出错 {e}")
+                        report_dic["false"] += 1
+                        continue
+                if order.process_tag != 0 or order.order_status == 0 or order.ori_order_status == '已完成':
+                    order.save()
+                    logging(order, user, LogOriMaintenance, "自动过滤，进行标记更新")
 
             if new_order and order.machine_sn != "unknown" and order.order_status == 1:
                 end_time = order.ori_created_time - datetime.timedelta(days=1)
@@ -1149,6 +1151,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["process_tag__in"] = '0, 1'
         f = MaintenanceFilter(params)
         serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -1156,6 +1159,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
+        params["process_tag__in"] = '0, 1'
         if all_select_tag:
             handle_list = MaintenanceFilter(params).qs
         else:
@@ -1399,7 +1403,11 @@ class MaintenanceSubmitViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 4
                     obj.save()
                     continue
-                obj.order_status = 2
+                if re.match('^99', str(obj.return_mobile)):
+                    obj.order_status = 3
+                else:
+                    obj.order_status = 2
+                obj.mistake_tag = 0
                 obj.save()
                 logging(obj, user, LogMaintenance, "完成统计")
         else:
@@ -1626,6 +1634,7 @@ class MaintenanceSignLabelViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 2
         if all_select_tag:
             handle_list = MaintenanceFilter(params).qs
         else:
@@ -1650,12 +1659,13 @@ class MaintenanceSignLabelViewset(viewsets.ModelViewSet):
         }
         label_category = LabelCategory.objects.filter(name="系统内置")[0]
         if n:
-            if check_list.filter(process_tag__in=[0, 1]).exsits():
-                raise serializers.ValidationError({"error": "存在未处理的单据！"})
-
             for obj in check_list:
+                if re.match('^99', str(obj.return_mobile)):
+                    obj.order_status = 3
+                    obj.save()
+                    continue
                 if obj.add_labels:
-                    add_labels = str(obj.add_label).split()
+                    add_labels = str(obj.add_labels).split()
                     add_error_tag = 0
                     for label in add_labels:
                         _q_label = Label.objects.filter(name=str(label))
@@ -1667,15 +1677,26 @@ class MaintenanceSignLabelViewset(viewsets.ModelViewSet):
                                 add_error_tag = 1
                                 break
                         else:
+                            serial_number = re.sub("[- .:]", "", str(datetime.datetime.now()))
+                            code = serial_number
                             label_data = {
                                 "name": label,
                                 "group": "SVC",
-                                "category": label_category
+                                "category": label_category,
+                                "creator": user.username,
+                                "memo": "维修单打标自动创建",
+                                "code": code,
                             }
-                            label_serializer = LabelSerializer(data=label_data)
-                            label_serializer.is_valid()
-                            label_serializer.save()
-                            label_obj = label_serializer.instance
+                            try:
+
+                                label_obj = Label.objects.create(**label_data)
+                                label_obj.code = "%s-%s" % (label_obj.group, label_obj.id)
+                                label_obj.save()
+                                logging(label_obj, user, LogLabel, "创建")
+                            except Exception as e:
+                                data["error"].append(f"创建标签 {str(label)} 失败")
+                                obj.mistake_tag = 6
+                                break
 
                         _q_check_add_label_order = QueryLabel(label_obj, obj.customer)
                         if not _q_check_add_label_order:
@@ -1693,7 +1714,6 @@ class MaintenanceSignLabelViewset(viewsets.ModelViewSet):
                 obj.order_status = 4
                 obj.save()
                 logging(obj, user, LogMaintenance, "完成打标")
-                # todo: 完善审核逻辑
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1715,44 +1735,117 @@ class MaintenanceSignLabelViewset(viewsets.ModelViewSet):
         label_category = LabelCategory.objects.filter(name="系统内置")[0]
         if n:
             for obj in check_list:
-                if obj.province and obj.city:
-                    add_labels = [obj.province.name, obj.city.name]
-                    add_error_tag = 0
-                    for label in add_labels:
-                        _q_label = Label.objects.filter(name=str(label))
-                        if _q_label.exists():
-                            label_obj = _q_label[0]
-                            if label_obj.is_cancel:
-                                data["error"].append(f"必须先恢复标签 {str(label_obj.name)} 后再操作")
-                                add_error_tag = 1
-                                break
-                        else:
-                            label_data = {
-                                "name": label,
-                                "group": "PPL",
-                                "category": label_category
-                            }
-                            label_serializer = LabelSerializer(data=label_data)
-                            label_serializer.is_valid()
-                            label_serializer.save()
-                            label_obj = label_serializer.instance
+                if re.match('^99', str(obj.return_mobile)):
+                    obj.order_status = 3
+                    obj.save()
+                    continue
+                if obj.province:
+                    label = obj.province.name
+                    _q_label = Label.objects.filter(name=str(label))
+                    if _q_label.exists():
+                        label_obj = _q_label[0]
+                        if label_obj.is_cancel:
+                            data["error"].append(f"必须先恢复标签 {str(label_obj.name)} 后再操作")
+                            n -= 1
+                            continue
+                    else:
+                        serial_number = re.sub("[- .:]", "", str(datetime.datetime.now()))
+                        code = serial_number
+                        label_data = {
+                            "name": label,
+                            "group": "PPL",
+                            "category": label_category,
+                            "creator": user.username,
+                            "memo": "维修单打标自动创建",
+                            "code": code,
+                        }
+                        try:
 
-                        _q_check_add_label_order = QueryLabel(label_obj, obj.customer)
-                        if not _q_check_add_label_order:
-                            _created_result = CreateLabel(label_obj, obj.customer, user)
-                            if not _created_result:
-                                data["error"].append(f"{obj.customer.name} 创建标签 {str(label_obj.name)} 失败")
-                                add_error_tag = 1
-                                break
+                            label_obj = Label.objects.create(**label_data)
+                            label_obj.code = "%s-%s" % (label_obj.group, label_obj.id)
+                            label_obj.save()
+                            logging(label_obj, user, LogLabel, "创建")
+                        except Exception as e:
+                            data["error"].append(f"创建标签 {str(label)} 失败")
+                            n -= 1
+                            continue
+
+                    if str(label_obj.name) not in obj.add_labels:
+                        obj.add_labels = f'{obj.add_labels} {label_obj.name}'
+                        obj.save()
+                        logging(obj, user, LogMaintenance, f"添加标签{label_obj.name}")
                 else:
                     data["error"].append(f"单据省市区不全")
                     n -= 1
                     continue
-                if add_error_tag:
-                    n -= 1
+
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def sign_product(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "tag_successful": 0,
+            "error": []
+        }
+        label_category = LabelCategory.objects.filter(name="系统内置")[0]
+        if n:
+            for obj in check_list:
+                if re.match('^99', str(obj.return_mobile)):
+                    obj.order_status = 3
                     obj.save()
                     continue
-                # todo: 完善审核逻辑
+
+                year = str(obj.purchase_time.year)
+                if not re.match("^20", year):
+                    data["error"].append(f"{obj.id}购买时间错误，无法添加货品标签")
+                    n -= 1
+                    continue
+                goods_name = str(obj.goods.name).replace(' ', '')
+                label = f'{year}-{goods_name}'
+
+                _q_label = Label.objects.filter(name=str(label))
+                if _q_label.exists():
+                    label_obj = _q_label[0]
+                    if label_obj.is_cancel:
+                        data["error"].append(f"必须先恢复标签 {str(label_obj.name)} 后再操作")
+                        n -= 1
+                        continue
+                else:
+                    serial_number = re.sub("[- .:]", "", str(datetime.datetime.now()))
+                    code = serial_number
+                    label_data = {
+                        "name": label,
+                        "group": "PROD",
+                        "category": label_category,
+                        "creator": user.username,
+                        "memo": "维修单打标自动创建",
+                        "code": code,
+                    }
+                    try:
+                        label_obj = Label.objects.create(**label_data)
+                        label_obj.code = "%s-%s" % (label_obj.group, label_obj.id)
+                        label_obj.save()
+                        logging(label_obj, user, LogLabel, "创建")
+                    except Exception as e:
+                        data["error"].append(f"创建标签 {str(label_obj.name)} 失败")
+                        n -= 1
+                        continue
+
+                if str(label_obj.name) not in obj.add_labels:
+                    obj.add_labels = f'{obj.add_labels} {label_obj.name}'
+                    obj.save()
+                    logging(obj, user, LogMaintenance, f"添加标签{label_obj.name}")
+
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -2100,6 +2193,33 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
         return Response(data)
 
     @action(methods=['patch'], detail=False)
+    def ori_recount(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                start_time = datetime.datetime.combine(obj.summary_date, datetime.datetime.min.time())
+                end_time = start_time + datetime.timedelta(days=1)
+                created_data = OriMaintenance.objects.filter(ori_created_time__gt=start_time, ori_created_time__lt=end_time, order_status__gt=0)
+                obj.created_count_p = created_data.filter(is_part=True).count()
+                obj.created_count = created_data.filter(is_part=False).count()
+                obj.repeat_count = created_data.filter(is_repeated=True).count()
+
+                obj.save()
+                logging(obj, user, LogMaintenanceSummary, "手工更新统计数据")
+        else:
+            raise serializers.ValidationError("没有可更新的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def get_log_details(self, request, *args, **kwargs):
         id = request.data.get("id", None)
         if not id:
@@ -2130,23 +2250,6 @@ class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
         "GET": ['service.view_orimaintenance']
-    }
-
-    except_function_dict = {
-        "已取消": "handle_cancel",
-        "待审核": "handle_check",
-        "逆向待推送": "handle_error",
-        "逆向推送失败": "handle_error",
-        "待筛单": "handle_error",
-        "不可达": "handle_error",
-        "待取件": "handle_daily",
-        "取件失败": "handle_error",
-        "待入库": "handle_daterange",
-        "待维修": "handle_multidays",
-        "已换新-待打单": "handle_error",
-        "待打印": "handle_daily",
-        "已打印": "handle_daily",
-        "已完成": "handle_completed"
     }
 
     def get_queryset(self):
@@ -2813,4 +2916,33 @@ class MaintenancePartSummaryViewset(viewsets.ModelViewSet):
         instance = MaintenancePartSummary.objects.filter(id=id)[0]
         ret = getlogs(instance, LogMaintenancePartSummary)
         return Response(ret)
+
+
+class ServiceOrderChartViewset(viewsets.ViewSet, mixins.ListModelMixin):
+    permission_classes = (IsAuthenticated, )
+    def list(self, request, *args, **kwargs):
+
+        data = {
+            "card1": {
+                "cck": 2,
+                "ccm": 3
+            },
+            "ppc": "ok"
+        }
+        a= 2
+        b =3
+        # user = request.user
+        # params = request.data
+        # params.pop("page", None)
+        # all_select_tag = params.pop("allSelectTag", None)
+        # if all_select_tag:
+        #     handle_list = MaintenanceSummaryFilter(params).qs
+        # else:
+        #     order_ids = params.pop("ids", None)
+        #     if order_ids:
+        #         handle_list = MaintenanceSummary.objects.filter(id__in=order_ids)
+        #     else:
+        #         handle_list = []
+
+        return response.Response(data)
 
