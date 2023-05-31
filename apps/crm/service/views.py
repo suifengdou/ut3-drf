@@ -547,7 +547,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['service.view_orimaintenance']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
@@ -2249,7 +2249,7 @@ class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['service.view_orimaintenance']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
@@ -2620,7 +2620,7 @@ class OriMaintenanceGoodsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['service.view_orimaintenance']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
@@ -2668,7 +2668,7 @@ class MaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['service.view_orimaintenance']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
@@ -2790,7 +2790,7 @@ class MaintenanceGoodsViewset(viewsets.ModelViewSet):
     filter_fields = "__all__"
     permission_classes = (IsAuthenticated, Permissions)
     extra_perm_map = {
-        "GET": ['service.view_orimaintenance']
+        "GET": ['service.view_maintenance']
     }
 
     def get_queryset(self):
