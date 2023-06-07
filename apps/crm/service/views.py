@@ -285,7 +285,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             "送修类型": "transport_type",
             "序列号": "machine_sn",
             "换新序列号": "new_machine_sn",
-            "关联订单号": "send_order_id",
+            "发货订单编号": "send_order_id",
             "保修结束语": "appraisal",
             "关联店铺": "shop",
             "购买时间": "purchase_time",
@@ -327,7 +327,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             df = pd.read_excel(_file, sheet_name=0, dtype=str)
 
             FILTER_FIELDS = ["保修单号", "保修单状态", "收发仓库", "处理登记人", "保修类型", "故障类型", "送修类型", "序列号",
-                             "换新序列号", "关联订单号", "保修结束语", "关联店铺", "购买时间", "创建时间", "创建人", "审核时间",
+                             "换新序列号", "发货订单编号", "保修结束语", "关联店铺", "购买时间", "创建时间", "创建人", "审核时间",
                              "审核人", "保修完成时间", "保修金额", "保修数量", "最后修改时间", "客户网名", "寄件客户姓名",
                              "寄件客户手机", "寄件客户省市县", "寄件客户地址", "收件物流公司", "收件物流单号", "收件备注",
                              "寄回客户姓名", "寄回客户手机", "寄回省市区", "寄回地址", "寄件指定物流公司", "寄件物流单号",
@@ -654,14 +654,24 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
 
                 if obj.maintenance_type == "以旧换新":
                     n -= 1
-                    data["false"] += 1
+                    data["discard"] += 1
                     obj.mistake_tag = 8
+                    obj.order_status = 2
                     obj.save()
                     continue
-
-                _spilt_addr = PickOutAdress(obj.return_area)
-                _rt_addr = _spilt_addr.pickout_addr()
-                if not isinstance(_rt_addr, dict):
+                try:
+                    _spilt_addr = PickOutAdress(obj.return_area)
+                    _rt_addr = _spilt_addr.pickout_addr()
+                    if not isinstance(_rt_addr, dict):
+                        _spilt_addr = PickOutAdress(obj.return_address)
+                        _rt_addr = _spilt_addr.pickout_addr()
+                        if not isinstance(_rt_addr, dict):
+                            n -= 1
+                            data['error'].append(f"{obj.order_id}寄回区域无法提取省市")
+                            obj.mistake_tag = 9
+                            obj.save()
+                            continue
+                except Exception as e:
                     n -= 1
                     data['error'].append(f"{obj.order_id}寄回区域无法提取省市")
                     obj.mistake_tag = 9
@@ -673,18 +683,21 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                 order_fields = ["ori_order", "order_id", "maintenance_type", "fault_type", "machine_sn", "is_repeated",
                                 "appraisal", "description", "buyer_nick", "return_name", "return_mobile", "goods",
                                 "is_guarantee", "charge_status", "charge_amount", "charge_memory", "ori_creator",
-                                "ori_created_time", "completer", "finish_time", "purchase_time", "memo"]
+                                "ori_created_time", "completer", "finish_time", "purchase_time", "memo", "return_address"]
                 for field in order_fields:
                     setattr(order, field, getattr(obj, field, None))
-                _q_maintenance_count = OriMaintenance.objects.filter(machine_sn=obj.machine_sn, order_status=2)
-                maintenance_count = _q_maintenance_count.count() + 1
-                if not order.is_repeated:
-                    order.process_tag = 2
-                if not re.match('^99\d+', str(obj.return_mobile)):
-                    order.add_labels = f"保修{maintenance_count}次"
-                    if order.is_repeated:
-                        repeated_count = _q_maintenance_count.filter(is_repeated=True).count() + 1
-                        order.add_labels = f"{order.add_labels} 返修{repeated_count}次"
+                if obj.machine_sn == 'unknown' and not re.match('^99\d+', str(obj.return_mobile)):
+                    order.add_labels = "保修1次"
+                else:
+                    _q_maintenance_count = OriMaintenance.objects.filter(machine_sn=obj.machine_sn, order_status=2)
+                    maintenance_count = _q_maintenance_count.count() + 1
+                    if not order.is_repeated:
+                        order.process_tag = 2
+                    if not re.match('^99\d+', str(obj.return_mobile)):
+                        order.add_labels = f"保修{maintenance_count}次"
+                        if order.is_repeated:
+                            repeated_count = _q_maintenance_count.filter(is_repeated=True).count() + 1
+                            order.add_labels = f"{order.add_labels} 返修{repeated_count}次"
                 try:
                     order.ori_order = obj
                     order.creator = request.user.username
@@ -875,7 +888,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                         obj.mistake_tag = 1
                         obj.save()
                         continue
-                    _q_goods = Goods.objects.filter(name=name, goods_attribute=1)
+                    _q_goods = Goods.objects.filter(name__icontains=name, goods_attribute=1)
                     if _q_goods.exists():
                         obj.goods = _q_goods[0]
                         obj.save()
@@ -2133,7 +2146,7 @@ class MaintenanceSummaryViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return MaintenanceSummary.objects.none()
-        queryset = MaintenanceSummary.objects.all().order_by("-id")
+        queryset = MaintenanceSummary.objects.all().order_by("-summary_date")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -2360,6 +2373,7 @@ class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
     def check(self, request, *args, **kwargs):
         user = request.user
         params = request.data
+        params.pop("finish_time", None)
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
@@ -2921,16 +2935,13 @@ class MaintenancePartSummaryViewset(viewsets.ModelViewSet):
 class ServiceOrderChartViewset(viewsets.ViewSet, mixins.ListModelMixin):
     permission_classes = (IsAuthenticated, )
     def list(self, request, *args, **kwargs):
+        params = request.data
+        if not params:
+            queryset = MaintenanceSummary.objects.all().order_by("-summary_date")[:7]
+        else:
+            queryset = MaintenanceSummaryFilter(params).qs
+        data = queryset.values("summary_date", "created_count_p", "created_count", "finished_count_p", "finished_count", "repeat_count", "fault_count")
 
-        data = {
-            "card1": {
-                "cck": 2,
-                "ccm": 3
-            },
-            "ppc": "ok"
-        }
-        a= 2
-        b =3
         # user = request.user
         # params = request.data
         # params.pop("page", None)

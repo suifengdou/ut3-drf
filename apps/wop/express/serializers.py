@@ -1,8 +1,9 @@
 import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import ExpressWorkOrder, EWOPhoto
+from .models import ExpressWorkOrder, EWOPhoto, LogExpressOrder
 from apps.base.goods.models import Goods
+from apps.utils.logging.loggings import logging
 
 
 class ExpressWorkOrderSerializer(serializers.ModelSerializer):
@@ -171,14 +172,23 @@ class ExpressWorkOrderSerializer(serializers.ModelSerializer):
         _q_express_order = self.Meta.model.objects.filter(track_id=validated_data["track_id"])
         if _q_express_order.exists():
             raise serializers.ValidationError("相同快递单号只可创建一次工单！")
-        work_order = self.Meta.model.objects.create(**validated_data)
-        return work_order
+        instance = self.Meta.model.objects.create(**validated_data)
+        user = self.context["request"].user
+        logging(instance, user, LogExpressOrder, "创建")
+        return instance
 
     def update(self, instance, validated_data):
+        user = self.context["request"].user
         validated_data["updated_time"] = datetime.datetime.now()
-        created_time = validated_data.pop("created_time", "")
-        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if value != check_value:
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
 
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        logging(instance, user, LogExpressOrder, "修改内容：%s" % str(content))
         return instance
 
 
@@ -208,3 +218,7 @@ class EWOPhotoSerializer(serializers.ModelSerializer):
         created_time = validated_data.pop("created_time", "")
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
+
+
+
+

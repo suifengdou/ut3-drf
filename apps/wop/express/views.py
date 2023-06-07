@@ -9,7 +9,7 @@ from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
-from .models import ExpressWorkOrder, EWOPhoto
+from .models import ExpressWorkOrder, EWOPhoto, LogExpressOrder
 from .serializers import ExpressWorkOrderSerializer, EWOPhotoSerializer
 from .filters import ExpressWorkOrderFilter, EWOPhotoFilter
 from ut3.settings import EXPORT_TOPLIMIT
@@ -18,6 +18,7 @@ import oss2
 from ut3.settings import OSS_CONFIG
 from itertools import islice
 from apps.utils.oss.aliyunoss import AliyunOSS
+from apps.utils.logging.loggings import getlogs, logging
 
 
 class EWOCreateViewset(viewsets.ModelViewSet):
@@ -85,6 +86,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -104,6 +106,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
 
                 obj.order_status = 2
                 obj.save()
+                logging(obj, user, LogExpressOrder, "提交工单")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -286,6 +289,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
                 photo_order.workorder = work_order
                 photo_order.creator = request.user.username
                 photo_order.save()
+                logging(obj, work_order, LogExpressOrder, "上传图片")
             data = {
                 "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
                 "error": file_urls["error"]
@@ -364,6 +368,42 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         return handle_list
 
     @action(methods=['patch'], detail=False)
+    def batchtext(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        update_data = params.pop("data", None)
+        if not update_data:
+            raise serializers.ValidationError("批量修改内容为空！")
+        batch_list = self.get_handle_list(params)
+        n = len(batch_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        keys = list(update_data.keys())
+        if len(keys) != 1:
+            raise serializers.ValidationError("批量修改内容错误！")
+        key = str(keys[0])
+        current_time = datetime.datetime.now().date()
+        update_data[key] = f"{update_data[key]}{{{user.username}-{current_time}}}"
+        if n:
+            for obj in batch_list:
+                origin_data = getattr(obj, key, None)
+                if origin_data:
+                    update_value = "%s %s" % (origin_data, update_data[key])
+                else:
+                    update_value = update_data[key]
+                setattr(obj, key, update_value)
+                obj.save()
+                logging(obj, user, LogExpressOrder, "{%s}:%s替换为%s" % (key, origin_data, update_data[key]))
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(batch_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def set_return(self, request, *args, **kwargs):
         params = request.data
         check_list = self.get_handle_list(params)
@@ -373,10 +413,11 @@ class EWOHandleViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
-        current_time = datetime.datetime.now()
-        user = request.user.username
+        user = request.user
         if n:
             check_list.update(is_return=True)
+            for obj in check_list:
+                logging(obj, user, LogExpressOrder, "批量设置返回")
         else:
             raise serializers.ValidationError("没有可处理的单据！")
         data["successful"] = n
@@ -385,6 +426,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_return_trackid(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -399,35 +441,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
                 try:
                     obj.save()
                     data["successful"] += 1
-                except Exception as e:
-                    data["error"].append(e)
-        else:
-            raise serializers.ValidationError("没有可处理的单据！")
-        data["false"] = len(check_list) - data["successful"]
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def set_suggestion(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        current_time = datetime.datetime.now()
-        user = request.user.username
-        suggestion_content = "已知悉，已处理完毕。{%s-%s}" % (str(user), str(current_time)[:19])
-        if n:
-            for obj in check_list:
-                if obj.suggestion:
-                    obj.suggestion = '%s~%s' % (obj.suggestion, suggestion_content)
-                else:
-                    obj.suggestion = suggestion_content
-                try:
-                    obj.save()
-                    data["successful"] += 1
+                    logging(obj, user, LogExpressOrder, "批量设置原单号退回")
                 except Exception as e:
                     data["error"].append(e)
         else:
@@ -437,6 +451,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_lossing(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -447,6 +462,8 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         }
         if n:
             check_list.update(process_tag=7)
+            for obj in check_list:
+                logging(obj, user, LogExpressOrder, "设置丢件标记")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -455,6 +472,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -465,6 +483,8 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         }
         if n:
             check_list.update(process_tag=0)
+            for obj in check_list:
+                logging(obj, user, LogExpressOrder, "恢复标记为默认")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -473,6 +493,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -516,6 +537,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
                 obj.order_status = 3
                 obj.mistake_tag = 0
                 obj.save()
+                logging(obj, user, LogExpressOrder, "处理完成单据")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -524,6 +546,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
@@ -542,6 +565,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
                     continue
                 obj.order_status = 1
                 obj.save()
+                logging(obj, user, LogExpressOrder, "驳回单据到创建")
 
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
@@ -551,6 +575,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def photo_import(self, request, *args, **kwargs):
+        user = request.user
         files = request.FILES.getlist("files", None)
         id = request.data.get('id', None)
         if id:
@@ -568,8 +593,9 @@ class EWOHandleViewset(viewsets.ModelViewSet):
                 photo_order = EWOPhoto()
                 photo_order.url = obj["url"]
                 photo_order.workorder = work_order
-                photo_order.creator = request.user.username
+                photo_order.creator = user.username
                 photo_order.save()
+                logging(obj, user, LogExpressOrder, "上传图片成功")
             data = {
                 "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
                 "error": file_urls["error"]
@@ -650,6 +676,7 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -700,6 +727,7 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
                 obj.order_status = 4
                 obj.mistake_tag = 0
                 obj.save()
+                logging(obj, user, LogExpressOrder, "单据执行完毕")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -708,6 +736,7 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
@@ -726,10 +755,47 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
                     continue
                 obj.order_status = 2
                 obj.save()
+                logging(obj, user, LogExpressOrder, "单据驳回到待处理")
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         data["false"] = len(reject_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def batchtext(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        update_data = params.pop("data", None)
+        if not update_data:
+            raise serializers.ValidationError("批量修改内容为空！")
+        batch_list = self.get_handle_list(params)
+        n = len(batch_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        keys = list(update_data.keys())
+        if len(keys) != 1:
+            raise serializers.ValidationError("批量修改内容错误！")
+        key = str(keys[0])
+        current_time = datetime.datetime.now().date()
+        update_data[key] = f"{update_data[key]}{{{user.username}-{current_time}}}"
+        if n:
+            for obj in batch_list:
+                origin_data = getattr(obj, key, None)
+                if origin_data:
+                    update_value = "%s %s" % (origin_data, update_data[key])
+                else:
+                    update_value = update_data[key]
+                setattr(obj, key, update_value)
+                obj.save()
+                logging(obj, user, LogExpressOrder, "{%s}:%s替换为%s" % (key, origin_data, update_data[key]))
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(batch_list) - n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -763,6 +829,7 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_return(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -773,6 +840,8 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
         }
         if n:
             check_list.update(is_return=True)
+            for obj in check_list:
+                logging(obj, user, LogExpressOrder, "批量设置返回")
         else:
             raise serializers.ValidationError("没有可处理的单据！")
         data["successful"] = n
@@ -781,6 +850,7 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_return_trackid(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -795,42 +865,12 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
                 try:
                     obj.save()
                     data["successful"] += 1
+                    logging(obj, user, LogExpressOrder, "批量原单退回")
                 except Exception as e:
                     data["error"].append(e)
         else:
             raise serializers.ValidationError("没有可处理的单据！")
         data["false"] = len(check_list) - data["successful"]
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
-    def photo_import(self, request, *args, **kwargs):
-        files = request.FILES.getlist("files", None)
-        id = request.data.get('id', None)
-        if id:
-            work_order = ExpressWorkOrder.objects.filter(id=id)[0]
-        else:
-            data = {
-                "error": "系统错误联系管理员，无法回传单据ID！"
-            }
-            return Response(data)
-        if files:
-            prefix = "ut3s1/workorder/express"
-            a_oss = AliyunOSS(prefix, files)
-            file_urls = a_oss.upload()
-            for obj in file_urls["urls"]:
-                photo_order = EWOPhoto()
-                photo_order.url = obj["url"]
-                photo_order.workorder = work_order
-                photo_order.creator = request.user.username
-                photo_order.save()
-            data = {
-                "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
-                "error": file_urls["error"]
-            }
-        else:
-            data = {
-                "error": "上传文件未找到！"
-            }
         return Response(data)
 
 
@@ -886,6 +926,7 @@ class EWOCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_appointment(self, request, *args, **kwargs):
+        user = request.user
         days = request.data.get("days", None)
         id = request.data.get("id", None)
         today = datetime.datetime.now()
@@ -899,11 +940,13 @@ class EWOCheckViewset(viewsets.ModelViewSet):
             order.handling_status = 1
             order.save()
             data["successful"] = 1
+            logging(order, user, LogExpressOrder, "向后延迟检查时间")
 
         return Response(data)
 
     @action(methods=['patch'], detail=False)
     def set_recover(self, request, *args, **kwargs):
+        user = request.user
         id = request.data.get("id", None)
         today = datetime.datetime.now()
         data = {"successful": 0}
@@ -913,6 +956,7 @@ class EWOCheckViewset(viewsets.ModelViewSet):
             order.handling_status = 0
             order.save()
             data["successful"] = 1
+            logging(order, user, LogExpressOrder, "重置延迟时间到当前")
         return Response(data)
 
     def get_handle_list(self, params):
@@ -931,6 +975,7 @@ class EWOCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -946,6 +991,7 @@ class EWOCheckViewset(viewsets.ModelViewSet):
                 else:
                     order.order_status = 6
                 order.save()
+                logging(order, user, LogExpressOrder, "复核完成单据")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -954,6 +1000,7 @@ class EWOCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
@@ -966,6 +1013,7 @@ class EWOCheckViewset(viewsets.ModelViewSet):
             for obj in reject_list:
                 obj.order_status = 3
                 obj.save()
+                logging(obj, user, LogExpressOrder, "驳回单据到待执行")
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -1028,6 +1076,7 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def check(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1038,6 +1087,8 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
         }
         if n:
             check_list.update(order_status=6)
+            for obj in check_list:
+                logging(obj, user, LogExpressOrder, "财审完成")
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1045,6 +1096,7 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
@@ -1057,6 +1109,7 @@ class EWOFinanceHandleViewset(viewsets.ModelViewSet):
             for obj in reject_list:
                 obj.order_status = 4
                 obj.save()
+                logging(obj, user, LogExpressOrder, "驳回单据到复核")
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -1108,6 +1161,15 @@ class EWOManageViewset(viewsets.ModelViewSet):
         serializer = ExpressWorkOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = ExpressWorkOrder.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogExpressOrder)
+        return Response(ret)
+
 
 class EWOPhotoViewset(viewsets.ModelViewSet):
     """
@@ -1147,14 +1209,15 @@ class EWOPhotoViewset(viewsets.ModelViewSet):
             "false": 0,
             "error": []
         }
-        user = request.user.username
+        user = request.user
         if id:
-            photo_order = EWOPhoto.objects.filter(id=id, creator=user, is_delete=False)
+            photo_order = EWOPhoto.objects.filter(id=id, creator=user.username, is_delete=False)
             if photo_order.exists():
                 photo_order = photo_order[0]
                 photo_order.is_delete = 1
                 photo_order.save()
                 data["successful"] += 1
+                logging(photo_order.workorder, user, LogExpressOrder, "删除图片")
             else:
                 data["false"] += 1
                 data["error"].append("只有创建者才有删除权限")

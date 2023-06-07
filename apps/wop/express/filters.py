@@ -7,7 +7,7 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
-from .models import ExpressWorkOrder, EWOPhoto
+from .models import ExpressWorkOrder, EWOPhoto, LogExpressOrder
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
@@ -41,4 +41,11 @@ class EWOPhotoFilter(django_filters.FilterSet):
         model = EWOPhoto
         fields = "__all__"
 
+
+class LogExpressOrderFilter(django_filters.FilterSet):
+    created_time = django_filters.DateTimeFromToRangeFilter()
+
+    class Meta:
+        model = LogExpressOrder
+        fields = "__all__"
 

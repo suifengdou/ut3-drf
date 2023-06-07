@@ -235,7 +235,6 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
-
     def get_process_tag(self, instance):
         status_list = {
             0: "未锁定",
@@ -252,11 +251,31 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_fault_cause(self, instance):
+        status_list = {
+            0: "正常",
+            1: "产品",
+            2: "维修",
+            3: "客服",
+            4: "快递",
+            5: "用户",
+            99: "其他",
+        }
+        try:
+            ret = {
+                "id": instance.fault_cause,
+                "name": status_list.get(instance.fault_cause, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_order_status(self, instance):
         status_list = {
             0: "已取消",
-            1: "未处理",
-            2: "已递交",
+            1: "未统计",
+            2: "未打标",
+            3: "已完成",
         }
         try:
             ret = {
@@ -278,6 +297,7 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         ret["goods"] = self.get_goods(instance)
         ret["customer"] = self.get_customer(instance)
         ret["process_tag"] = self.get_process_tag(instance)
+        ret["fault_cause"] = self.get_fault_cause(instance)
         ret["order_status"] = self.get_order_status(instance)
         return ret
 
@@ -309,8 +329,9 @@ class MaintenanceSerializer(serializers.ModelSerializer):
 
 class MaintenanceSummarySerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    summary_date_range = serializers.JSONField(required=False)
 
     class Meta:
         model = MaintenanceSummary

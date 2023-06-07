@@ -290,7 +290,7 @@ class Maintenance(models.Model):
         (0, '已取消'),
         (1, '未统计'),
         (2, '未打标'),
-        (4, '已完成'),
+        (3, '已完成'),
     )
 
     PROCESS_LIST = (
@@ -307,6 +307,7 @@ class Maintenance(models.Model):
         (3, '客服'),
         (4, '快递'),
         (5, '用户'),
+        (99, '其他'),
     )
     MISTAKE_LIST = (
         (0, '正常'),
@@ -334,7 +335,7 @@ class Maintenance(models.Model):
     description = models.CharField(max_length=500, verbose_name='故障描述', help_text='故障描述')
 
     return_name = models.CharField(max_length=100, verbose_name='寄回姓名', help_text='寄件客户姓名')
-    return_mobile = models.CharField(max_length=50, verbose_name='寄回手机', help_text='寄件客户手机')
+    return_mobile = models.CharField(max_length=50, db_index=True, verbose_name='寄回手机', help_text='寄件客户手机')
     province = models.ForeignKey(Province, on_delete=models.CASCADE, verbose_name='省', help_text='省')
     city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='市', help_text='市')
     return_address = models.CharField(max_length=200, verbose_name='寄回地址', help_text='寄回地址')
