@@ -54,7 +54,7 @@ class OriInbound(models.Model):
         unique_together = (("order_id", "goods_id"),)
 
     def __str__(self):
-        return self.goods_name
+        return str(self.id)
 
     @classmethod
     def verify_mandatory(cls, columns_key):
@@ -75,7 +75,6 @@ class Inbound(models.Model):
         (1, '未提交'),
         (2, '待审核'),
         (3, '已入账'),
-        (4, '已清账'),
     )
 
     CATEGORY_LIST = (
@@ -114,7 +113,7 @@ class Inbound(models.Model):
         db_table = 'psi_inbound'
 
     def __str__(self):
-        return self.order_id
+        return str(self.id)
 
 
 class InboundDetail(models.Model):
@@ -127,17 +126,17 @@ class InboundDetail(models.Model):
         (4, '已清账'),
     )
 
-    ib_order_id = models.ForeignKey(Inbound, on_delete=models.CASCADE, verbose_name='入库单', help_text='入库单')
-    goods_id = models.CharField(max_length=50, verbose_name='商家编码', help_text='商家编码')
+    order = models.ForeignKey(Inbound, on_delete=models.CASCADE, verbose_name='入库单', help_text='入库单')
     goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品', help_text='货品')
-    quantity = models.IntegerField(verbose_name='调整后数量', help_text='调整后数量')
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, verbose_name='仓库', help_text='仓库')
+    quantity = models.IntegerField(verbose_name='入库数量', help_text='入库数量')
     valid_quantity = models.IntegerField(default=0, verbose_name='可用数量', help_text='可用数量')
-    memorandum = models.CharField(null=True, blank=True, max_length=150, verbose_name='备注', help_text='备注')
+    froze_quantity = models.IntegerField(default=0, verbose_name='冻结数量', help_text='冻结数量')
+    memo = models.CharField(null=True, blank=True, max_length=150, verbose_name='备注', help_text='备注')
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='审核入库时间', help_text='审核入库时间')
-    order_status = models.IntegerField(choices=STATUS_LIST, default=1, verbose_name='单据状态', help_text='单据状态')
-    volume = models.FloatField(null=True, blank=True, verbose_name='体积', help_text='体积')
-    weight = models.FloatField(null=True, blank=True, verbose_name='重量', help_text='重量')
 
+    order_status = models.IntegerField(choices=STATUS_LIST, default=1, verbose_name='单据状态', help_text='单据状态')
+    is_complelted = models.BooleanField(default=False, verbose_name='入库标记', help_text='入库标记')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
@@ -147,11 +146,10 @@ class InboundDetail(models.Model):
         verbose_name = 'PSI-入库单明细'
         verbose_name_plural = verbose_name
         db_table = 'psi_inbound_detail'
-        unique_together = (("ib_order_id", "goods_name"),)
+        unique_together = (("order", "goods_name"),)
 
     def __str__(self):
-        return str(self.goods_id)
-
+        return str(self.id)
 
 
 class InboundVerify(models.Model):

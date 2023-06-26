@@ -270,6 +270,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def photo_import(self, request, *args, **kwargs):
+        user = request.user
         files = request.FILES.getlist("files", None)
         id = request.data.get('id', None)
         if id:
@@ -289,7 +290,7 @@ class EWOCreateViewset(viewsets.ModelViewSet):
                 photo_order.workorder = work_order
                 photo_order.creator = request.user.username
                 photo_order.save()
-                logging(obj, work_order, LogExpressOrder, "上传图片")
+                logging(work_order, user, LogExpressOrder, "上传图片")
             data = {
                 "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
                 "error": file_urls["error"]
@@ -471,6 +472,42 @@ class EWOHandleViewset(viewsets.ModelViewSet):
         return Response(data)
 
     @action(methods=['patch'], detail=False)
+    def batch_sign(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        process_tag = params.pop("set_process_tag", None)
+        if not process_tag:
+            raise serializers.ValidationError({"系统错误": "未传入正确的标记代码！"})
+        sign_list = self.get_handle_list(params)
+        n = len(sign_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        SIGN_LIST = {
+            0: '清标记',
+            1: '待截单',
+            2: '签复核',
+            3: '改地址',
+            4: '催派查',
+            5: '丢件核',
+            6: '纠纷中',
+            7: '需理赔',
+            8: '其他类',
+        }
+        if n:
+            process_tag_name = SIGN_LIST.get(process_tag, None)
+            for obj in sign_list:
+                obj.process_tag = process_tag
+                obj.save()
+                logging(obj, user, LogExpressOrder, f'批量设置标记为：{process_tag_name}')
+        else:
+            raise serializers.ValidationError("没有可清除的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def recover(self, request, *args, **kwargs):
         user = request.user
         params = request.data
@@ -595,7 +632,7 @@ class EWOHandleViewset(viewsets.ModelViewSet):
                 photo_order.workorder = work_order
                 photo_order.creator = user.username
                 photo_order.save()
-                logging(obj, user, LogExpressOrder, "上传图片成功")
+                logging(work_order, user, LogExpressOrder, "上传图片成功")
             data = {
                 "sucessful": "上传文件成功 %s 个" % len(file_urls["urls"]),
                 "error": file_urls["error"]
@@ -796,6 +833,42 @@ class EWOExecuteViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
         data["false"] = len(batch_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def batch_sign(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        process_tag = params.pop("set_process_tag", None)
+        if not process_tag:
+            raise serializers.ValidationError({"系统错误": "未传入正确的标记代码！"})
+        sign_list = self.get_handle_list(params)
+        n = len(sign_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        SIGN_LIST = {
+            0: '清标记',
+            1: '待截单',
+            2: '签复核',
+            3: '改地址',
+            4: '催派查',
+            5: '丢件核',
+            6: '纠纷中',
+            7: '需理赔',
+            8: '其他类',
+        }
+        if n:
+            process_tag_name = SIGN_LIST.get(process_tag, None)
+            for obj in sign_list:
+                obj.process_tag = process_tag
+                obj.save()
+                logging(obj, user, LogExpressOrder, f'批量设置标记为：{process_tag_name}')
+        else:
+            raise serializers.ValidationError("没有可清除的单据！")
+        data["successful"] = n
         return Response(data)
 
     @action(methods=['patch'], detail=False)

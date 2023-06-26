@@ -25,6 +25,7 @@ from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.utils.geography.tools import PickOutAdress
+from ut3.settings import EXPORT_TOPLIMIT
 
 
 class OriCallLogSubmitViewset(viewsets.ModelViewSet):
@@ -64,7 +65,7 @@ class OriCallLogSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = OriCallLogFilter(params)
-        serializer = OriCallLogSerializer(f.qs, many=True)
+        serializer = OriCallLogSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -485,7 +486,7 @@ class OriCallLogCheckViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 2
         f = OriCallLogFilter(params)
-        serializer = OriCallLogSerializer(f.qs, many=True)
+        serializer = OriCallLogSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -660,7 +661,7 @@ class OriCallLogViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = OriCallLogFilter(params)
-        serializer = OriCallLogSerializer(f.qs, many=True)
+        serializer = OriCallLogSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1056,7 +1057,7 @@ class CallLogHandleViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = CallLogFilter(params)
-        serializer = CallLogSerializer(f.qs, many=True)
+        serializer = CallLogSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1168,7 +1169,7 @@ class CallLogExecuteViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = CallLogFilter(params)
-        serializer = CallLogSerializer(f.qs, many=True)
+        serializer = CallLogSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1279,7 +1280,7 @@ class CallLogCheckViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 3
         f = CallLogFilter(params)
-        serializer = CallLogSerializer(f.qs, many=True)
+        serializer = CallLogSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1382,7 +1383,7 @@ class CallLogViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = CallLogFilter(params)
-        serializer = CallLogSerializer(f.qs, many=True)
+        serializer = CallLogSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):

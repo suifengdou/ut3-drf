@@ -49,7 +49,6 @@ class ExpressWorkOrder(models.Model):
         (6, '纠纷中'),
         (7, '需理赔'),
         (8, '其他类'),
-
     )
     HANDLINGS = (
         (0, '未处理'),

@@ -2,13 +2,11 @@ from django.db import models
 from apps.base.warehouse.models import Warehouse
 from apps.base.goods.models import Goods
 
-# Create your models here.
 
 class Inventory(models.Model):
     goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品')
     goods_id = models.CharField(max_length=30, verbose_name='货品编码')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, verbose_name='仓库')
-
 
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')

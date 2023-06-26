@@ -235,6 +235,26 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_mistake_tag(self, instance):
+        mistake_list = {
+            0: "正常",
+            1: "未查询到缺陷单",
+            2: "返修单据未锁定缺陷",
+            3: "缺陷单据未确认原因",
+            4: "保存统计出错",
+            5: "打标标签被禁用",
+            6: "创建客户标签失败",
+            7: "缺陷单据未注明原因说明",
+        }
+        try:
+            ret = {
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def get_process_tag(self, instance):
         status_list = {
             0: "未锁定",
@@ -299,6 +319,7 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         ret["process_tag"] = self.get_process_tag(instance)
         ret["fault_cause"] = self.get_fault_cause(instance)
         ret["order_status"] = self.get_order_status(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
         return ret
 
     def create(self, validated_data):
@@ -407,13 +428,14 @@ class OriMaintenanceGoodsSerializer(serializers.ModelSerializer):
     def get_mistake_tag(self, instance):
         mistake_list = {
             0: "正常",
-            1: "尝试修复数据",
-            2: "二级市错误",
-            3: "寄件地区出错",
-            4: "UT无此店铺",
-            5: "UT此型号整机未创建",
-            6: "UT系统无此店铺",
-            7: "递交到保修单错乱",
+            1: "手机格式错误无法解密",
+            2: "信息缺失无法解密",
+            3: "不存在对应的保修单",
+            4: "手机格式错误无法解密",
+            5: "保修单未递交不可审核",
+            6: "不可重复递交",
+            7: "UT不存在此配件",
+            8: "创建保修货品失败",
         }
         try:
             ret = {

@@ -24,10 +24,25 @@ class ManualOrderFilter(django_filters.FilterSet):
     district__name = django_filters.CharFilter(lookup_expr='exact')
     mobile = django_filters.CharFilter(lookup_expr='icontains')
     memo = django_filters.CharFilter(lookup_expr='icontains')
+    order_category = django_filters.CharFilter(method='multiple_filter')
 
     class Meta:
         model = ManualOrder
         fields = "__all__"
+
+    def multiple_filter(self, queryset, name, *value):
+        condition_list = str(value[0]).split()
+        if len(condition_list) == 1:
+            queryset = queryset.filter(**{name: condition_list[0]})
+        else:
+            _temp_queryset = None
+            for value in condition_list:
+                if _temp_queryset:
+                    _temp_queryset = _temp_queryset | queryset.filter(**{name: value})
+                else:
+                    _temp_queryset = queryset.filter(**{name: value})
+            queryset = _temp_queryset
+        return queryset
 
 
 class MOGoodsFilter(django_filters.FilterSet):
@@ -54,12 +69,26 @@ class ManualOrderExportFilter(django_filters.FilterSet):
     goods_name = django_filters.CharFilter(field_name="goods_name", lookup_expr='icontains')
     warehouse__name = django_filters.CharFilter(field_name="goods_name", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
+    sign_range = django_filters.CharFilter(method='multiple_tag_filter')
 
     class Meta:
         model = ManualOrderExport
         fields = "__all__"
 
-
+    def multiple_tag_filter(self, queryset, name, *value):
+        name = str(name).replace("_range", "")
+        condition_list = str(value[0]).split(",")
+        if len(condition_list) == 1:
+            queryset = queryset.filter(**{name: condition_list[0]})
+        else:
+            _temp_queryset = None
+            for value in condition_list:
+                if _temp_queryset:
+                    _temp_queryset = _temp_queryset | queryset.filter(**{name: value})
+                else:
+                    _temp_queryset = queryset.filter(**{name: value})
+            queryset = _temp_queryset
+        return queryset
 
 
 

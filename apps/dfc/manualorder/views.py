@@ -18,7 +18,7 @@ from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
-from .models import ManualOrder, MOGoods, ManualOrderExport, LogManualOrder, LogManualOrderExport
+from .models import ManualOrder, MOGoods, ManualOrderExport, LogManualOrder, LogManualOrderExport, LogMOGoods
 from .serializers import ManualOrderSerializer, MOGoodsSerializer, ManualOrderExportSerializer
 from .filters import ManualOrderFilter, MOGoodsFilter, ManualOrderExportFilter
 from apps.utils.geography.models import City, District
@@ -57,7 +57,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
         if not self.request:
             return ManualOrder.objects.none()
         department = self.request.user.department
-        queryset = ManualOrder.objects.filter(order_status=1, department=department).order_by("-id")
+        queryset = ManualOrder.objects.filter(order_status=1, order_category__in=[1, 2, 3], department=department).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -68,6 +68,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["department"] = user.department
         params["order_status"] = 1
+        params["order_category"] = '1 2 3'
         f = ManualOrderFilter(params)
         serializer = ManualOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -78,6 +79,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
         params["order_status"] = 1
         department = self.request.user.department
         params["department"] = department
+        params["order_category"] = '1 2 3'
         if all_select_tag:
             handle_list = ManualOrderFilter(params).qs
         else:
@@ -494,7 +496,7 @@ class ManualOrderManageViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request:
             return ManualOrder.objects.none()
-        queryset = ManualOrder.objects.all().order_by("-id")
+        queryset = ManualOrder.objects.filter(order_category__in=[1, 2, 3]).order_by("-id")
         return queryset
 
     @action(methods=['patch'], detail=False)
@@ -502,6 +504,7 @@ class ManualOrderManageViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
+        params["order_category"] = '1 2 3'
         f = ManualOrderFilter(params)
         serializer = ManualOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -626,6 +629,7 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
+        user = request.user
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
@@ -635,19 +639,172 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         for order in f.qs[:4000]:
             order.process_tag = 1
             order.save()
+            logging(order, user, LogManualOrderExport, "导出")
         return Response(serializer.data)
 
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 1
-        params["company"] = self.request.user.company
+        if all_select_tag:
+            handle_list = ManualOrderExportFilter(params).qs[:3000]
+        else:
+            order_ids = params.pop("ids", None)
+            if order_ids:
+                handle_list = ManualOrderExport.objects.filter(id__in=order_ids, order_status=1)
+            else:
+                handle_list = []
+        return handle_list
+
+    @action(methods=['patch'], detail=False)
+    def batch_sign(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        sign = params.pop("set_sign", None)
+        if not sign:
+            raise serializers.ValidationError({"系统错误": "未传入正确的标记代码！"})
+        sign_list = self.get_handle_list(params)
+        n = len(sign_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        SIGN_LIST = {
+            0: '清除标记',
+            1: '先不发货',
+            2: '等待核实',
+            3: '锁定快递',
+            4: '已送礼品',
+            5: '大菜鸟仓',
+            6: '核实退款',
+            7: '库房无货',
+            8: '专项审核',
+            9: '替换货品',
+        }
+        if n:
+            sign_name = SIGN_LIST.get(sign, None)
+            for obj in sign_list:
+                obj.sign = sign
+                obj.save()
+                logging(obj, user, LogManualOrderExport, f'批量设置标记为：{sign_name}')
+        else:
+            raise serializers.ValidationError("没有可清除的单据！")
+        data["successful"] = n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def check(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.process_tag == 1:
+                    obj.ori_order.mogoods_set.all().update(order_status=2)
+                    obj.submit_user = request.user.username
+                    obj.order_status = 2
+                    obj.save()
+                    logging(obj, user, LogManualOrderExport, "审核等待发货")
+                else:
+                    n -= 1
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def reject(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        reject_list = self.get_handle_list(params)
+        n = len(reject_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            for obj in reject_list:
+                obj.process_tag = 0
+                obj.ori_order.order_status = 1
+                obj.ori_order.save()
+                logging(obj.ori_order, user, LogManualOrder, "驳回审核")
+                obj.order_status = 0
+                obj.save()
+                logging(obj, user, LogManualOrderExport, "驳回取消")
+        else:
+            raise serializers.ValidationError("没有可驳回的单据！")
+        data["successful"] = n
+        return Response(data)
+
+
+class ManualOrderExportCheckViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = ManualOrderExportSerializer
+    filter_class = ManualOrderExportFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['manualorder.view_manualorderexport']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return ManualOrderExport.objects.none()
+        queryset = ManualOrderExport.objects.filter(order_status=2).order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 2
+        f = ManualOrderExportFilter(params)
+        serializer = ManualOrderExportSerializer(f.qs[:4000], many=True)
+        return Response(serializer.data)
+
+    @action(methods=['patch'], detail=False)
+    def export_order_id(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status"] = 2
+        f = ManualOrderExportFilter(params)
+        serializer = ManualOrderExportSerializer(f.qs[:500], many=True)
+        return Response(serializer.data)
+
+    def get_handle_list(self, params):
+        params.pop("page", None)
+        all_select_tag = params.pop("allSelectTag", None)
+        params["order_status"] = 2
         if all_select_tag:
             handle_list = ManualOrderExportFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ManualOrderExport.objects.filter(id__in=order_ids, order_status=1)
+                handle_list = ManualOrderExport.objects.filter(id__in=order_ids, order_status=2)
             else:
                 handle_list = []
         return handle_list
@@ -699,6 +856,126 @@ class ManualOrderExportViewset(viewsets.ModelViewSet):
         data["successful"] = n
         return Response(data)
 
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            '订单编号': 'invoice_id',
+            '子单原始单号': 'order_id',
+            '原始子订单号': 'sub_trade_no',
+            '物流公司': 'logistics_name',
+            '物流单号': 'logistics_no',
+            '商家编码': 'goods_id',
+            '发货时间': 'deliver_time',
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["订单编号", '子单原始单号', "原始子订单号", "物流公司", "物流单号", "商家编码", "发货时间"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        user = request.user
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+        for row in resource:
+            order_fields = ["logistics_name", "logistics_no", "sub_trade_no", "invoice_id", "deliver_time"]
+            if not all(list(row.values())):
+                report_dic["error"].append("%s 导出数据关键信息缺失" % row["invoice_id"])
+                report_dic["false"] += 1
+                continue
+            if row["order_id"]:
+                _q_manualorderexport = ManualOrderExport.objects.filter(erp_order_id=row["order_id"])
+                if _q_manualorderexport.exists():
+                    manual_order_export = _q_manualorderexport[0]
+                    manual_order = manual_order_export.ori_order
+                else:
+                    report_dic["error"].append("%s 未找到UT订单" % row["invoice_id"])
+                    report_dic["false"] += 1
+                    continue
+            else:
+                report_dic["error"].append("%s 无UT订单号" % row["invoice_id"])
+                report_dic["false"] += 1
+                continue
+            _q_manualorder_goods = MOGoods.objects.filter(manual_order=manual_order, goods_id=row["goods_id"])
+            if _q_manualorder_goods.exists():
+                manual_order_goods = _q_manualorder_goods[0]
+                for keyword in order_fields:
+                    setattr(manual_order_goods, keyword, row.get(keyword, None))
+                manual_order_goods.order_status = 3
+                manual_order_goods.save()
+                logging(manual_order_goods, user, LogMOGoods, "已发货")
+                report_dic["successful"] += 1
+                _q_check_deliver_order = MOGoods.objects.filter(manual_order=manual_order, order_status=2)
+                if not _q_check_deliver_order.exists():
+                    manual_order.order_status = 3
+                    manual_order.save()
+                    logging(manual_order, user, LogManualOrder, "已发货")
+                manual_order_export.order_status = 3
+                manual_order_export.save()
+                logging(manual_order_export, user, LogManualOrderExport, "已发货")
+            else:
+                report_dic["error"].append("%s 无UT订单货品" % row["invoice_id"])
+                report_dic["false"] += 1
+                continue
+        return report_dic
+
 
 class ManualOrderExportManageViewset(viewsets.ModelViewSet):
     """
@@ -738,7 +1015,14 @@ class ManualOrderExportManageViewset(viewsets.ModelViewSet):
         serializer = ManualOrderExportSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
-
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = ManualOrderExport.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogManualOrderExport)
+        return Response(ret)
 
 
 

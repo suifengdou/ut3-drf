@@ -46,15 +46,7 @@ class JobOrder(models.Model):
         (2, '存在未锁定单据明细'),
         (3, '任务明细非初始状态'),
         (4, '任务全部结束才可审核'),
-        (5, '手机错误'),
-        (6, '无店铺'),
-        (7, '集运仓地址'),
-        (8, '14天内重复'),
-        (9, '14天外重复'),
-        (10, '输出单保存出错'),
-        (11, '货品数量错误'),
-        (12, '无收件人'),
-        (13, '此类型不可发整机'),
+        (5, '任务工单未临时状态'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -129,6 +121,15 @@ class JobOrderDetails(models.Model):
         (6, '标签删除错误'),
         (7, '工单默认标签创建错误'),
         (8, '工单添加标签恢复错误'),
+        (9, '重复递交，已存在手工单据'),
+        (10, '任务内容格式不对'),
+        (11, '任务内容的客户信息格式不对'),
+        (12, '地址无法提取省市区'),
+        (13, '体验发货单创建出错'),
+        (14, 'UT中不存在货品'),
+        (15, '货品错误（无乘号）'),
+        (16, '货品错误(存在多个)'),
+        (17, '体验发货单货品保存出错'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -207,7 +208,7 @@ class JobOrderDetails(models.Model):
 
 
 class JODTOMO(models.Model):
-    obj = models.ForeignKey(JobOrder, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    obj = models.ForeignKey(JobOrderDetails, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
     order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='订单', help_text='订单')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
 
@@ -215,7 +216,7 @@ class JODTOMO(models.Model):
         verbose_name = 'WOP-JOB-任务-工单-明细-订单'
         verbose_name_plural = verbose_name
         unique_together = (("obj", "order"),)
-        db_table = 'wop_job_order_to_manualorder'
+        db_table = 'wop_job_orderdetail_to_manualorder'
 
     def __str__(self):
         return str(self.id)

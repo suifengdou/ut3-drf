@@ -7,7 +7,7 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
-from .models import OriInbound, Inbound, InboundDetail, InboundVerify
+from .models import OriInbound, Inbound, InboundDetail
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
@@ -43,14 +43,6 @@ class InboundDetailFilter(django_filters.FilterSet):
         model = InboundDetail
         fields = "__all__"
 
-
-class InboundVerifyFilter(django_filters.FilterSet):
-    created_time = django_filters.DateTimeFromToRangeFilter()
-    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
-
-    class Meta:
-        model = InboundVerify
-        fields = "__all__"
 
 
 

@@ -33,6 +33,7 @@ from apps.crm.labels.models import LabelCategory, Label, LogLabel
 from apps.crm.labels.serializers import LabelSerializer
 from apps.crm.customerlabel.views import QueryLabel, CreateLabel
 from ut3.settings import EXPORT_TOPLIMIT
+from apps.wop.job.models import JobOrder, LogJobOrder, JobOrderDetails, LogJobOrderDetails, JobCategory, LogJobCategory
 
 
 class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
@@ -95,6 +96,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         params["order_status"] = 1
+        params["ori_order_status"] = '待审核 逆向待推送 逆向推送失败 待筛单 不可达 待取件 取件失败 待入库 待维修 已换新-待打单 待打印 已打印'
         f = OriMaintenanceFilter(params)
         serializer = OriMaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -102,8 +104,9 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["order_status"] = 1
         if all_select_tag:
+            params["order_status"] = 1
+            params["ori_order_status"] = '待审核 逆向待推送 逆向推送失败 待筛单 不可达 待取件 取件失败 待入库 待维修 已换新-待打单 待打印 已打印'
             handle_list = OriMaintenanceFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
@@ -117,6 +120,9 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
     def batch_sign(self, request, *args, **kwargs):
         user = request.user
         params = request.data
+        sign = params.pop("set_sign", None)
+        if not sign:
+            raise serializers.ValidationError({"系统错误": "未传入正确的标记代码！"})
         sign_list = self.get_handle_list(params)
         n = len(sign_list)
         data = {
@@ -125,7 +131,7 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             "error": []
         }
         SIGN_LIST = {
-            0: '无',
+            0: '清除标记',
             1: '处理完毕',
             2: '配件缺货',
             3: '延后处理',
@@ -135,11 +141,9 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
             7: '其他情况',
         }
         if n:
-            standard_order = sign_list.last()
-            standard_sign = standard_order.sign
-            sign_name = SIGN_LIST.get(standard_sign, None)
+            sign_name = SIGN_LIST.get(sign, None)
             for obj in sign_list:
-                obj.sign = standard_sign
+                obj.sign = sign
                 obj.save()
 
                 logging(obj, user, LogOriMaintenance, f'批量设置标记为：{sign_name}')
@@ -183,6 +187,89 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
         return Response(data)
 
     @action(methods=['patch'], detail=False)
+    def decrypt(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "discard": 0,
+            "error": []
+        }
+        if n:
+            for obj in check_list:
+                if obj.is_decrypted:
+                    n -= 1
+                    data['error'].append(f"{obj.order_id}已解密无需解密")
+                    obj.is_decrypted = True
+                    obj.save()
+                    logging(obj, user, LogOriMaintenance, "执行解密成功")
+                    continue
+                _q_customer_info = re.findall('{.*}', str(obj.return_memory))
+                if len(_q_customer_info) == 1:
+                    customer_info = str(_q_customer_info[0])
+                    customer_info = re.sub("[!$%&\'*+,./:：;<=>?，。?★、…【】《》？（）() “”‘’！[\\]^_`{|}~\s]+", "", customer_info)
+                    _q_mobile = re.findall(r'\d{11}', customer_info)
+                    if len(_q_mobile) == 1:
+                        obj.return_mobile = _q_mobile[0]
+                    else:
+                        n -= 1
+                        data['error'].append(f"{obj.order_id}备注格式错误，手机号码错误")
+                        obj.mistake_tag = 3
+                        obj.save()
+                        continue
+                    _q_customer_other = re.split(r'\d{11}', customer_info)
+                    if len(_q_customer_other) == 2:
+                        if len(_q_customer_other[0]) > len(_q_customer_other[1]):
+                            obj.return_name = _q_customer_other[1]
+                            address = _q_customer_other[0]
+                        else:
+                            obj.return_name = _q_customer_other[0]
+                            address = _q_customer_other[1]
+                        if address:
+                            _spilt_addr = PickOutAdress(address)
+                            _rt_addr = _spilt_addr.pickout_addr()
+                            if not isinstance(_rt_addr, dict):
+                                obj.return_address = f"{obj.return_area}{address}"
+                            else:
+                                check_words = str(_rt_addr["city"].name)[:2]
+                                if check_words in obj.return_area:
+                                    obj.return_address = address
+                                else:
+                                    obj.return_address = f"{obj.return_area}{address}"
+                        else:
+                            n -= 1
+                            data['error'].append(f"{obj.order_id}没有地址")
+                            obj.mistake_tag = 3
+                            obj.save()
+                            continue
+
+
+                    else:
+                        n -= 1
+                        data['error'].append(f"{obj.order_id}备注格式错误，存在多个手机号码")
+                        obj.mistake_tag = 3
+                        obj.save()
+                        continue
+                else:
+                    n -= 1
+                    data['error'].append(f"{obj.order_id}备注格式错误，大括号格式错误")
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+
+                obj.is_decrypted = True
+                obj.save()
+                logging(obj, user, LogOriMaintenance, "执行解密成功")
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = n
+        data["false"] = len(check_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
     def set_appointment(self, request, *args, **kwargs):
         user = request.user
         days = request.data.get("days", None)
@@ -219,20 +306,189 @@ class OriMaintenanceBeforeViewset(viewsets.ModelViewSet):
         return Response(data)
 
     @action(methods=['patch'], detail=False)
-    def check(self, request, *args, **kwargs):
+    def create_job(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
+        code = params.pop("code", None)
+        if not code:
+            raise serializers.ValidationError({"系统错误": "未传入正确的型号编码！"})
+        else:
+            _q_goods = Goods.objects.filter(goods_id=code)
+            if _q_goods.exists():
+                goods = _q_goods[0]
+            else:
+                raise serializers.ValidationError({"货品错误": "UT未创建试用专属组合装货品！"})
+        handle_list = self.get_handle_list(params)
+        n = len(handle_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        label_category = LabelCategory.objects.filter(name="系统内置")[0]
+        if n:
+            goods_name = re.sub(r'[^0-9A-Za-z]', '', str(goods.name))
+            label = f'体验-{goods_name}'
+            _q_label = Label.objects.filter(name=str(label))
+            if _q_label.exists():
+                label_obj = _q_label[0]
+                if label_obj.is_cancel:
+                    raise serializers.ValidationError({"创建错误": f"体验标签{label}被停用，必须先恢复"})
+            else:
+                serial_number = re.sub("[- .:]", "", str(datetime.datetime.now()))
+                code = serial_number
+                label_data = {
+                    "name": label,
+                    "group": "SAT",
+                    "category": label_category,
+                    "creator": user.username,
+                    "memo": "维修单创建任务自动创建",
+                    "code": code,
+                }
+                try:
+
+                    label_obj = Label.objects.create(**label_data)
+                    label_obj.code = "%s-%s" % (label_obj.group, label_obj.id)
+                    label_obj.save()
+                    logging(label_obj, user, LogLabel, "创建")
+                except Exception as e:
+                    raise serializers.ValidationError({"创建错误": f"创建体验标签{label}出错：{e}"})
+
+            _q_jobcategory = JobCategory.objects.filter(code="TRI")
+            if _q_jobcategory.exists():
+                job_category = _q_jobcategory[0]
+            else:
+                job_category_dict = {
+                    'name': '试用',
+                    'code': 'TRI',
+                }
+                try:
+                    job_category = JobCategory.objects.create(**job_category_dict)
+                    logging(job_category, user, LogJobCategory, "创建")
+                except Exception as e:
+                    raise serializers.ValidationError({"创建错误": f"任务类型创建错误{e} ！"})
+            _q_job_order = JobOrder.objects.filter(name__icontains="TEMPTRIAL", order_status=1)
+            if _q_job_order.exists():
+                raise serializers.ValidationError({"创建错误": "已存在临时试用任务单，不可同时存在多个临时试用任务单！可以追加任务信息"})
+            else:
+                serial_number = re.sub("[- .:]", "", str(datetime.datetime.today().date()))
+                job_dict = {
+                    "name": "TEMPTRIAL-%s-%s" % (user.department.name, user.username),
+                    "code": "TEMPTRIAL-%s" % serial_number,
+                    "department": user.department,
+                    "center": user.department.center,
+                    "category": job_category,
+                    "label": label_obj,
+                    "info": "{体验试用%s}" % goods.goods_id,
+                    "quantity": n,
+                    "creator": user.username,
+                }
+                try:
+                    job_order = JobOrder.objects.create(**job_dict)
+                    logging(job_order, user, LogJobOrder, "创建")
+                except Exception as e:
+                    raise serializers.ValidationError({"创建错误": "错误原因为：%s" % e})
+            for obj in handle_list:
+                _q_customer = Customer.objects.filter(name=obj.return_mobile)
+                if _q_customer.exists():
+                    customer = _q_customer[0]
+                else:
+                    customer = Customer.objects.create(**{"name": str(obj.return_mobile), "memo": "保修单体验任务创建"})
+                    logging(customer, user, LogCustomer, "保修单体验任务创建")
+                content = "体验发货信息{%s*1}{%s}{%s%s%s}" % (goods.name, obj.order_id, obj.return_name, obj.return_mobile, obj.return_address)
+                job_details_dict = {
+                    "order": job_order,
+                    "customer": customer,
+                    "content": content,
+                    "creator": user.username,
+                }
+                try:
+                    job_order_detail = JobOrderDetails.objects.create(**job_details_dict)
+                    logging(job_order_detail, user, LogJobOrderDetails, "创建")
+                    obj.suggestion = '[创建体验任务]'
+                    obj.save()
+                    logging(obj, user, LogOriMaintenance, f"创建体验任务{goods_name}")
+                except Exception as e:
+                    data["error"].append(str(e))
+                    n -= 1
+        else:
+            raise serializers.ValidationError("没有可清除的单据！")
+        data["successful"] = n
+        data["false"] = len(handle_list) - n
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def append_job(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        handle_list = self.get_handle_list(params)
+        n = len(handle_list)
         data = {
             "successful": 0,
             "false": 0,
             "error": []
         }
         if n:
-            check_list.update(order_status=2)
+            _q_job_order = JobOrder.objects.filter(name__icontains="TEMPTRIAL", order_status=1)
+            if not _q_job_order.exists():
+                raise serializers.ValidationError({"创建错误": "未找到临时体验任务单"})
+            else:
+                job_order = _q_job_order[0]
+                _q_goods_code = re.findall(r'{体验试用(.*)}', str(job_order.info))
+                if not _q_goods_code:
+                    raise serializers.ValidationError({"创建错误": "临时体验任务单说明找不到货品！"})
+                else:
+                    goods_code = _q_goods_code[0]
+                    _q_goods = Goods.objects.filter(goods_id=goods_code)
+                    if _q_goods.exists():
+                        goods = _q_goods[0]
+                    else:
+                        raise serializers.ValidationError({"创建错误": "UT系统找不到临时体验单备注货品！"})
+            for obj in handle_list:
+                _q_customer = Customer.objects.filter(name=obj.return_mobile)
+                if _q_customer.exists():
+                    customer = _q_customer[0]
+                else:
+                    customer = Customer.objects.create(**{"name": str(obj.return_mobile), "memo": "保修单体验任务创建"})
+                    logging(customer, user, LogCustomer, "保修单体验任务创建")
+                content = "体验发货信息{%s*1}{%s}{%s%s%s}" % (
+                    goods.name, obj.order_id, obj.return_name, obj.return_mobile, obj.return_address)
+                _q_job_detail = JobOrderDetails.objects.filter(order=job_order, customer=customer)
+                if _q_job_detail.exists():
+                    job_detail = _q_job_detail[0]
+                    if job_detail.order_status == 0:
+                        job_detail.order_status = 1
+                        job_detail.content = content
+                        job_detail.save()
+                        logging(job_detail, user, LogJobOrderDetails, "恢复")
+                        continue
+                    else:
+                        n -= 1
+                        data["error"].append({"创建错误": f"此客户{customer.name}已存在明细中，不可重复创建"})
+                        continue
+                else:
+                    job_details_dict = {
+                        "order": job_order,
+                        "customer": customer,
+                        "content": content,
+                        "creator": user.username,
+                    }
+                    try:
+                        job_order_detail = JobOrderDetails.objects.create(**job_details_dict)
+                        logging(job_order_detail, user, LogJobOrderDetails, "创建")
+                        obj.suggestion = '[创建体验任务]'
+                        obj.save()
+                        logging(obj, user, LogOriMaintenance, f"创建体验任务{goods.name}")
+                    except Exception as e:
+                        data["error"].append(str(e))
+                        n -= 1
+                obj.is_month_filter = True
+                obj.save()
+                logging(obj, user, LogOriMaintenance, "完成任务创建")
         else:
-            raise serializers.ValidationError("没有可清除的单据！")
+            raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
+        data["false"] = len(handle_list) - n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -688,6 +944,7 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                     setattr(order, field, getattr(obj, field, None))
                 if obj.machine_sn == 'unknown' and not re.match('^99\d+', str(obj.return_mobile)):
                     order.add_labels = "保修1次"
+                    order.process_tag = 2
                 else:
                     _q_maintenance_count = OriMaintenance.objects.filter(machine_sn=obj.machine_sn, order_status=2)
                     maintenance_count = _q_maintenance_count.count() + 1
@@ -938,63 +1195,18 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
     def handle_upload_file(self, request, _file):
         ALLOWED_EXTENSIONS = ['xls', 'xlsx']
         INIT_FIELDS_DIC = {
-            "保修单号": "order_id",
-            "保修单状态": "order_status",
-            "收发仓库": "warehouse",
-            "处理登记人": "completer",
-            "保修类型": "maintenance_type",
-            "故障类型": "fault_type",
-            "送修类型": "transport_type",
-            "序列号": "machine_sn",
-            "换新序列号": "new_machine_sn",
-            "关联订单号": "send_order_id",
-            "保修结束语": "appraisal",
-            "关联店铺": "shop",
-            "购买时间": "purchase_time",
-            "创建时间": "ori_created_time",
-            "创建人": "ori_creator",
-            "审核时间": "handle_time",
-            "审核人": "handler_name",
-            "保修完成时间": "finish_time",
-            "保修金额": "fee",
-            "保修数量": "quantity",
-            "最后修改时间": "last_handle_time",
-            "客户网名": "buyer_nick",
-            "寄件客户姓名": "sender_name",
-            "寄件客户手机": "sender_mobile",
-            "寄件客户省市县": "sender_area",
-            "寄件客户地址": "sender_address",
-            "收件物流公司": "send_logistics_company",
-            "收件物流单号": "send_logistics_no",
-            "收件备注": "send_memory",
-            "寄回客户姓名": "return_name",
-            "寄回客户手机": "return_mobile",
-            "寄回省市区": "return_area",
-            "寄回地址": "return_address",
-            "寄件指定物流公司": "return_logistics_company",
-            "寄件物流单号": "return_logistics_no",
-            "寄件备注": "return_memory",
-            "保修货品商家编码": "goods_code",
-            "保修货品名称": "goods_name",
-            "保修货品简称": "goods_abbreviation",
-            "故障描述": "description",
-            "是否在保修期内": "is_guarantee",
-            "收费状态": "charge_status",
-            "收费金额": "charge_amount",
-            "收费说明": "charge_memory"
+            "订单编号": "send_order_id",
+            "收件人": "return_name",
+            "手机": "return_mobile",
+            "省市县": "return_area",
+            "地址": "return_address",
         }
 
         report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
         if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
             df = pd.read_excel(_file, sheet_name=0, dtype=str)
 
-            FILTER_FIELDS = ["保修单号", "保修单状态", "收发仓库", "处理登记人", "保修类型", "故障类型", "送修类型", "序列号",
-                             "换新序列号", "关联订单号", "保修结束语", "关联店铺", "购买时间", "创建时间", "创建人", "审核时间",
-                             "审核人", "保修完成时间", "保修金额", "保修数量", "最后修改时间", "客户网名", "寄件客户姓名",
-                             "寄件客户手机", "寄件客户省市县", "寄件客户地址", "收件物流公司", "收件物流单号", "收件备注",
-                             "寄回客户姓名", "寄回客户手机", "寄回省市区", "寄回地址", "寄件指定物流公司", "寄件物流单号",
-                             "寄件备注", "保修货品商家编码", "保修货品名称", "保修货品简称", "故障描述", "是否在保修期内",
-                             "收费状态", "收费金额", "收费说明"]
+            FILTER_FIELDS = ["订单编号", "收件人", "手机", "省市县", "地址"]
 
             try:
                 df = df[FILTER_FIELDS]
@@ -1008,10 +1220,12 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
                 if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
                     columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
 
+            VERIFY_FIELD = ["send_order_id", "return_name", "return_mobile", "return_area", "return_address"]
+
             # 验证一下必要的核心字段是否存在
-            _ret_verify_field = OriMaintenance.verify_mandatory(columns_key)
-            if _ret_verify_field is not None:
-                return _ret_verify_field
+            for i in VERIFY_FIELD:
+                if i not in columns_key:
+                    raise serializers.ValidationError("verify_field error, must have mandatory field: {}".format(i))
 
             # 更改一下DataFrame的表名称
             columns_key_ori = df.columns.values.tolist()
@@ -1044,40 +1258,42 @@ class OriMaintenanceSubmitViewset(viewsets.ModelViewSet):
             report_dic["error"].append('只支持excel文件格式！')
             return report_dic
 
-    @staticmethod
-    def save_resources(request, resource):
+    def save_resources(self, request, resource):
+        user = request.user
         # 设置初始报告
         report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
 
         for row in resource:
-            _q_repeat_order = OriMaintenance.objects.filter(order_id=row["order_id"])
-            if _q_repeat_order.exists():
-                report_dic["discard"] += 1
-                report_dic["error"].append("%s提交重复" % row["order_id"])
-                continue
-            for keyword in ["purchase_time", "ori_created_time", "handle_time", "finish_time", "last_handle_time"]:
-                if row[keyword] == "0000-00-00 00:00:00":
-                    row[keyword] = None
-            order = OriMaintenance()
-            order_fields = ["order_id", "order_status", "warehouse", "completer", "maintenance_type",
-                            "fault_type", "transport_type", "machine_sn", "new_machine_sn", "send_order_id",
-                            "appraisal", "shop", "purchase_time", "ori_created_time", "ori_creator", "handle_time",
-                            "handler_name", "finish_time", "fee", "quantity", "last_handle_time", "buyer_nick",
-                            "sender_name", "sender_mobile", "sender_area", "sender_address", "send_logistics_company",
-                            "send_logistics_no", "send_memory", "return_name", "return_mobile", "return_area",
-                            "return_address", "return_logistics_company", "return_logistics_no", "return_memory",
-                            "goods_code", "goods_name", "goods_abbreviation", "description", "is_guarantee",
-                            "charge_status", "charge_amount", "charge_memory"]
-            for field in order_fields:
-                setattr(order, field, row[field])
-
-            try:
-                order.creator = request.user.username
-                order.save()
-                report_dic["successful"] += 1
-            except Exception as e:
-                report_dic['error'].append("%s 保存出错" % row["order_id"])
+            if not all((row['send_order_id'], row['return_name'], row['return_mobile'], row['return_area'], row['return_address'])):
                 report_dic["false"] += 1
+                report_dic['error'].append(f"{row['order_id']} 解密信息不全")
+                continue
+            if not re.match("^[0-9]{11}$", str(row["return_mobile"])):
+                report_dic["false"] += 1
+                report_dic['error'].append(f"{row['order_id']} 非手机号为无效解密")
+                continue
+            if '*' in str(row["return_name"]):
+                row["return_name"] = str(row["return_name"]).replace("*", "")
+
+            _q_decrypted_order = OriMaintenance.objects.filter(send_order_id=row["send_order_id"], order_status=1)
+            if _q_decrypted_order.exists():
+                order =_q_decrypted_order[0]
+                for keyword in ['return_mobile', 'return_name', 'return_area', 'return_address']:
+                    setattr(order, keyword, row[keyword])
+                    order.is_decrypted = 1
+                try:
+                    order.save()
+                    report_dic["successful"] += 1
+                    logging(order, user, LogOriMaintenance, "解密成功")
+                except Exception as e:
+                    report_dic["false"] += 1
+                    report_dic['error'].append(f"{row['order_id']} 解密失败 {e}")
+                    continue
+
+            else:
+                report_dic["false"] += 1
+                report_dic['error'].append(f"{row['order_id']} 未找到解密单据")
+                continue
 
         return report_dic
 
@@ -1259,6 +1475,12 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
                         data["error"].append("%s缺陷单据未确认原因" % obj.id)
                         n -= 1
                         obj.mistake_tag = 3
+                        obj.save()
+                        continue
+                    if not obj.judge_description:
+                        data["error"].append("%s缺陷单据未注明原因说明" % obj.id)
+                        n -= 1
+                        obj.mistake_tag = 7
                         obj.save()
                         continue
                 if obj.is_repeated and not obj.is_fault:
@@ -2315,7 +2537,7 @@ class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
                     data['error'].append(f"{obj.order_id}已解密无需解密")
                     continue
                 if all((obj.return_name, obj.return_mobile, obj.return_address)):
-                    if not re.match('\d{11}', str(obj.return_mobile)):
+                    if not re.match('[0-9]{11}', str(obj.return_mobile)):
                         n -= 1
                         data["false"] += 1
                         data['error'].append(f"{obj.order_id}手机格式错误无法解密")
@@ -2345,7 +2567,7 @@ class OriMaintenanceGoodsSubmitViewset(viewsets.ModelViewSet):
                     n -= 1
                     data["false"] += 1
                     data['error'].append(f"{obj.order_id}保修单已取消，配件自动取消")
-                    logging(obj, user, LogMaintenanceGoods, "保修单已取消，配件自动取消")
+                    logging(obj, user, LogOriMaintenanceGoods, "保修单已取消，配件自动取消")
                     continue
                 if order.is_decrypted:
                     obj.is_decrypted = True

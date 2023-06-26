@@ -9,6 +9,7 @@ from apps.base.warehouse.models import Warehouse
 from apps.utils.geography.models import Province, City, District
 from apps.crm.customers.models import Customer
 from apps.auth.users.models import UserProfile
+from apps.wop.job.models import JobOrder
 
 
 class OriMaintenance(models.Model):
@@ -317,6 +318,7 @@ class Maintenance(models.Model):
         (4, '保存统计出错'),
         (5, '打标标签被禁用'),
         (6, '创建客户标签失败'),
+        (7, '缺陷单据未注明原因说明'),
 
     )
 
@@ -558,7 +560,4 @@ class LogMaintenancePartSummary(models.Model):
 
     def __str__(self):
         return str(self.id)
-
-
-
 

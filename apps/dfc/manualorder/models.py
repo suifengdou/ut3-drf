@@ -14,7 +14,9 @@ class ManualOrder(models.Model):
         (0, '已取消'),
         (1, '未处理'),
         (2, '已导入'),
-        (3, '已完成'),
+        (3, '已发货'),
+        (4, '待结算'),
+        (5, '已完成'),
     )
 
     ORDER_CATEGORY = (
@@ -118,18 +120,49 @@ class MOGoods(models.Model):
         (1, '未处理'),
         (2, '已导入'),
         (3, '已发货'),
+        (4, '试用中'),
+        (5, '已完结'),
     )
+    SETTLE_CATEGORY = (
+        (0, '常规'),
+        (1, '试用退回'),
+        (2, 'OA报损'),
+        (3, '退回苏州'),
+        (4, '试用销售'),
+        (5, '购新销售'),
+    )
+    SIGN_TAG = (
+        (0, '无'),
+        (1, '已建催退'),
+        (2, '等待付款'),
+        (3, '联系不上'),
+        (4, '快递丢件'),
+        (5, '退回途中'),
+        (6, '延后处理'),
+        (7, '特殊事例'),
+        (8, '上报报损'),
+        (9, '已购新机'),
+    )
+    manual_order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='原始订单', help_text='原始订单')
+    goods_id = models.CharField(max_length=50, verbose_name='货品编码', db_index=True, help_text='货品编码')
+    goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称', help_text='货品名称')
+    quantity = models.IntegerField(verbose_name='数量', help_text='数量')
+    price = models.FloatField(default=0, verbose_name='单价', help_text='单价')
+    memorandum = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注', help_text='备注')
 
-    manual_order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='原始订单')
-    goods_id = models.CharField(max_length=50, verbose_name='货品编码', db_index=True)
-    goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称')
-    quantity = models.IntegerField(verbose_name='数量')
-    price = models.FloatField(default=0, verbose_name='单价')
-    memorandum = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')
-
-    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='货品状态')
+    order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='单据状态', help_text='单据状态')
     logistics_name = models.CharField(null=True, blank=True, max_length=60, verbose_name='物流公司', help_text='物流公司')
     logistics_no = models.CharField(null=True, blank=True, max_length=150, verbose_name='物流单号', help_text='物流单号')
+    sub_trade_no = models.CharField(null=True, blank=True, max_length=150, verbose_name='原始子单号', help_text='原始子单号')
+    invoice_id = models.CharField(null=True, blank=True, max_length=150, verbose_name='ERP单号', help_text='ERP单号')
+
+    settle_category = models.SmallIntegerField(choices=SETTLE_CATEGORY, default=0, verbose_name='结算类型',
+                                               help_text='结算类型')
+    settle_info = models.CharField(null=True, blank=True, max_length=50, verbose_name='结算信息', help_text='结算信息')
+    deliver_time = models.DateTimeField(null=True, blank=True, verbose_name='发货时间', help_text='发货时间')
+    amount = models.FloatField(default=0, verbose_name='结算金额', help_text='结算金额')
+    sign = models.SmallIntegerField(choices=SIGN_TAG, default=0, verbose_name='处理标签', help_text='处理标签')
+
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
     is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
@@ -154,13 +187,26 @@ class ManualOrderExport(models.Model):
     ORDERSTATUS = (
         (0, '已取消'),
         (1, '未处理'),
-        (2, '已完成'),
+        (2, '已导入'),
+        (3, '已完成'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
         (1, '已处理'),
         (2, '驳回'),
         (3, '特殊订单'),
+    )
+    SIGN_TAG = (
+        (0, '无'),
+        (1, '先不发货'),
+        (2, '等待核实'),
+        (3, '锁定快递'),
+        (4, '已送礼品'),
+        (5, '大菜鸟仓'),
+        (6, '核实退款'),
+        (7, '库房无货'),
+        (8, '专项审核'),
+        (9, '替换货品'),
     )
     ori_order = models.OneToOneField(ManualOrder, on_delete=models.CASCADE, verbose_name='手工源单', help_text='手工源单')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='店铺', help_text='店铺')
@@ -194,7 +240,7 @@ class ManualOrderExport(models.Model):
     erp_order_id = models.CharField(null=True, blank=True, unique=True, max_length=50, verbose_name='原始单号', help_text='原始单号')
 
     process_tag = models.SmallIntegerField(choices=PROCESS_TAG, default=0, verbose_name='处理标签', help_text='处理标签')
-
+    sign = models.SmallIntegerField(choices=SIGN_TAG, default=0, verbose_name='处理标签', help_text='处理标签')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=True, blank=True, verbose_name='仓库', help_text='仓库')
     track_no = models.CharField(null=True, blank=True, max_length=50, verbose_name='快递单号', help_text='快递单号')
 
@@ -222,6 +268,21 @@ class LogManualOrder(models.Model):
         verbose_name = 'DFC-手工订单-日志'
         verbose_name_plural = verbose_name
         db_table = 'dfc_manualorder_logging'
+
+    def __str__(self):
+        return str(self.id)
+
+
+class LogMOGoods(models.Model):
+    obj = models.ForeignKey(MOGoods, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    name = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='操作人', help_text='操作人')
+    content = models.CharField(max_length=240, verbose_name='操作内容', help_text='操作内容')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'DFC-手工订单-货品明细-日志'
+        verbose_name_plural = verbose_name
+        db_table = 'dfc_manualorder_goods_logging'
 
     def __str__(self):
         return str(self.id)

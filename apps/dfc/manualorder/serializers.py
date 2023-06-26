@@ -92,6 +92,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             0: "已取消",
             1: "未处理",
             2: "已导入",
+            3: "已发货",
         }
         try:
             ret = {
@@ -366,6 +367,8 @@ class MOGoodsSerializer(serializers.ModelSerializer):
             1: "未处理",
             2: "已导入",
             3: "已发货",
+            4: "试用中",
+            5: "已完结",
         }
         try:
             ret = {
@@ -467,7 +470,8 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
         status = {
             0: "已取消",
             1: "未处理",
-            2: "已完成",
+            2: "已导入",
+            3: "已发货",
         }
         try:
             ret = {
@@ -492,6 +496,28 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
+    def get_sign(self, instance):
+        SIGN_LIST = {
+            0: "无",
+            1: "先不发货",
+            2: "等待核实",
+            3: "锁定快递",
+            4: "已送礼品",
+            5: "大菜鸟仓",
+            6: "核实退款",
+            7: "库房无货",
+            8: "专项审核",
+            9: "替换货品"
+        }
+        try:
+            ret = {
+                "id": instance.sign,
+                "name": SIGN_LIST.get(instance.sign, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
+
     def to_representation(self, instance):
         ret = super(ManualOrderExportSerializer, self).to_representation(instance)
         ret["shop"] = self.get_shop(instance)
@@ -502,6 +528,7 @@ class ManualOrderExportSerializer(serializers.ModelSerializer):
         ret["order_status"] = self.get_order_status(instance)
         ret["process_tag"] = self.get_process_tag(instance)
         ret["ori_order"] = self.get_ori_order(instance)
+        ret["sign"] = self.get_sign(instance)
         return ret
 
 

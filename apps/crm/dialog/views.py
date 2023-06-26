@@ -31,6 +31,7 @@ from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.dfc.compensation.models import Compensation
 from apps.utils.geography.tools import PickOutAdress
 from apps.auth.users.models import UserProfile
+from ut3.settings import EXPORT_TOPLIMIT
 
 
 class ServicerViewset(viewsets.ModelViewSet):
@@ -208,7 +209,7 @@ class DialogTBViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogTBFilter(params)
-        serializer = DialogTBSerializer(f.qs, many=True)
+        serializer = DialogTBSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -265,7 +266,7 @@ class DialogTBViewset(viewsets.ModelViewSet):
                     else:
                         order = ManualOrder()
                 else:
-                    order =  ManualOrder()
+                    order = ManualOrder()
                     _prefix = "BO"
                     serial_number = str(datetime.date.today()).replace("-", "")
                     obj.erp_order_id = serial_number + _prefix + str(obj.id)
@@ -625,7 +626,7 @@ class DialogTBDetailSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogTBDetailFilter(params)
-        serializer = DialogTBDetailSerializer(f.qs, many=True)
+        serializer = DialogTBDetailSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1008,7 +1009,7 @@ class DialogTBDetailSubmitMyselfViewset(viewsets.ModelViewSet):
         params["order_status"] = 1
         params["sayer__in"] = nick_list
         f = DialogTBDetailFilter(params)
-        serializer = DialogTBDetailSerializer(f.qs, many=True)
+        serializer = DialogTBDetailSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1459,7 +1460,7 @@ class DialogTBWordsViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogTBWordsFilter(params)
-        serializer = DialogTBWordsSerializer(f.qs, many=True)
+        serializer = DialogTBWordsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -1692,7 +1693,7 @@ class DialogJDViewset(viewsets.ModelViewSet):
         request.data.pop("allSelectTag", None)
         params = request.data
         f = DialogJDFilter(params)
-        serializer = DialogJDSerializer(f.qs, many=True)
+        serializer = DialogJDSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -2123,7 +2124,7 @@ class DialogJDDetailSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogJDDetailFilter(params)
-        serializer = DialogJDDetailSerializer(f.qs, many=True)
+        serializer = DialogJDDetailSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -2379,7 +2380,7 @@ class DialogJDDetailViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogJDDetailFilter(params)
-        serializer = DialogJDDetailSerializer(f.qs, many=True)
+        serializer = DialogJDDetailSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -2468,7 +2469,7 @@ class DialogJDWordsViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 2
         f = DialogJDWordsFilter(params)
-        serializer = DialogJDWordsSerializer(f.qs, many=True)
+        serializer = DialogJDWordsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -2557,7 +2558,7 @@ class DialogOWViewsetSubmit(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogOWFilter(params)
-        serializer = DialogOWSerializer(f.qs, many=True)
+        serializer = DialogOWSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -3013,7 +3014,7 @@ class DialogOWViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 2
         f = DialogOWFilter(params)
-        serializer = DialogOWSerializer(f.qs, many=True)
+        serializer = DialogOWSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -3104,7 +3105,7 @@ class DialogOWDetailSubmitViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogOWDetailFilter(params)
-        serializer = DialogOWDetailSerializer(f.qs, many=True)
+        serializer = DialogOWDetailSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -3338,7 +3339,7 @@ class DialogOWDetailViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogOWDetailFilter(params)
-        serializer = DialogOWDetailSerializer(f.qs, many=True)
+        serializer = DialogOWDetailSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):
@@ -3573,7 +3574,7 @@ class DialogOWWordsViewset(viewsets.ModelViewSet):
         params = request.data
         params["order_status"] = 1
         f = DialogOWWordsFilter(params)
-        serializer = DialogOWWordsSerializer(f.qs, many=True)
+        serializer = DialogOWWordsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):

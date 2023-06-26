@@ -1,6 +1,7 @@
 import re, math
 import datetime
 import pandas as pd
+from functools import reduce
 from itertools import islice
 from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
@@ -12,16 +13,18 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
 from .models import JobCategory, JobOrder, JOFiles, JobOrderDetails, LogJobCategory, LogJobOrder, \
-    LogJobOrderDetails, JODFiles
+    LogJobOrderDetails, JODFiles, JODTOMO
 from .serializers import JobCategorySerializer, JobOrderSerializer, JobOrderDetailsSerializer, JOFilesSerializer, JODFilesSerializer
 from .filters import JobCategoryFilter, JobOrderFilter, JobOrderDetailsFilter, JOFilesFilter, JODFilesFilter
 from ut3.settings import EXPORT_TOPLIMIT
 from apps.base.company.models import Company
 from apps.crm.customers.models import Customer, LogCustomer
 from apps.crm.labels.models import Label
-
+from apps.base.shop.models import Shop
+from apps.base.warehouse.models import Warehouse
+from apps.base.goods.models import Goods
 from ut3.settings import OSS_CONFIG, EXPORT_TOPLIMIT
-
+from apps.dfc.manualorder.models import ManualOrder, MOGoods, LogManualOrder
 from apps.utils.oss.aliyunoss import AliyunOSS
 from apps.utils.logging.loggings import getlogs, logging, getfiles
 from apps.crm.customerlabel.views import QueryLabel, CreateLabel, DeleteLabel, RecoverLabel
@@ -142,8 +145,13 @@ class JobOrderSubmitViewset(viewsets.ModelViewSet):
                 if obj.process_tag != 1:
                     obj.mistake_tag = 1
                     obj.save()
-                    logging(obj, user, LogJobOrder, "审核失败：任务明细未完整确认")
                     data["error"].append("%s 任务明细未完整确认，不可审核" % obj.code)
+                    n -= 1
+                    continue
+                if "TEMP" in obj.code:
+                    obj.mistake_tag = 5
+                    obj.save()
+                    data["error"].append("%s 任务工单未临时状态，必须确认好任务工单" % obj.code)
                     n -= 1
                     continue
 
@@ -153,7 +161,6 @@ class JobOrderSubmitViewset(viewsets.ModelViewSet):
                     obj.mistake_tag = 2
                     obj.process_tag = 0
                     obj.save()
-                    logging(obj, user, LogJobOrder, "审核失败：存在未锁定单据明细")
                     data["error"].append("%s 存在未锁定单据明细，锁定后再审核" % obj.code)
                     n -= 1
                     continue
@@ -178,6 +185,7 @@ class JobOrderSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
@@ -187,7 +195,13 @@ class JobOrderSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            for obj in reject_list:
+                obj.joborderdetails_set.all().update(order_status=0)
+                obj.code = f'DELETE-{obj.code}-{obj.id}'
+                obj.name = f'DELETE-{obj.name}-{obj.id}'
+                obj.order_status = 0
+                obj.save()
+                logging(obj, user, LogJobOrder, "删除任务")
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -306,7 +320,6 @@ class JobOrderTrackViewset(viewsets.ModelViewSet):
                 if over_number != obj.quantity:
                     obj.mistake_tag = 4
                     obj.save()
-                    logging(obj, user, LogJobOrder, "审核失败：任务全部结束才可审核")
                     data["error"].append("%s 任务全部结束才可审核" % obj.code)
                     n -= 1
                     continue
@@ -341,7 +354,6 @@ class JobOrderTrackViewset(viewsets.ModelViewSet):
                 if _q_reject_quantity != obj.quantity:
                     obj.mistake_tag = 3
                     obj.save()
-                    logging(obj, user, LogJobOrder, "驳回失败：任务明细非初始状态")
                     data["error"].append("%s 任务明细非初始状态，不可驳回" % obj.code)
                     n -= 1
                     continue
@@ -1016,6 +1028,7 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
     def check(self, request, *args, **kwargs):
         user = request.user
         params = request.data
+        _rt_talk_title = ['goods_details', 'order_id', 'cs_information']
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
@@ -1044,7 +1057,6 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
                                 data["error"].append(f"{obj.customer.name} 工单默认标签恢复错误")
                                 n -= 1
                                 continue
-
                     else:
                         _created_result = CreateLabel(obj.order.label, obj.customer, user)
                         if not _created_result:
@@ -1054,6 +1066,7 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
                             data["error"].append("%s 工单默认标签创建错误" % obj.customer.name)
                             n -= 1
                             continue
+
 
                 if not obj.content:
                     obj.mistake_tag = 4
@@ -1135,6 +1148,135 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
                         n -= 1
                         continue
 
+                if obj.order.category.name == '试用' and obj.is_complete:
+                        _q_check_job = JODTOMO.objects.filter(obj=obj)
+                        if _q_check_job.exists():
+                            order = _q_check_job.order
+                            if order.order_status == 1:
+                                all_order_details = order.mogoods__set.all()
+                                if not len(all_order_details) == 0:
+                                    data["error"].append("%s重复递交，已存在体验手工单据" % obj.id)
+                                    n -= 1
+                                    obj.mistake_tag = 9
+                                    obj.save()
+                                    continue
+                            else:
+                                data["error"].append("%s重复递交，已存在体验手工单据" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 9
+                                obj.save()
+                                continue
+                        else:
+                            order = ManualOrder()
+                            _prefix = "SSTR"
+                            serial_number = str(datetime.date.today()).replace("-", "")
+                            obj.erp_order_id = _prefix + serial_number + str(obj.id)
+                            order.order_category = 4
+
+                        order.shop = Shop.objects.filter(name="小狗体验店")[0]
+                        order.warehouse = Warehouse.objects.filter(name="北京体验仓")[0]
+                        order.nickname = obj.customer.name
+                        order.servicer = user.username
+                        _rt_talk_data = re.findall(r'{((?:.|\n)*?)}', str(obj.content), re.DOTALL)
+
+                        if len(_rt_talk_data) == 3:
+                            _rt_talk_dic = dict(zip(_rt_talk_title, _rt_talk_data))
+                        else:
+                            n -= 1
+                            data['error'].append("%s 任务内容格式不对，更改了自动生成内容" % obj.id)
+                            obj.mistake_tag = 10
+                            obj.save()
+                            continue
+
+                        all_info_element = re.split(r'(\d{11})', str(_rt_talk_dic["cs_information"]))
+                        if len(all_info_element) < 3:
+                            n -= 1
+                            data['error'].append("%s 任务内容的客户信息格式不对，导致无法提取" % obj.id)
+                            obj.mistake_tag = 11
+                            obj.save()
+                            continue
+                        elif len(all_info_element) == 3:
+                            receiver, mobile, rt_address = all_info_element
+                            if len(rt_address) < 8:
+                                n -= 1
+                                data['error'].append("%s 对话的客户信息格式不对，导致无法提取" % obj.id)
+                                obj.mistake_tag = 11
+                                obj.save()
+                                continue
+                        else:
+                            receiver, mobile, *address = all_info_element
+                            rt_address = reduce(lambda x, y: str(x) + str(y), address)
+                        receiver = re.sub(
+                            "(收件人)|(联系方式)|(手机)|:|：|(收货信息)|[!$%&\'()*+,-./:：;<=>?，。?★、…【】《》？“”‘’！[\\]^_`{|}~\s]+", "",
+                            receiver)
+                        order.receiver = receiver
+                        order.mobile = mobile
+
+                        _spilt_addr = PickOutAdress(rt_address)
+                        _rt_addr = _spilt_addr.pickout_addr()
+                        if not isinstance(_rt_addr, dict):
+                            data["error"].append("%s 地址无法提取省市区" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 12
+                            obj.save()
+                            continue
+                        cs_info_fields = ["province", "city", "district", "address"]
+                        for key_word in cs_info_fields:
+                            setattr(order, key_word, _rt_addr.get(key_word, None))
+
+                        try:
+                            order.department = request.user.department
+                            order.creator = request.user.username
+                            order.save()
+                            logging(order, user, LogManualOrder, "体验任务创建")
+                        except Exception as e:
+                            data["error"].append("%s 体验发货单创建出错: %s" % (obj.id, e))
+                            n -= 1
+                            obj.mistake_tag = 13
+                            obj.save()
+                            continue
+                        goods_details = str(_rt_talk_dic["goods_details"]).split("+")
+                        goods_list = []
+                        if len(goods_details) == 1:
+                            if "*" in _rt_talk_dic["goods_details"]:
+                                goods_details = _rt_talk_dic["goods_details"].split("*")
+                                _q_goods = Goods.objects.filter(name=str(goods_details[0]).strip())
+                                if _q_goods.exists():
+                                    goods_list.append([_q_goods[0], str(goods_details[1]).strip()])
+                                else:
+                                    data["error"].append("%s UT中不存在货品" % obj.id)
+                                    n -= 1
+                                    obj.mistake_tag = 14
+                                    obj.save()
+                                    continue
+                            else:
+                                data["error"].append("%s 货品错误（无乘号）" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 15
+                                obj.save()
+                                continue
+                        elif len(goods_details) > 1:
+                            data["error"].append("%s 货品错误(存在多个)" % obj.id)
+                            n -= 1
+                            obj.mistake_tag = 16
+                            obj.save()
+                            continue
+
+                        for goods_info in goods_list:
+                            order_detail = MOGoods()
+                            order_detail.goods_name = goods_info[0]
+                            order_detail.quantity = goods_info[1]
+                            order_detail.goods_id = goods_info[0].goods_id
+                            try:
+                                order_detail.manual_order = order
+                                order_detail.creator = request.user.username
+                                order_detail.save()
+                            except Exception as e:
+                                data["error"].append("%s 体验发货单货品保存出错" % obj.id)
+                                n -= 1
+                                obj.mistake_tag = 17
+                                obj.save()
+                                continue
                 obj.mistake_tag = 0
                 obj.process_tag = 0
                 obj.completer = user.username
