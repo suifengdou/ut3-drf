@@ -5,7 +5,7 @@ from apps.base.goods.models import Goods
 
 class Inventory(models.Model):
     goods_name = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品')
-    goods_id = models.CharField(max_length=30, verbose_name='货品编码')
+    goods_id = models.CharField(max_length=30, db_index=True, verbose_name='货品编码')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, verbose_name='仓库')
 
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
@@ -20,4 +20,4 @@ class Inventory(models.Model):
         unique_together = (("goods_name", "warehouse"),)
 
     def __str__(self):
-        return self.goods_name
+        return str(self.id)

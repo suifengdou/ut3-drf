@@ -25,6 +25,7 @@ class OriInboundFilter(django_filters.FilterSet):
 
 class InboundFilter(django_filters.FilterSet):
     created_time = django_filters.DateTimeFromToRangeFilter()
+    warehouse__name = django_filters.CharFilter(lookup_expr='icontains')
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 
@@ -33,9 +34,11 @@ class InboundFilter(django_filters.FilterSet):
         fields = "__all__"
 
 
-
 class InboundDetailFilter(django_filters.FilterSet):
     created_time = django_filters.DateTimeFromToRangeFilter()
+    goods__name = django_filters.CharFilter(lookup_expr='icontains')
+    warehouse__name = django_filters.CharFilter(lookup_expr='icontains')
+    order__code = django_filters.CharFilter()
     order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
 

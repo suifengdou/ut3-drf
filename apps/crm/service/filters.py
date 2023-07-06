@@ -200,7 +200,7 @@ class OriMaintenanceGoodsFilter(django_filters.FilterSet):
                 f"{name}__gte": datetime.datetime.strptime(condition_list[0], "%Y-%m-%d %H:%M:%S"),
                 f"{name}__lte": datetime.datetime.strptime(condition_list[1], "%Y-%m-%d %H:%M:%S")
             }
-            check_days = condition_dict[ f"{name}__lte"] - condition_dict[ f"{name}__gte"]
+            check_days = condition_dict[f"{name}__lte"] - condition_dict[f"{name}__gte"]
             if check_days.days > 120:
                 condition_dict[f"{name}__lte"] = condition_dict[f"{name}__gte"] + datetime.timedelta(days=120)
             queryset = queryset.filter(**condition_dict)

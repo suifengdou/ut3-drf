@@ -7,7 +7,8 @@ from apps.base.shop.models import Shop
 from apps.base.department.models import Department
 from apps.utils.geography.models import Province, City, District
 from apps.base.warehouse.models import Warehouse
-from apps.dfc.manualorder.models import ManualOrder, LogManualOrder, MOGoods
+from apps.psi.inbound.models import InboundDetail
+from apps.dfc.manualorder.models import MOGoods
 
 
 # 尾货售后单
@@ -37,43 +38,23 @@ class RefundManualOrder(models.Model):
         (3, '无退货原因'),
         (4, '无返回快递单号'),
         (5, '已存在关联入库，不可以驳回'),
-        (6, '非换货单不可以标记'),
-        (7, '非已到货状态不可以审核'),
-        (8, '退换数量和收货数量不一致'),
-        (9, '退换金额和收货金额不一致'),
-        (10, '关联预存单出错'),
-        (11, '当前登录人无预存账户'),
-        (12, '创建预存单错误'),
-        (13, '关联的订单未发货'),
-        (14, '不是退货单不可以审核'),
-        (15, '物流单号重复'),
-        (16, '入库单已经操作，不可以清除标记'),
-        (17, '重复生成结算单，联系管理员'),
-        (18, '生成结算单出错'),
-        (19, '保存流水出错'),
-        (20, '保存流水验证出错'),
-    )
-    MODE_W = (
-        (0, '回流'),
-        (1, '二手'),
     )
 
     CATEGORY = (
-        (3, '退-退货退款'),
-        (4, '退-换货退回'),
-        (5, '退-仅退款'),
+        (1, '退货退款'),
+        (2, '换货退回'),
+        (3, '仅退款'),
     )
 
-    tail_order = models.OneToOneField(MOGoods, on_delete=models.CASCADE, related_name='refund_tail_order', verbose_name='来源单号')
+    ori_order = models.OneToOneField(MOGoods, on_delete=models.CASCADE, verbose_name='来源单号')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, verbose_name='店铺')
     order_id = models.CharField(unique=True, max_length=100, null=True, blank=True, verbose_name='退换单号', db_index=True)
-    order_category = models.SmallIntegerField(choices=CATEGORY, default=3, verbose_name='退款类型')
-    mode_warehouse = models.SmallIntegerField(choices=MODE_W, null=True, blank=True, verbose_name='发货模式')
-    sent_consignee = models.CharField(null=True, blank=True, max_length=150, verbose_name='收件人姓名')
-    sent_smartphone = models.CharField(null=True, blank=True, max_length=30, verbose_name='收件人手机')
-    sent_city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, verbose_name='收件城市')
-    sent_district = models.CharField(null=True, blank=True, max_length=30, verbose_name='收件区县')
-    sent_address = models.CharField(null=True, blank=True, max_length=200, verbose_name='收件地址')
+    order_category = models.SmallIntegerField(choices=CATEGORY, default=1, verbose_name='退款类型')
+
+    receiver = models.CharField(null=True, blank=True, max_length=150, verbose_name='收件人')
+    mobile = models.CharField(null=True, blank=True, max_length=30, verbose_name='手机')
+    city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True, verbose_name='市')
+    address = models.CharField(null=True, blank=True, max_length=200, verbose_name='地址')
 
     quantity = models.IntegerField(null=True, blank=True, verbose_name='货品总数')
 
@@ -84,11 +65,7 @@ class RefundManualOrder(models.Model):
     receipted_amount = models.FloatField(default=0, verbose_name='到货退款总额')
 
     track_no = models.CharField(max_length=150, null=True, blank=True, verbose_name='返回快递信息')
-
-    submit_time = models.DateTimeField(null=True, blank=True, verbose_name='申请提交时间')
-
     handle_time = models.DateTimeField(null=True, blank=True, verbose_name='退款处理时间')
-    handle_interval = models.IntegerField(null=True, blank=True, verbose_name='退款处理间隔(分钟)')
 
     message = models.TextField(null=True, blank=True, verbose_name='工单留言')
     feedback = models.TextField(null=True, blank=True, verbose_name='工单反馈')
@@ -98,7 +75,6 @@ class RefundManualOrder(models.Model):
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='订单状态')
-    fast_tag = models.BooleanField(default=True, verbose_name='快捷状态')
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
@@ -106,17 +82,17 @@ class RefundManualOrder(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'SALES-尾货退货单'
+        verbose_name = 'SALES-试用-退货单'
         verbose_name_plural = verbose_name
-        db_table = 'sales_tailgoods_refund'
+        db_table = 'sales_trialgoods_refund'
         permissions = (
-            ('view_user_refundorder',  'Can view user SALES-尾货退货单'),
-            ('view_handler_refundorder', 'Can view handler SALES-尾货退货单'),
-            ('view_check_refundorder', 'Can view check SALES-尾货退货单'),
+            ('view_user_refundmanualorder',  'Can view user SALES-试用-退货单'),
+            ('view_handler_refundmanualorder', 'Can view handler SALES-试用-退货单'),
+            ('view_check_refundmanualorder', 'Can view check SALES-试用-退货单'),
         )
 
     def __str__(self):
-        return str(self.order_id)
+        return str(self.id)
 
     @classmethod
     def verify_mandatory(cls, columns_key):
@@ -126,18 +102,6 @@ class RefundManualOrder(models.Model):
                 return 'verify_field error, must have mandatory field: "{}""'.format(i)
         else:
             return None
-
-    def goods_name(self):
-        goods_name = self.rogoods_set.all()
-        if len(goods_name) == 1:
-            goods_name = goods_name[0].goods_name.goods_name
-        elif len(goods_name) > 1:
-            goods_name = '多种'
-        else:
-            goods_name = '无'
-        return goods_name
-
-    goods_name.short_description = '单据货品'
 
 
 # 尾货退款订单货品明细
@@ -163,14 +127,20 @@ class RMOGoods(models.Model):
         (3, '部分到货'),
         (4, '已到货'),
     )
-    refund_order = models.ForeignKey(RefundManualOrder, on_delete=models.CASCADE, verbose_name='退款订单')
-    goods_id = models.CharField(max_length=50, verbose_name='货品编码', db_index=True)
+    order = models.OneToOneField(RefundManualOrder, on_delete=models.CASCADE, verbose_name='退款单')
     goods = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='货品名称')
     quantity = models.IntegerField(verbose_name='退换货数量')
     receipted_quantity = models.IntegerField(default=0, verbose_name='到货数量')
     settlement_price = models.FloatField(verbose_name='结算单价')
     settlement_amount = models.FloatField(verbose_name='货品结算总价')
-    memorandum = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')
+
+    logistics_name = models.CharField(null=True, blank=True, max_length=60, verbose_name='物流公司', help_text='物流公司')
+    logistics_no = models.CharField(null=True, blank=True, max_length=150, verbose_name='物流单号', help_text='物流单号')
+    sub_trade_no = models.CharField(null=True, blank=True, max_length=150, verbose_name='原始子单号', help_text='原始子单号')
+    invoice_id = models.CharField(null=True, blank=True, max_length=150, verbose_name='ERP单号', help_text='ERP单号')
+
+    sn = models.CharField(null=True, blank=True, max_length=60, verbose_name='SN码', help_text='SN码')
+    memo = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='到货状态')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因')
     process_tag = models.SmallIntegerField(choices=PROCESSTAG, default=0, verbose_name='处理标签')
@@ -180,13 +150,45 @@ class RMOGoods(models.Model):
     creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
 
     class Meta:
-        verbose_name = 'SALES-尾货退货单-货品明细'
+        verbose_name = 'SALES-试用-退货单-货品明细'
         verbose_name_plural = verbose_name
-        db_table = 'sales_tailgoods_refund_goods'
-        permissions = (
-            ('view_user_rogoods',  'Can view user SALES-尾货退货单-货品明细'),
-            ('view_handler_rogoods', 'Can view handler SALES-尾货退货单-货品明细'),
-        )
+        db_table = 'sales_trialgoods_refund_goods'
 
     def __str__(self):
-        return self.refund_order.order_id
+        return str(self.id)
+
+
+class LogRefundManualOrder(models.Model):
+    obj = models.ForeignKey(RefundManualOrder, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    name = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='操作人', help_text='操作人')
+    content = models.CharField(max_length=240, verbose_name='操作内容', help_text='操作内容')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'SALES-试用-退货单-日志'
+        verbose_name_plural = verbose_name
+        db_table = 'sales_trialgoods_refund_logging'
+
+    def __str__(self):
+        return str(self.id)
+
+
+class LogRMOGoods(models.Model):
+    obj = models.ForeignKey(RMOGoods, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    name = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='操作人', help_text='操作人')
+    content = models.CharField(max_length=240, verbose_name='操作内容', help_text='操作内容')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'SALES-试用-退货单-货品明细-日志'
+        verbose_name_plural = verbose_name
+        db_table = 'sales_trialgoods_refund_goods_logging'
+
+    def __str__(self):
+        return str(self.id)
+
+
+
+
+
+

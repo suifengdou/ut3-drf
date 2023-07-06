@@ -1,4 +1,5 @@
 from django.db import models
+from apps.auth.users.models import UserProfile
 
 # Create your models here.
 
@@ -69,5 +70,67 @@ class Goods(models.Model):
         else:
             return None
 
+
+class Bom(models.Model):
+    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='整机', help_text='整机')
+    part = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name="part", verbose_name='配件', help_text='配件')
+
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+
+    class Meta:
+        verbose_name = 'BASE-货品信息-BOM'
+        verbose_name_plural = verbose_name
+        db_table = 'base_goodsinfo_bom'
+
+    def __str__(self):
+        return str(self.id)
+
+
+class LogGoodsCategory(models.Model):
+    obj = models.ForeignKey(GoodsCategory, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    name = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='操作人', help_text='操作人')
+    content = models.CharField(max_length=240, verbose_name='操作内容', help_text='操作内容')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'BASE-货品类别信息表-日志'
+        verbose_name_plural = verbose_name
+        db_table = 'base_goodscategory_logging'
+
+    def __str__(self):
+        return str(self.id)
+
+
+class LogGoods(models.Model):
+    obj = models.ForeignKey(Goods, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    name = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='操作人', help_text='操作人')
+    content = models.CharField(max_length=240, verbose_name='操作内容', help_text='操作内容')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'BASE-货品信息-日志'
+        verbose_name_plural = verbose_name
+        db_table = 'base_goodsinfo_logging'
+
+    def __str__(self):
+        return str(self.id)
+
+
+class LogBom(models.Model):
+    obj = models.ForeignKey(Bom, on_delete=models.CASCADE, verbose_name='对象', help_text='对象')
+    name = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='操作人', help_text='操作人')
+    content = models.CharField(max_length=240, verbose_name='操作内容', help_text='操作内容')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+
+    class Meta:
+        verbose_name = 'BASE-货品信息-BOM-日志'
+        verbose_name_plural = verbose_name
+        db_table = 'base_goodsinfo_bom_logging'
+
+    def __str__(self):
+        return str(self.id)
 
 

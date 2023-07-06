@@ -821,13 +821,7 @@ class ManualOrderExportCheckViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in check_list:
-                if obj.process_tag == 1:
-                    obj.ori_order.mogoods_set.all().update(order_status=2)
-                    obj.submit_user = request.user.username
-                    obj.order_status = 2
-                    obj.save()
-                else:
-                    n -= 1
+                pass
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -846,11 +840,7 @@ class ManualOrderExportCheckViewset(viewsets.ModelViewSet):
         }
         if n:
             for obj in reject_list:
-                obj.process_tag = 0
-                obj.ori_order.order_status = 1
-                obj.ori_order.save()
-                obj.order_status = 0
-                obj.save()
+                pass
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -936,24 +926,24 @@ class ManualOrderExportCheckViewset(viewsets.ModelViewSet):
         report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
         for row in resource:
             order_fields = ["logistics_name", "logistics_no", "sub_trade_no", "invoice_id", "deliver_time"]
-            if not all(list(row.values())):
-                report_dic["error"].append("%s 导出数据关键信息缺失" % row["invoice_id"])
-                report_dic["false"] += 1
+            if not all((row["logistics_name"], row["logistics_no"], row["deliver_time"])):
+                report_dic["error"].append("%s 导出数据关键信息缺失" % row["order_id"])
+                report_dic["discard"] += 1
                 continue
             if row["order_id"]:
-                _q_manualorderexport = ManualOrderExport.objects.filter(erp_order_id=row["order_id"])
+                _q_manualorderexport = ManualOrderExport.objects.filter(erp_order_id=str(row["order_id"]))
                 if _q_manualorderexport.exists():
                     manual_order_export = _q_manualorderexport[0]
                     manual_order = manual_order_export.ori_order
                 else:
-                    report_dic["error"].append("%s 未找到UT订单" % row["invoice_id"])
+                    report_dic["error"].append("%s 未找到UT订单" % row["order_id"])
                     report_dic["false"] += 1
                     continue
             else:
-                report_dic["error"].append("%s 无UT订单号" % row["invoice_id"])
+                report_dic["error"].append("%s 无UT订单号" % row["order_id"])
                 report_dic["false"] += 1
                 continue
-            _q_manualorder_goods = MOGoods.objects.filter(manual_order=manual_order, goods_id=row["goods_id"])
+            _q_manualorder_goods = MOGoods.objects.filter(manual_order=manual_order, goods_id=str(row["goods_id"]))
             if _q_manualorder_goods.exists():
                 manual_order_goods = _q_manualorder_goods[0]
                 for keyword in order_fields:
@@ -971,7 +961,7 @@ class ManualOrderExportCheckViewset(viewsets.ModelViewSet):
                 manual_order_export.save()
                 logging(manual_order_export, user, LogManualOrderExport, "已发货")
             else:
-                report_dic["error"].append("%s 无UT订单货品" % row["invoice_id"])
+                report_dic["error"].append("%s 无UT订单货品" % row["order_id"])
                 report_dic["false"] += 1
                 continue
         return report_dic

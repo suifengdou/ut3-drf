@@ -46,7 +46,15 @@ class CustomerFilter(django_filters.FilterSet):
         if len(condition_list) == 1:
             queryset = queryset.filter(**{name: condition_list[0]})
         else:
+            sign = 0
             for value in condition_list:
-                queryset = queryset.filter(**{name: value})
+                if value == "not":
+                    sign = 1
+                    continue
+                if sign == 0:
+                    queryset = queryset.filter(**{name: value})
+                else:
+                    queryset = queryset.exclude(**{name: value})
+                    sign = 0
         return queryset
 

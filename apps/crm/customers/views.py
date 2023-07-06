@@ -15,6 +15,7 @@ from .serializers import CustomerSerializer, CustomerLabelSerializer
 from .filters import CustomerFilter
 from apps.utils.logging.loggings import logging, getlogs, getfiles
 from apps.wop.job.models import JobOrder, JobOrderDetails, LogJobOrder, LogJobOrderDetails
+from apps.crm.labels.models import Label
 from ut3.settings import EXPORT_TOPLIMIT
 
 
@@ -185,6 +186,21 @@ class CustomerLabelViewset(viewsets.ModelViewSet):
     def create_job(self, request, *args, **kwargs):
         user = request.user
         params = request.data
+        data = params.pop("data", None)
+        if not data:
+            raise serializers.ValidationError({"创建错误": "未传入创建数量和标签！"})
+        label_name = data.get("label", None)
+        if label_name:
+            _q_label = Label.objects.filter(name=label_name)
+            if _q_label.exists():
+                label = _q_label[0]
+            else:
+                raise serializers.ValidationError({"创建错误": "标签UT搜不到！"})
+        else:
+            raise serializers.ValidationError({"创建错误": "标签UT未传入！"})
+        number = data.get("number", None)
+        if not number:
+            raise serializers.ValidationError({"创建错误": "创建数量未传入！"})
         check_list = self.get_handle_list(params)
         n = len(check_list)
         data = {
@@ -193,6 +209,7 @@ class CustomerLabelViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
+            success_number = 0
             _q_job_order = JobOrder.objects.filter(name__icontains="TEMP", order_status=1, department=user.department)
             if _q_job_order.exists():
                 raise serializers.ValidationError({"创建错误": "已存在临时任务单，不可同时存在多个临时任务单 ！"})
@@ -203,7 +220,78 @@ class CustomerLabelViewset(viewsets.ModelViewSet):
                     "code": "TEMP-%s" % serial_number,
                     "department": user.department,
                     "center": user.department.center,
-                    "quantity": n,
+                    "label": label,
+                    "quantity": number,
+                    "creator": user.username,
+                }
+                try:
+                    job_order = JobOrder.objects.create(**job_dict)
+                    logging(job_order, user, LogJobOrder, "创建")
+                except Exception as e:
+                    raise serializers.ValidationError({"创建错误": "错误原因为：%s" % e})
+            for obj in check_list:
+                _q_check_job_detail = JobOrderDetails.objects.filter(customer=obj, order__label=label)
+                if _q_check_job_detail.exists():
+                    continue
+                job_details_dict = {
+                    "order": job_order,
+                    "customer": obj,
+                    "creator": user.username,
+                }
+                try:
+                    job_order_detail = JobOrderDetails.objects.create(**job_details_dict)
+                    logging(job_order_detail, user, LogJobOrderDetails, "创建")
+                    success_number += 1
+                    if success_number == number:
+                        break
+                except Exception as e:
+                    data["error"].append(str(e))
+                    data["false"] += 1
+        else:
+            raise serializers.ValidationError("没有可审核的单据！")
+        data["successful"] = success_number
+        return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def create_job_force(self, request, *args, **kwargs):
+        user = request.user
+        params = request.data
+        data = params.pop("data", None)
+        if not data:
+            raise serializers.ValidationError({"创建错误": "未传入创建数量和标签！"})
+        label_name = data.get("label", None)
+        if label_name:
+            _q_label = Label.objects.filter(name=label_name)
+            if _q_label.exists():
+                label = _q_label[0]
+            else:
+                raise serializers.ValidationError({"创建错误": "标签UT搜不到！"})
+        else:
+            raise serializers.ValidationError({"创建错误": "标签UT未传入！"})
+        number = data.get("number", None)
+        if not number:
+            raise serializers.ValidationError({"创建错误": "创建数量未传入！"})
+        check_list = self.get_handle_list(params)
+        n = len(check_list)
+        data = {
+            "successful": 0,
+            "false": 0,
+            "error": []
+        }
+        if n:
+            success_number = 0
+            _q_job_order = JobOrder.objects.filter(name__icontains="TEMP", order_status=1, department=user.department)
+            if _q_job_order.exists():
+                raise serializers.ValidationError({"创建错误": "已存在临时任务单，不可同时存在多个临时任务单 ！"})
+            else:
+                serial_number = re.sub("[- .:]", "", str(datetime.datetime.today().date()))
+                job_dict = {
+                    "name": "TEMP-%s-%s" % (user.department.name, user.username),
+                    "code": "TEMP-%s" % serial_number,
+                    "department": user.department,
+                    "center": user.department.center,
+                    "label": label,
+                    "quantity": number,
                     "creator": user.username,
                 }
                 try:
@@ -220,13 +308,15 @@ class CustomerLabelViewset(viewsets.ModelViewSet):
                 try:
                     job_order_detail = JobOrderDetails.objects.create(**job_details_dict)
                     logging(job_order_detail, user, LogJobOrderDetails, "创建")
+                    success_number += 1
+                    if success_number == number:
+                        break
                 except Exception as e:
                     data["error"].append(str(e))
-                    n -= 1
+                    data["false"] += 1
         else:
             raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        data["false"] = len(check_list) - n
+        data["successful"] = success_number
         return Response(data)
 
     @action(methods=['patch'], detail=False)

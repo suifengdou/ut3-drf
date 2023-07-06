@@ -1380,7 +1380,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
         params = request.data
-        params["process_tag__in"] = '0, 1'
+        params["process_tag_range"] = '0, 1'
         f = MaintenanceFilter(params)
         serializer = MaintenanceSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
@@ -1388,7 +1388,7 @@ class MaintenanceJudgmentViewset(viewsets.ModelViewSet):
     def get_handle_list(self, params):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
-        params["process_tag__in"] = '0, 1'
+        params["process_tag_range"] = '0, 1'
         if all_select_tag:
             handle_list = MaintenanceFilter(params).qs
         else:

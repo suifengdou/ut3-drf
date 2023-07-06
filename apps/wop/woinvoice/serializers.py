@@ -21,6 +21,7 @@ from rest_framework import status
 from apps.utils.geography.tools import PickOutAdress
 from apps.utils.geography.models import Province, City, District
 
+
 class OriInvoiceSerializer(serializers.ModelSerializer):
 
     create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
@@ -203,7 +204,7 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
             validated_data["sign_company"] = self.context["request"].user.company
             validated_data["sign_department"] = self.context["request"].user.department
         else:
-            raise serializers.ValidationError("登陆账号没有设置公司或者部门，不可以创建！")
+            raise serializers.ValidationError({"创建错误": "登陆账号没有设置公司或者部门，不可以创建！"})
 
         user = self.context["request"].user
         validated_data["creator"] = user.username
@@ -211,15 +212,17 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         _spilt_addr = PickOutAdress(validated_data['sent_address'])
         _rt_addr = _spilt_addr.pickout_addr()
         if not isinstance(_rt_addr, dict):
-            raise serializers.ValidationError("地址无法提取省市区")
+            raise serializers.ValidationError({"创建错误": "地址无法提取省市区"})
         _rt_addr["district"] = _rt_addr["district"].name
         cs_info_fields = ["city", "district", "address"]
         order_cs_fields = ["sent_city", "sent_district", "sent_address"]
         for i in range(len(cs_info_fields)):
             validated_data[order_cs_fields[i]] = _rt_addr.get(cs_info_fields[i], None)
         if '集运' in str(_rt_addr["address"]):
-            raise serializers.ValidationError("地址是集运仓")
-
+            raise serializers.ValidationError({"创建错误": "地址是集运仓"})
+        _q_check_invoice = self.Meta.model.objects.filter(order_id=validated_data["order_id"])
+        if _q_check_invoice.exists():
+            raise serializers.ValidationError({"创建错误": "同源的原单号已存在发票，不要重复创建"})
         ori_invoice = self.Meta.model.objects.create(**validated_data)
         for goods_detail in goods_details:
             goods_detail['invoice'] = ori_invoice
@@ -235,31 +238,32 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
         goods_details = validated_data.pop("goods_details", [])
         amount = self.check_goods_details(goods_details)
         create_time = validated_data.pop("create_time", "")
-        if validated_data.get("amount", None) is not None:
+        if validated_data.get ("amount", None) is not None:
             validated_data["amount"] = amount
         if validated_data.get('sent_address', None) is not None:
             _spilt_addr = PickOutAdress(validated_data['sent_address'])
             _rt_addr = _spilt_addr.pickout_addr()
             if not isinstance(_rt_addr, dict):
-                raise serializers.ValidationError("地址无法提取省市区")
+                raise serializers.ValidationError({"更新错误": "地址无法提取省市区"})
             _rt_addr["district"] = _rt_addr["district"].name
             cs_info_fields = ["city", "district", "address"]
             order_cs_fields = ["sent_city", "sent_district", "sent_address"]
             for i in range(len(cs_info_fields)):
                 validated_data[order_cs_fields[i]] = _rt_addr.get(cs_info_fields[i], None)
             if '集运' in str(_rt_addr["address"]):
-                raise serializers.ValidationError("地址是集运仓")
+                raise serializers.ValidationError({"更新错误": "地址是集运仓"})
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        instance.oriinvoicegoods_set.all().delete()
         for goods_detail in goods_details:
             goods_detail['invoice'] = instance
             _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
             goods_detail["goods_name"] = _q_goods
             goods_detail["goods_id"] = _q_goods.goods_id
-            goods_detail.pop("xh")
+            goods_detail["id"] = "n"
+            goods_detail.pop("name", None)
+            goods_detail.pop("xh", None)
             self.create_goods_detail(goods_detail)
-        # instance.groups.set(groups_list)
-        # instance.user_permissions.set(user_permissions)
         return instance
 
     def check_goods_details(self, goods_details):

@@ -21,12 +21,15 @@ from rest_framework import serializers
 from apps.base.warehouse.models import Warehouse
 from apps.base.shop.models import Shop
 from apps.base.goods.models import Goods
+from apps.auth.users.models import UserProfile
+from .models import RefundManualOrder, RMOGoods, Renovate, RenovateGoods, Renovatedetail, LogRefundManualOrder, LogRMOGoods, LogRenovate, LogRenovateGoods, LogRenovatedetail
 from apps.dfc.manualorder.models import ManualOrder, MOGoods, ManualOrderExport, LogManualOrder, LogManualOrderExport
 from apps.dfc.manualorder.serializers import ManualOrderSerializer, MOGoodsSerializer
 from apps.dfc.manualorder.filters import ManualOrderFilter, MOGoodsFilter
+from apps.utils.logging.loggings import getlogs, logging
 
 
-class TrialOrder(viewsets.ModelViewSet):
+class TrialOrderSubmitViewset(viewsets.ModelViewSet):
     """
     retrieve:
         返回指定货品明细
@@ -73,15 +76,15 @@ class TrialOrder(viewsets.ModelViewSet):
         params.pop("page", None)
         all_select_tag = params.pop("allSelectTag", None)
         params["order_status"] = 1
-        params["order_category"] = 4
         department = self.request.user.department
         params["department"] = department
+        params["order_category"] = 4
         if all_select_tag:
             handle_list = ManualOrderFilter(params).qs
         else:
             order_ids = params.pop("ids", None)
             if order_ids:
-                handle_list = ManualOrder.objects.filter(id__in=order_ids, order_status=1, order_category=4, department=department)
+                handle_list = ManualOrder.objects.filter(id__in=order_ids, order_status=1, department=department)
             else:
                 handle_list = []
         return handle_list
@@ -464,5 +467,138 @@ class TrialOrder(viewsets.ModelViewSet):
             except Exception as e:
                 report_dic['error'].append("%s 保存明细出错" % row["nickname"])
         return report_dic
+
+
+class TrialOrderManageViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = ManualOrderSerializer
+    filter_class = ManualOrderFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['manualorder.view_manualorder']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return ManualOrder.objects.none()
+        queryset = ManualOrder.objects.filter(order_category=4).order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_category"] = 4
+        f = ManualOrderFilter(params)
+        serializer = ManualOrderSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = ManualOrder.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogManualOrder)
+        return Response(ret)
+
+
+class MOGoodsTrackViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MOGoodsSerializer
+    filter_class = MOGoodsFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['manualorder.view_mogoods']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return MOGoods.objects.none()
+        queryset = MOGoods.objects.filter(order_status__in=[2, 3, 4], manual_order__order_category=4).order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        params["order_status__in"] = "2, 3, 4"
+        params["manual_order__order_category"] = 4
+
+        f = MOGoodsFilter(params)
+        serializer = MOGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+        return Response(serializer.data)
+
+
+class MOGoodsManageViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品明细
+    list:
+        返回货品明细
+    update:
+        更新货品明细
+    destroy:
+        删除货品明细
+    create:
+        创建货品明细
+    partial_update:
+        更新部分货品明细
+    """
+    serializer_class = MOGoodsSerializer
+    filter_class = MOGoodsFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['manualorder.view_mogoods']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return MOGoods.objects.none()
+        queryset = MOGoods.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = MOGoodsFilter(params)
+        serializer = MOGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
+
+        return Response(serializer.data)
+
+
 
 

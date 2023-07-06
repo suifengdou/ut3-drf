@@ -3,13 +3,14 @@ from rest_framework import viewsets, mixins, response
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import GoodsCategorySerializer, GoodsSerializer
-from .filters import GoodsFilter, GoodsCategoryFilter
-from .models import GoodsCategory, Goods
+from .serializers import GoodsCategorySerializer, GoodsSerializer, BomSerializer
+from .filters import GoodsFilter, GoodsCategoryFilter, BomFilter
+from .models import GoodsCategory, Goods, Bom, LogGoods, LogGoodsCategory, LogBom
 from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import serializers
+from apps.utils.logging.loggings import getlogs, logging
 
 
 class GoodsViewset(viewsets.ModelViewSet):
@@ -35,7 +36,6 @@ class GoodsViewset(viewsets.ModelViewSet):
     extra_perm_map = {
         "GET": ['goods.view_goods']
     }
-
 
     @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
@@ -179,13 +179,24 @@ class GoodsViewset(viewsets.ModelViewSet):
             if error_tag:
                 continue
             try:
-                order.creator = request.user.username
+                user = request.user
+                order.creator = user.username
                 order.save()
+                logging(order, user, LogGoods, "导入创建或更新")
                 report_dic["successful"] += 1
             except Exception as e:
                 report_dic['error'].append("%s 保存出错" % row["goods_id"])
                 report_dic["false"] += 1
         return report_dic
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = Goods.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogGoods)
+        return Response(ret)
 
 
 class GoodsCategoryViewset(viewsets.ModelViewSet):
@@ -203,7 +214,7 @@ class GoodsCategoryViewset(viewsets.ModelViewSet):
     partial_update:
         更新部分货品类别字段
     """
-    queryset = GoodsCategory.objects.all().order_by("id")
+    queryset = GoodsCategory.objects.all().order_by("-id")
     serializer_class = GoodsCategorySerializer
     filter_class = GoodsCategoryFilter
     filter_fields = "__all__"
@@ -211,3 +222,45 @@ class GoodsCategoryViewset(viewsets.ModelViewSet):
     extra_perm_map = {
         "GET": ['goods.view_goods']
     }
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = GoodsCategory.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogGoodsCategory)
+        return Response(ret)
+
+
+class BomViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定货品类别
+    list:
+        返回货品类别列表
+    update:
+        更新货品类别信息
+    destroy:
+        删除货品类别信息
+    create:
+        创建货品类别信息
+    partial_update:
+        更新部分货品类别字段
+    """
+    queryset = Bom.objects.all().order_by("-id")
+    serializer_class = BomSerializer
+    filter_class = BomFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = Bom.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogBom)
+        return Response(ret)
+
+

@@ -55,6 +55,7 @@ from apps.dfc.compensation.router import compensation_router
 from apps.psi.inventory.router import inventory_router
 from apps.psi.outbound.router import outbound_router
 from apps.psi.inbound.router import inbound_router
+from apps.psi.renovation.router import renovation_router
 from apps.int.intdistributor.router import intdistributor_router
 from apps.int.intaccount.router import intaccount_router
 from apps.int.intreceipt.router import intreceipt_router
@@ -92,6 +93,7 @@ route.registry.extend(batchdata_router.registry)
 route.registry.extend(inbound_router.registry)
 route.registry.extend(inventory_router.registry)
 route.registry.extend(outbound_router.registry)
+route.registry.extend(renovation_router.registry)
 route.registry.extend(intdistributor_router.registry)
 route.registry.extend(intaccount_router.registry)
 route.registry.extend(intreceipt_router.registry)

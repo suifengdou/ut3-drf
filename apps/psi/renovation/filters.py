@@ -6,26 +6,19 @@
 # @Software: PyCharm
 
 import django_filters
-from django_filters.filters import BaseInFilter, NumberFilter, CharFilter
-from .models import Goods, GoodsCategory, Bom
+from django_filters.filters import BaseInFilter, NumberFilter
+from .models import Renovation, RenovationGoods, Renovationdetail
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
 
-class CharInFilter(BaseInFilter, CharFilter):
-    pass
-
-
-class GoodsFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(method='keywords_filter')
-    goods_number = django_filters.CharFilter(field_name="goods_number")
-    goods_id_range = django_filters.CharFilter(method='multi_filter')
+class RenovationFilter(django_filters.FilterSet):
     created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
-        model = Goods
+        model = Renovation
         fields = "__all__"
 
     def keywords_filter(self, queryset, name, *value):
@@ -59,22 +52,23 @@ class GoodsFilter(django_filters.FilterSet):
         return queryset
 
 
-class GoodsCategoryFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
-    code = django_filters.CharFilter(field_name="code", lookup_expr='icontains')
+class RenovationGoodsFilter(django_filters.FilterSet):
     created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
-        model = GoodsCategory
+        model = RenovationGoods
         fields = "__all__"
 
 
-class BomFilter(django_filters.FilterSet):
+class RenovationdetailFilter(django_filters.FilterSet):
     created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
-        model = Bom
+        model = Renovationdetail
         fields = "__all__"
+
+
+
 
 
 
