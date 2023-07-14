@@ -19,6 +19,7 @@ from apps.base.goods.models import Goods
 from apps.psi.inventory.models import Inventory
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.utils.logging.loggings import getlogs, logging
+from apps.psi.outbound.models import Outbound, OutboundDetail, LogOutbound, LogOutboundDetail
 from ut3.settings import EXPORT_TOPLIMIT
 
 
@@ -118,16 +119,78 @@ class RenovationSubmitViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def set_retread(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
+        set_list = self.get_handle_list(params)
+        n = len(set_list)
         data = {
             "successful": 0,
             "false": 0,
             "error": []
         }
         if n:
-            check_list.update(process_tag=9)
+            for obj in set_list:
+                if not obj.sn:
+                    data["error"].append("%s 没有SN不可锁定" % obj.code)
+                    n -= 1
+                    obj.mistake_tag = 1
+                    obj.save()
+                    continue
+                _q_outbound = Outbound.objects.filter(verification=obj.code)
+                if _q_outbound.exists():
+                    outbound = _q_outbound[0]
+                    if outbound.order_status == 0:
+                        outbound.order_status = 1
+                    else:
+                        data["error"].append("%s 已关联出库单，联系管理员" % obj.code)
+                        n -= 1
+                        obj.mistake_tag = 2
+                        obj.save()
+                        continue
+                else:
+                    outbound = Outbound()
+
+                d = datetime.datetime.now()
+                d_day = str(d.date()).replace("-", "")
+
+                outbound.code = f"ODO{d_day}"
+                outbound.warehouse = obj.warehouse
+                outbound.verification = obj.code
+                try:
+                    outbound.save()
+                    outbound.code = f"{outbound.code}-{outbound.id}"
+                    outbound.save()
+                    logging(outbound, user, LogOutbound, "创建")
+                except Exception as e:
+                    data["error"].append(f"{obj.code}创建出库单出错:{e}")
+                    n -= 1
+                    obj.mistake_tag = 3
+                    obj.save()
+                    continue
+                outbound.outbounddetail_set.all().delete()
+                outbound_detail_dict = {
+                    "order": outbound,
+                    "goods": obj.goods,
+                    "code": outbound.code,
+                    "category": obj.order.category,
+                    "warehouse": obj.warehouse,
+                    "quantity": 1,
+                }
+                try:
+                    outbound_detail = OutboundDetail.objects.create(**outbound_detail_dict)
+                    outbound_detail.code = f"{outbound_detail.code}-{outbound_detail.id}"
+                    outbound_detail.save()
+                    logging(outbound_detail, user, LogOutboundDetail, "创建")
+                except Exception as e:
+                    data["error"].append(f"{obj.code}创建出库单明细出错:{e}")
+                    n -= 1
+                    obj.mistake_tag = 4
+                    obj.save()
+                    continue
+                obj.process_tag = 1
+                obj.save()
+                logging(obj, user, LogRenovation, "锁定翻新")
+
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -278,6 +341,16 @@ class RenovationGoodsManageViewset(viewsets.ModelViewSet):
         f = RenovationGoodsFilter(params)
         serializer = RenovationGoodsSerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
+
+    @action(methods=['patch'], detail=False)
+    def get_all_goods(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = RenovationGoods.objects.filter(id=id)[0]
+        serializer = RenovationGoodsSerializer(instance)
+        return Response(serializer.data)
+
 
     @action(methods=['patch'], detail=False)
     def get_log_details(self, request, *args, **kwargs):

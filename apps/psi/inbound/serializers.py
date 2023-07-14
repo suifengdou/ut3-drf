@@ -165,7 +165,9 @@ class InboundSerializer(serializers.ModelSerializer):
         if data["id"] == 'n':
             data.pop("id", None)
             goods_detail = InboundDetail.objects.create(**data)
+            goods_detail.code = f'{goods_detail.code}-{goods_detail.id}'
             logging(goods_detail, user, LogInboundDetail, "创建")
+
         else:
             goods_detail = InboundDetail.objects.filter(id=data["id"]).update(**data)
             logging(goods_detail, user, LogInboundDetail, "更新")
@@ -198,6 +200,7 @@ class InboundSerializer(serializers.ModelSerializer):
         logging(order, user, LogInbound, "手工创建")
         for goods_detail in goods_details:
             goods_detail['order'] = order
+            goods_detail['code'] = order.code
             goods_detail['warehouse'] = order.warehouse
             goods_detail["goods"] = Goods.objects.filter(id=goods_detail["goods"])[0]
             goods_detail.pop("xh")
@@ -227,12 +230,13 @@ class InboundSerializer(serializers.ModelSerializer):
             instance.inbounddetail_set.all().delete()
             for goods_detail in goods_details:
                 goods_detail['order'] = instance
+                goods_detail['code'] = instance.code
                 _q_goods = Goods.objects.filter(id=goods_detail["goods"])[0]
                 goods_detail["goods"] = _q_goods
                 goods_detail['warehouse'] = instance.warehouse
                 goods_detail['id'] = "n"
                 goods_detail.pop("xh")
-                if instance.category in [3, 7]:
+                if validated_data["category"] in [3, 7]:
                     goods_detail["category"] = 2
                 self.create_goods_detail(goods_detail)
                 content.append('更新货品：%s x %s' % (_q_goods.name, goods_detail["quantity"]))

@@ -16,10 +16,10 @@ class Renovation(models.Model):
     )
     MISTAKE_LIST = (
         (0, '正常'),
-        (1, '入库数量是0'),
-        (2, '入库数和待收货数不符'),
-        (3, '入库单未确认'),
-        (4, '退款单未完整入库'),
+        (1, '无SN'),
+        (2, '已关联出库单，联系管理员'),
+        (3, '创建出库单出错'),
+        (4, '创建出库单明细出错'),
     )
     ORDER_STATUS = (
         (0, '已取消'),
@@ -29,10 +29,14 @@ class Renovation(models.Model):
         (4, '已到货'),
     )
     order = models.ForeignKey(InboundDetail, on_delete=models.CASCADE, null=True, blank=True, verbose_name='关联单')
+    code = models.CharField(max_length=90, db_index=True, verbose_name='翻新单号', help_text='翻新单号')
     sn = models.CharField(null=True, blank=True, max_length=60, verbose_name='SN码', help_text='SN码')
     verification = models.CharField(max_length=150, null=True, blank=True, verbose_name='验证号')
     goods = models.ForeignKey(Goods, on_delete=models.CASCADE, null=True, blank=True, verbose_name='货品名称')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=True, blank=True, verbose_name='仓库', help_text='仓库')
+
+    is_using = models.BooleanField(default=False, verbose_name='配件出库', help_text='配件出库')
+    is_parts = models.BooleanField(default=False, verbose_name='详情设置', help_text='详情设置')
 
     memo = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')
     order_status = models.SmallIntegerField(choices=ORDER_STATUS, default=1, verbose_name='到货状态')

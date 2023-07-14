@@ -35,6 +35,19 @@ class RenovationSerializer(serializers.ModelSerializer):
             }
         return ret
 
+    def get_order(self, instance):
+        try:
+            ret = {
+                "id": instance.order.id,
+                "name": instance.order.code
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
     def get_goods(self, instance):
         try:
             ret = {
@@ -63,6 +76,7 @@ class RenovationSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(RenovationSerializer, self).to_representation(instance)
+        ret["order"] = self.get_order(instance)
         ret["goods"] = self.get_goods(instance)
         ret["warehouse"] = self.get_warehouse(instance)
         return ret
@@ -93,13 +107,25 @@ class RenovationSerializer(serializers.ModelSerializer):
         validated_data["order"] = inbound_goods
         validated_data["goods"] = inbound_goods.goods
         validated_data["warehouse"] = inbound_goods.warehouse
+        validated_data["code"] = inbound_goods.code
         instance = self.Meta.model.objects.create(**validated_data)
+        instance.code = f"{instance.code}-{instance.id}"
         logging(instance, user, LogRenovation, "创建")
         return instance
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
         validated_data["updated_time"] = datetime.datetime.now()
+        if "order" in validated_data:
+            if validated_data["order"] != instance.order:
+                if validated_data["order"].category == 1:
+                    raise ValidationError({"更新错误": "关联入库单必须是残品！"})
+                if validated_data["order"].valid_quantity == 0:
+                    raise ValidationError({"更新错误": "关联入库单可用库存为零！"})
+                validated_data["goods"] = validated_data["order"].goods
+                validated_data["warehouse"] = validated_data["order"].warehouse
+                validated_data["code"] = f"{validated_data['order'].code}-{instance.id}"
+
         # 改动内容
         content = []
         for key, value in validated_data.items():
@@ -197,30 +223,11 @@ class RenovationGoodsSerializer(serializers.ModelSerializer):
             }
         return ret
 
-    def get_goods_details(self, instance):
-        goods_details = instance.inbounddetail_set.all()
-        ret = []
-        for goods_detail in goods_details:
-            data = {
-                "id": goods_detail.id,
-                "goods": {
-                    "id": goods_detail.goods.id,
-                    "name": goods_detail.goods.name
-                },
-                "quantity": goods_detail.quantity,
-                "price": goods_detail.price,
-                "memo": goods_detail.memo
-            }
-            ret.append(data)
-        return ret
 
     def to_representation(self, instance):
         ret = super(RenovationGoodsSerializer, self).to_representation(instance)
         ret["warehouse"] = self.get_warehouse(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
-        ret["order_status"] = self.get_order_status(instance)
-        ret["category"] = self.get_category(instance)
-        ret["goods_details"] = self.get_goods_details(instance)
         return ret
 
     def create(self, validated_data):
