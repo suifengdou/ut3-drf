@@ -1,7 +1,7 @@
 from django.db import models
 
 # Create your models here.
-from apps.utils.geography.models import City
+from apps.utils.geography.models import City, District
 
 
 class WarehouseType(models.Model):
@@ -21,13 +21,12 @@ class WarehouseType(models.Model):
 
 
 class Warehouse(models.Model):
-    STATUS_List = (
-        (0, '停用'),
-        (1, '运行'),
-    )
+
     name = models.CharField(unique=True, max_length=60, verbose_name='仓库名称', help_text='仓库名称')
-    warehouse_id = models.CharField(unique=True, max_length=20, verbose_name='仓库ID', help_text='仓库ID')
+    code = models.CharField(unique=True, max_length=20, verbose_name='仓库ID', help_text='仓库ID')
     city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='城市地点', help_text='城市地点')
+    district = models.ForeignKey(District, on_delete=models.CASCADE, null=True, blank=True, verbose_name='区县',
+                                 help_text='区县')
     receiver = models.CharField(null=True, blank=True, max_length=50, verbose_name='收货人', help_text='收货人')
     mobile = models.CharField(null=True, blank=True, max_length=30, verbose_name='电话', help_text='电话')
     address = models.CharField(null=True, blank=True, max_length=90, verbose_name='地址', help_text='地址')

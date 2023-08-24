@@ -13,6 +13,8 @@ class NumberInFilter(BaseInFilter, NumberFilter):
     pass
 
 class InventoryFilter(django_filters.FilterSet):
+    goods_name__name = django_filters.CharFilter(lookup_expr='icontains')
+    warehouse__name =  django_filters.CharFilter(lookup_expr='icontains')
     created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:

@@ -1211,7 +1211,7 @@ class JobOrderDetailsPerformViewset(viewsets.ModelViewSet):
                             receiver)
                         order.receiver = receiver
                         order.mobile = mobile
-
+                        order.order_id = _rt_talk_dic["order_id"]
                         _spilt_addr = PickOutAdress(rt_address)
                         _rt_addr = _spilt_addr.pickout_addr()
                         if not isinstance(_rt_addr, dict):

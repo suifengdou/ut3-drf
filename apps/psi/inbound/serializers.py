@@ -119,7 +119,8 @@ class InboundSerializer(serializers.ModelSerializer):
             4: "生产入库",
             5: "保修入库",
             6: "其他入库",
-            7: "残品入库"
+            7: "残品入库",
+            8: "体验退货",
         }
         try:
             ret = {
@@ -204,7 +205,7 @@ class InboundSerializer(serializers.ModelSerializer):
             goods_detail['warehouse'] = order.warehouse
             goods_detail["goods"] = Goods.objects.filter(id=goods_detail["goods"])[0]
             goods_detail.pop("xh")
-            if order.category in [3, 7]:
+            if order.category in [3, 7, 8]:
                 goods_detail["category"] = 2
             self.create_goods_detail(goods_detail)
         return order
@@ -236,7 +237,7 @@ class InboundSerializer(serializers.ModelSerializer):
                 goods_detail['warehouse'] = instance.warehouse
                 goods_detail['id'] = "n"
                 goods_detail.pop("xh")
-                if validated_data["category"] in [3, 7]:
+                if validated_data["category"] in [3, 7, 8]:
                     goods_detail["category"] = 2
                 self.create_goods_detail(goods_detail)
                 content.append('更新货品：%s x %s' % (_q_goods.name, goods_detail["quantity"]))

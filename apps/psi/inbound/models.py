@@ -19,6 +19,10 @@ class OriInbound(models.Model):
         (9, '明细重复递交'),
         (10, '明细保存出错'),
         (11, '仓库未设置监控'),
+        (12, '仓库未设置监控'),
+        (13, '无验证码'),
+        (14, '已存在翻新单'),
+        (15, '支持单一残品入库单'),
     )
 
     STATUS_LIST = (
@@ -85,6 +89,7 @@ class Inbound(models.Model):
         (5, '保修入库'),
         (6, '其他入库'),
         (7, '残品入库'),
+        (8, '体验退货'),
     )
 
     MISTAKE_LIST = (
@@ -102,7 +107,7 @@ class Inbound(models.Model):
     code = models.CharField(max_length=50, unique=True, verbose_name='入库单号', help_text='入库单号')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE,  verbose_name='仓库', help_text='仓库')
     category = models.IntegerField(choices=CATEGORY_LIST, default=1,  verbose_name='类别', help_text='类别')
-    verification = models.CharField(db_index=True, max_length=150, verbose_name='验证号', help_text='验证号')
+    verification = models.CharField(db_index=True, null=True, blank=True, max_length=150, verbose_name='验证号', help_text='验证号')
     memo = models.CharField(null=True, blank=True, max_length=150, verbose_name='备注', help_text='备注')
     volume = models.FloatField(null=True, blank=True, verbose_name='体积', help_text='体积')
     weight = models.FloatField(null=True, blank=True, verbose_name='重量', help_text='重量')
@@ -121,12 +126,22 @@ class Inbound(models.Model):
 
         permissions = (
             # (权限，权限描述),
-            ('inbound.view_user_inbound', 'Can view user PSI-入库单'),
-            ('inbound.view_check_inbound', 'Can view check PSI-入库单'),
+            ('view_user_inbound', 'Can view user PSI-入库单'),
+            ('view_check_inbound', 'Can view check PSI-入库单'),
         )
 
     def __str__(self):
         return str(self.id)
+
+    @classmethod
+    def verify_mandatory(cls, columns_key):
+        VERIFY_FIELD = ["code", "warehouse", "category", "verification",
+                        "goods", "quantity", "price", "memo"]
+        for i in VERIFY_FIELD:
+            if i not in columns_key:
+                return 'verify_field error, must have mandatory field: "{}""'.format(i)
+        else:
+            return None
 
 
 class InboundDetail(models.Model):

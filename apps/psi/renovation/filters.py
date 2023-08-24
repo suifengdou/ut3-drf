@@ -7,7 +7,7 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
-from .models import Renovation, RenovationGoods, Renovationdetail
+from .models import Renovation, RenovationGoods, Renovationdetail, ROFiles
 
 
 class NumberInFilter(BaseInFilter, NumberFilter):
@@ -53,6 +53,8 @@ class RenovationFilter(django_filters.FilterSet):
 
 
 class RenovationGoodsFilter(django_filters.FilterSet):
+    order__code = django_filters.CharFilter()
+    goods__name = django_filters.CharFilter(lookup_expr='icontains')
     created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
@@ -61,10 +63,20 @@ class RenovationGoodsFilter(django_filters.FilterSet):
 
 
 class RenovationdetailFilter(django_filters.FilterSet):
+    order__code = django_filters.CharFilter()
+    goods__name = django_filters.CharFilter(lookup_expr='icontains')
     created_time = django_filters.DateTimeFromToRangeFilter()
 
     class Meta:
         model = Renovationdetail
+        fields = "__all__"
+
+
+class ROFilesFilter(django_filters.FilterSet):
+    created_time = django_filters.DateTimeFromToRangeFilter()
+
+    class Meta:
+        model = ROFiles
         fields = "__all__"
 
 

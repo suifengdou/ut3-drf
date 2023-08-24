@@ -272,6 +272,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
                 obj.mistake_tag = 0
                 obj.save()
                 logging(obj, user, LogManualOrder, "递交发货")
+                all_goods_details.update(order_status=2)
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -430,7 +431,7 @@ class ManualOrderSubmitViewset(viewsets.ModelViewSet):
             for field in order_fields:
                 setattr(order, field, row[field])
             order.order_category = category_dic.get(row["order_category"], None)
-            _q_shop =  Shop.objects.filter(name=row["shop"])
+            _q_shop = Shop.objects.filter(name=row["shop"])
             if _q_shop.exists():
                 order.shop = _q_shop[0]
 
@@ -930,6 +931,10 @@ class ManualOrderExportCheckViewset(viewsets.ModelViewSet):
                 report_dic["error"].append("%s 导出数据关键信息缺失" % row["order_id"])
                 report_dic["discard"] += 1
                 continue
+            if row["deliver_time"] == 'nan':
+                report_dic["error"].append("%s 导出数据关键信息缺失" % row["order_id"])
+                report_dic["discard"] += 1
+                continue
             if row["order_id"]:
                 _q_manualorderexport = ManualOrderExport.objects.filter(erp_order_id=str(row["order_id"]))
                 if _q_manualorderexport.exists():
@@ -950,6 +955,7 @@ class ManualOrderExportCheckViewset(viewsets.ModelViewSet):
                     setattr(manual_order_goods, keyword, row.get(keyword, None))
                 manual_order_goods.order_status = 3
                 manual_order_goods.save()
+
                 logging(manual_order_goods, user, LogMOGoods, "已发货")
                 report_dic["successful"] += 1
                 _q_check_deliver_order = MOGoods.objects.filter(manual_order=manual_order, order_status=2)

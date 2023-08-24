@@ -23,7 +23,7 @@ class Outbound(models.Model):
 
     code = models.CharField(max_length=50, unique=True, verbose_name='出库单号', help_text='出库单号')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, verbose_name='仓库')
-    verification = models.CharField(db_index=True, max_length=150, verbose_name='验证号', help_text='验证号')
+    verification = models.CharField(db_index=True, null=True, blank=True, max_length=150, verbose_name='验证号', help_text='验证号')
     order_status = models.IntegerField(choices=ORDERSTATUS, default=1, verbose_name='单据状态')
     mistake_tag = models.SmallIntegerField(choices=MISTAKE_LIST, default=0, verbose_name='错误原因')
 
@@ -46,9 +46,7 @@ class OutboundDetail(models.Model):
     STATUS_LIST = (
         (0, '已取消'),
         (1, '未提交'),
-        (2, '待审核'),
-        (3, '已入账'),
-        (4, '已清账'),
+        (2, '已完成'),
     )
     CATEGORY_LIST = (
         (1, '正品'),

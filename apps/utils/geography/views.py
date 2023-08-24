@@ -11,6 +11,9 @@ import jieba.posseg as pseg
 import jieba.analyse
 from collections import defaultdict
 from functools import reduce
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 
 class NationalityViewset(viewsets.ModelViewSet):
     """
@@ -35,6 +38,16 @@ class NationalityViewset(viewsets.ModelViewSet):
     extra_perm_map = {
         "GET": ['geography.view_nationality']
     }
+
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = NationalityFilter(params)
+        serializer = NationalitySerializer(f.qs, many=True)
+        return Response(serializer.data)
 
 
 class ProvinceViewset(viewsets.ModelViewSet):
@@ -61,6 +74,16 @@ class ProvinceViewset(viewsets.ModelViewSet):
         "GET": ['geography.view_nationality']
     }
 
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = ProvinceFilter(params)
+        serializer = ProvinceSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
 
 class CityViewset(viewsets.ModelViewSet):
     """
@@ -85,6 +108,16 @@ class CityViewset(viewsets.ModelViewSet):
     extra_perm_map = {
         "GET": ['geography.view_city']
     }
+
+    @action(methods=['gpatchet'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = CityFilter(params)
+        serializer = CitySerializer(f.qs, many=True)
+        return Response(serializer.data)
 
 
 class DistrictViewset(viewsets.ModelViewSet):
@@ -111,5 +144,13 @@ class DistrictViewset(viewsets.ModelViewSet):
         "GET": ['geography.view_district']
     }
 
-
+    @action(methods=['patch'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        params = request.data
+        f = DistrictFilter(params)
+        serializer = DistrictSerializer(f.qs, many=True)
+        return Response(serializer.data)
 

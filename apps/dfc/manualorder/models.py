@@ -48,6 +48,15 @@ class ManualOrder(models.Model):
         (12, '无收件人'),
         (13, '此类型不可发整机'),
         (14, '仓库错误'),
+        (15, '无货品不可审核'),
+        (16, '关联出库单错误，联系管理员'),
+        (17, '关联出库单创建错误'),
+        (18, '仓库非体验仓无法提交'),
+        (19, '缺货无法出库'),
+        (20, '库存不存在'),
+        (21, '未完全锁定库存不可释放'),
+        (22, '未锁定库存'),
+        (23, '出库数量错误'),
     )
     PROCESS_TAG = (
         (0, '未处理'),
@@ -120,28 +129,26 @@ class MOGoods(models.Model):
         (1, '未处理'),
         (2, '已导入'),
         (3, '已发货'),
-        (4, '试用中'),
-        (5, '已完结'),
+        (4, '待结算'),
+        (5, '已完成'),
     )
     SETTLE_CATEGORY = (
-        (0, '常规'),
-        (1, '试用退回'),
-        (2, 'OA报损'),
-        (3, '退回苏州'),
-        (4, '试用销售'),
-        (5, '购新销售'),
+        (1, '质量问题'),
+        (2, '开箱即损'),
+        (3, '礼品赠品'),
+        (4, '试用体验'),
     )
     SIGN_TAG = (
         (0, '无'),
-        (1, '已建催退'),
-        (2, '等待付款'),
+        (1, '特殊订单'),
+        (2, '等待核实'),
         (3, '联系不上'),
         (4, '快递丢件'),
         (5, '退回途中'),
         (6, '延后处理'),
         (7, '特殊事例'),
         (8, '上报报损'),
-        (9, '已购新机'),
+        (9, '完成交易'),
     )
     manual_order = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='原始订单', help_text='原始订单')
     goods_id = models.CharField(max_length=50, verbose_name='货品编码', db_index=True, help_text='货品编码')
@@ -178,6 +185,26 @@ class MOGoods(models.Model):
             ('view_user_mogoods', 'Can view user DFC-手工订单-货品明细-用户'),
             ('view_handler_mogoods', 'Can view handler DFC-手工订单-货品明细-处理'),
         )
+
+    def __str__(self):
+        return str(self.id)
+
+
+class MOFiles(models.Model):
+    name = models.CharField(max_length=150, verbose_name='文件名称', help_text='文件名称')
+    suffix = models.CharField(max_length=100, verbose_name='文件类型', help_text='文件类型')
+    url = models.CharField(max_length=250, verbose_name='URL地址', help_text='URL地址')
+    workorder = models.ForeignKey(ManualOrder, on_delete=models.CASCADE, verbose_name='手工单', help_text='手工单')
+
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间', help_text='创建时间')
+    updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间', help_text='更新时间')
+    is_delete = models.BooleanField(default=False, verbose_name='删除标记', help_text='删除标记')
+    creator = models.CharField(null=True, blank=True, max_length=150, verbose_name='创建者', help_text='创建者')
+
+    class Meta:
+        verbose_name = 'DFC-手工订单-文档'
+        verbose_name_plural = verbose_name
+        db_table = 'dfc_manualorder_files'
 
     def __str__(self):
         return str(self.id)

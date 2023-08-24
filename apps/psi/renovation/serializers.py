@@ -1,32 +1,66 @@
 import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import Renovation, RenovationGoods, Renovationdetail, LogRenovation, LogRenovationGoods, LogRenovationdetail
+from .models import Renovation, RenovationGoods, Renovationdetail, LogRenovation, LogRenovationGoods, LogRenovationdetail, ROFiles
 from apps.utils.logging.loggings import getlogs, logging
-from apps.base.goods.models import Goods
+from apps.base.goods.models import Goods, Bom
 from apps.psi.inbound.models import Inbound
 
 
 class RenovationSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = Renovation
         fields = "__all__"
 
     def get_mistake_tag(self, instance):
-        process_tag = {
+        mistake_list = {
             0: "正常",
             1: "返回单号为空",
             2: "处理意见为空",
             3: "经销商反馈为空",
+            4: "创建出库单明细出错",
+            5: "存在配件出库明细不可以取消",
+            6: "非特殊无配件不可审核",
+            7: "关联出库单错误，联系管理员",
+            8: "关联出库单创建错误",
+            9: "未锁定单据不可审核",
+            10: "未锁定单据不可设置特殊标记",
+            11: "已出库单据不可重复出库",
+            12: "库存不存在",
+            13: "缺货无法出库",
+            14: "出库单据未出库配件",
+            15: "出库单据未出库残品",
+            16: "出库单据已存在正品入库单",
+            17: "已操作出库单据无法驳回",
+            18: "出库数量错误",
         }
         try:
             ret = {
-                "id": instance.process_tag,
-                "name": process_tag.get(instance.process_tag, None)
+                "id": instance.mistake_tag,
+                "name": mistake_list.get(instance.mistake_tag, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_order_status(self, instance):
+        status_list = {
+            0: "已取消",
+            1: "待翻新",
+            2: "待入库",
+            3: "已完结",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": status_list.get(instance.order_status, None)
             }
         except:
             ret = {
@@ -76,9 +110,11 @@ class RenovationSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(RenovationSerializer, self).to_representation(instance)
+        ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["order"] = self.get_order(instance)
         ret["goods"] = self.get_goods(instance)
         ret["warehouse"] = self.get_warehouse(instance)
+        ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):
@@ -87,6 +123,7 @@ class RenovationSerializer(serializers.ModelSerializer):
         if "verification" not in validated_data:
             raise ValidationError({"创建错误": "没有验证号"})
         else:
+            validated_data["verification"] = validated_data["verification"].replace(" ", "")
             _q_inbound = Inbound.objects.filter(verification=validated_data["verification"])
             if _q_inbound.exists():
                 inbound = _q_inbound[0]
@@ -103,6 +140,8 @@ class RenovationSerializer(serializers.ModelSerializer):
                         inbound_goods = _q_inbound_goods[0]
                     else:
                         raise ValidationError({"创建错误": "关联入库单未找到翻新货品！"})
+            else:
+                raise ValidationError({"创建错误": "没有找到入库单！"})
 
         validated_data["order"] = inbound_goods
         validated_data["goods"] = inbound_goods.goods
@@ -111,6 +150,16 @@ class RenovationSerializer(serializers.ModelSerializer):
         instance = self.Meta.model.objects.create(**validated_data)
         instance.code = f"{instance.code}-{instance.id}"
         logging(instance, user, LogRenovation, "创建")
+        _q_parts_bom = Bom.objects.filter(goods=instance.goods, is_delete=0)
+        if _q_parts_bom.exists():
+            for part_obj in _q_parts_bom:
+                renovation_detail_dict = {
+                    "order": instance,
+                    "goods": part_obj.part,
+                    "creator": user.username,
+                }
+                renovation_detail = Renovationdetail.objects.create(**renovation_detail_dict)
+                logging(renovation_detail, user, LogRenovationdetail, "创建")
         return instance
 
     def update(self, instance, validated_data):
@@ -141,19 +190,32 @@ class RenovationSerializer(serializers.ModelSerializer):
 
 class RenovationGoodsSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     goods_details = serializers.JSONField(required=False)
 
     class Meta:
         model = RenovationGoods
         fields = "__all__"
 
-    def get_warehouse(self, instance):
+    def get_order(self, instance):
         try:
             ret = {
-                "id": instance.warehouse.id,
-                "name": instance.warehouse.name
+                "id": instance.order.id,
+                "name": instance.order.code,
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_goods(self, instance):
+        try:
+            ret = {
+                "id": instance.goods.id,
+                "name": instance.goods.name
             }
         except:
             ret = {
@@ -183,11 +245,10 @@ class RenovationGoodsSerializer(serializers.ModelSerializer):
 
     def get_order_status(self, instance):
         order_status = {
-            0: "已取消",
-            1: "未提交",
-            2: "待审核",
-            3: "已入账",
-            4: "已清账"
+            1: "待处理",
+            2: "已确认",
+            3: "待清账",
+            4: "已处理"
         }
         try:
             ret = {
@@ -201,33 +262,11 @@ class RenovationGoodsSerializer(serializers.ModelSerializer):
             }
         return ret
 
-    def get_category(self, instance):
-        category_list = {
-            1: "采购入库",
-            2: "调拨入库",
-            3: "退货入库",
-            4: "生产入库",
-            5: "保修入库",
-            6: "其他入库",
-            7: "残品入库"
-        }
-        try:
-            ret = {
-                "id": instance.category,
-                "name": category_list.get(instance.category, None)
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-
     def to_representation(self, instance):
         ret = super(RenovationGoodsSerializer, self).to_representation(instance)
-        ret["warehouse"] = self.get_warehouse(instance)
-        ret["mistake_tag"] = self.get_mistake_tag(instance)
+        ret["order"] = self.get_order(instance)
+        ret["goods"] = self.get_goods(instance)
+        ret["order_status"] = self.get_order_status(instance)
         return ret
 
     def create(self, validated_data):
@@ -255,27 +294,18 @@ class RenovationGoodsSerializer(serializers.ModelSerializer):
 
 class RenovationdetailSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = Renovationdetail
         fields = "__all__"
 
     def get_order(self, instance):
-        category_list = {
-            1: "采购入库",
-            2: "调拨入库",
-            3: "退货入库",
-            4: "生产入库",
-            5: "保修入库",
-            6: "其他入库"
-        }
         try:
             ret = {
                 "id": instance.order.id,
-                "name": instance.order.code,
-                "category": category_list.get(instance.order.category, None)
+                "name": instance.order.code
             }
         except:
             ret = {
@@ -289,36 +319,6 @@ class RenovationdetailSerializer(serializers.ModelSerializer):
             ret = {
                 "id": instance.goods.id,
                 "name": instance.goods.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_warehouse(self, instance):
-        try:
-            ret = {
-                "id": instance.warehouse.id,
-                "name": instance.warehouse.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_category(self, instance):
-        category_list = {
-            1: "正品",
-            2: "残品",
-        }
-        try:
-            ret = {
-                "id": instance.category,
-                "name": category_list.get(instance.category, None)
             }
         except:
             ret = {
@@ -351,8 +351,6 @@ class RenovationdetailSerializer(serializers.ModelSerializer):
         ret = super(RenovationdetailSerializer, self).to_representation(instance)
         ret["order"] = self.get_order(instance)
         ret["goods"] = self.get_goods(instance)
-        ret["warehouse"] = self.get_warehouse(instance)
-        ret["category"] = self.get_category(instance)
         ret["order_status"] = self.get_order_status(instance)
         return ret
 
@@ -376,6 +374,42 @@ class RenovationdetailSerializer(serializers.ModelSerializer):
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         logging(instance, user, LogRenovationdetail, "修改内容：%s" % str(content))
+        return instance
+
+
+class ROFilesSerializer(serializers.ModelSerializer):
+
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = ROFiles
+        fields = "__all__"
+
+    def to_representation(self, instance):
+        ret = super(RenovationGoodsSerializer, self).to_representation(instance)
+        return ret
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        validated_data["creator"] = self.context["request"].user.username
+        instance = self.Meta.model.objects.create(**validated_data)
+        logging(instance.workorder, user, LogRenovation, "创建")
+        return instance
+
+    def update(self, instance, validated_data):
+        user = self.context["request"].user
+        validated_data["updated_time"] = datetime.datetime.now()
+        # 改动内容
+        content = []
+        for key, value in validated_data.items():
+            if 'time' not in str(key):
+                check_value = getattr(instance, key, None)
+                if str(value) != str(check_value):
+                    content.append('{%s}:%s 替换 %s' % (key, value, check_value))
+
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        logging(instance.workorder, user, LogRenovation, "修改内容：%s" % str(content))
         return instance
 
 

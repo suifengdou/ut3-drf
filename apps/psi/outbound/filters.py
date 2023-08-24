@@ -7,10 +7,12 @@
 
 import django_filters
 from django_filters.filters import BaseInFilter, NumberFilter
-from .models import Outbound
+from .models import Outbound, OutboundDetail
+
 
 class NumberInFilter(BaseInFilter, NumberFilter):
     pass
+
 
 class OutboundFilter(django_filters.FilterSet):
     created_time = django_filters.DateTimeFromToRangeFilter()
@@ -19,5 +21,14 @@ class OutboundFilter(django_filters.FilterSet):
 
     class Meta:
         model = Outbound
+        fields = "__all__"
+
+
+class OutboundDetailFilter(django_filters.FilterSet):
+    created_time = django_filters.DateTimeFromToRangeFilter()
+    order_id = django_filters.CharFilter(field_name="order_id", lookup_expr='icontains')
+
+    class Meta:
+        model = OutboundDetail
         fields = "__all__"
 

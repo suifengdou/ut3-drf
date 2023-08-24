@@ -19,7 +19,17 @@ class WarehouseSerializer(serializers.ModelSerializer):
                 "name": instance.city.name,
             }
         except:
-            ret = {"id": -1, "name": "显示错误"}
+            ret = {"id": -1, "name": "错误"}
+        return ret
+
+    def get_district(self, instance):
+        try:
+            ret = {
+                "id": instance.district.id,
+                "name": instance.district.name,
+            }
+        except:
+            ret = {"id": -1, "name": "错误"}
         return ret
 
     def get_category(self, instance):
@@ -29,12 +39,13 @@ class WarehouseSerializer(serializers.ModelSerializer):
                 "name": instance.category.name,
             }
         except:
-            ret = {"id": -1, "name": "显示错误"}
+            ret = {"id": -1, "name": "错误"}
         return ret
 
     def to_representation(self, instance):
         ret = super(WarehouseSerializer, self).to_representation(instance)
         ret["city"] = self.get_city(instance)
+        ret["district"] = self.get_district(instance)
         ret["category"] = self.get_category(instance)
         return ret
 

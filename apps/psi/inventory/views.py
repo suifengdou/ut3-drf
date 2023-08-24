@@ -16,6 +16,7 @@ from apps.auth.users.models import UserProfile
 from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from ut3.settings import EXPORT_TOPLIMIT
 
 
 class InventoryViewset(viewsets.ModelViewSet):
@@ -48,16 +49,14 @@ class InventoryViewset(viewsets.ModelViewSet):
         queryset = Inventory.objects.all().order_by("id")
         return queryset
 
-    @action(methods=['get'], detail=False)
+    @action(methods=['patch'], detail=False)
     def export(self, request, *args, **kwargs):
         # raise serializers.ValidationError("看下失败啥样！")
         request.data.pop("page", None)
         request.data.pop("allSelectTag", None)
-        user = self.request.user
-        request.data["creator"] = user.username
-        params = request.query_params
+        params = request.data
         f = InventoryFilter(params)
-        serializer = InventorySerializer(f.qs, many=True)
+        serializer = InventorySerializer(f.qs[:EXPORT_TOPLIMIT], many=True)
         return Response(serializer.data)
 
     def get_handle_list(self, params):

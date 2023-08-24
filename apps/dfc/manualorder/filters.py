@@ -49,11 +49,12 @@ class MOGoodsFilter(django_filters.FilterSet):
     created_time = django_filters.DateTimeFromToRangeFilter()
     goods_id = django_filters.CharFilter(field_name="goods_id", lookup_expr='icontains')
     order_status__in = NumberInFilter(field_name="order_status", lookup_expr="in")
-    manual_order__mobile = django_filters.CharFilter(lookup_expr='icontains')
-    manual_order__erp_order_id = django_filters.CharFilter(lookup_expr='icontains')
+    goods_name__name = django_filters.CharFilter(lookup_expr='icontains')
+    manual_order__mobile = django_filters.CharFilter()
+    manual_order__erp_order_id = django_filters.CharFilter()
     manual_order__shop__name = django_filters.CharFilter(lookup_expr='icontains')
-    manual_order__nickname = django_filters.CharFilter(lookup_expr='icontains')
-    manual_order__m_sn = django_filters.CharFilter(lookup_expr='icontains')
+    manual_order__nickname = django_filters.CharFilter()
+    manual_order__m_sn = django_filters.CharFilter()
     manual_order__department__name = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta:

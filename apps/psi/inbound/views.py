@@ -20,6 +20,8 @@ from apps.psi.inventory.models import Inventory
 from apps.dfc.manualorder.models import ManualOrder, MOGoods
 from apps.utils.logging.loggings import getlogs, logging
 from ut3.settings import EXPORT_TOPLIMIT
+from apps.psi.renovation.models import Renovation, Renovationdetail, LogRenovation, LogRenovationdetail
+from apps.base.goods.models import Bom
 
 
 class OriInboundSubmitViewset(viewsets.ModelViewSet):
@@ -777,24 +779,8 @@ class InboundSubmitViewset(viewsets.ModelViewSet):
         return Response(data)
 
     @action(methods=['patch'], detail=False)
-    def recover(self, request, *args, **kwargs):
-        params = request.data
-        check_list = self.get_handle_list(params)
-        n = len(check_list)
-        data = {
-            "successful": 0,
-            "false": 0,
-            "error": []
-        }
-        if n:
-            check_list.update(process_tag=0)
-        else:
-            raise serializers.ValidationError("没有可审核的单据！")
-        data["successful"] = n
-        return Response(data)
-
-    @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
@@ -804,11 +790,161 @@ class InboundSubmitViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            for obj in reject_list:
+                obj.inbounddetail_set.all().delete()
+                obj.order_status = 0
+                obj.save()
+                logging(obj, user, LogInbound, "取消入库单")
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
+
+    @action(methods=['patch'], detail=False)
+    def excel_import(self, request, *args, **kwargs):
+        file = request.FILES.get('file', None)
+        if file:
+            data = self.handle_upload_file(request, file)
+        else:
+            data = {
+                "error": "上传文件未找到！"
+            }
+
+        return Response(data)
+
+    def handle_upload_file(self, request, _file):
+        ALLOWED_EXTENSIONS = ['xls', 'xlsx']
+        INIT_FIELDS_DIC = {
+            "入库单号": "code",
+            "仓库": "warehouse",
+            "类别": "category",
+            "验证号": "verification",
+            "货品": "goods",
+            "入库数量": "quantity",
+            "价格": "price",
+            "备注": "memo",
+        }
+
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error": []}
+        if '.' in _file.name and _file.name.rsplit('.')[-1] in ALLOWED_EXTENSIONS:
+            df = pd.read_excel(_file, sheet_name=0, dtype=str)
+
+            FILTER_FIELDS = ["入库单号", "仓库", "类别", "验证号", "货品", "入库数量", "价格", "备注"]
+
+            try:
+                df = df[FILTER_FIELDS]
+            except Exception as e:
+                report_dic["error"].append("必要字段不全或者错误")
+                return report_dic
+
+            # 获取表头，对表头进行转换成数据库字段名
+            columns_key = df.columns.values.tolist()
+            for i in range(len(columns_key)):
+                if INIT_FIELDS_DIC.get(columns_key[i], None) is not None:
+                    columns_key[i] = INIT_FIELDS_DIC.get(columns_key[i])
+
+            # 验证一下必要的核心字段是否存在
+            _ret_verify_field = Inbound.verify_mandatory(columns_key)
+            if _ret_verify_field is not None:
+                return _ret_verify_field
+
+            # 更改一下DataFrame的表名称
+            columns_key_ori = df.columns.values.tolist()
+            ret_columns_key = dict(zip(columns_key_ori, columns_key))
+            df.rename(columns=ret_columns_key, inplace=True)
+
+            # 更改一下DataFrame的表名称
+            num_end = 0
+            step = 300
+            step_num = int(len(df) / step) + 2
+            i = 1
+            while i < step_num:
+                num_start = num_end
+                num_end = step * i
+                intermediate_df = df.iloc[num_start: num_end]
+
+                # 获取导入表格的字典，每一行一个字典。这个字典最后显示是个list
+                _ret_list = intermediate_df.to_dict(orient='records')
+                intermediate_report_dic = self.save_resources(request, _ret_list)
+                for k, v in intermediate_report_dic.items():
+                    if k == "error":
+                        if intermediate_report_dic["error"]:
+                            report_dic[k].append(v)
+                    else:
+                        report_dic[k] += v
+                i += 1
+            return report_dic
+
+        else:
+            report_dic["error"].append('只支持excel文件格式！')
+            return report_dic
+
+    @staticmethod
+    def save_resources(request, resource):
+        # 设置初始报告
+        report_dic = {"successful": 0, "discard": 0, "false": 0, "repeated": 0, "error":[]}
+        category_dict = {
+            "正品": 1,
+            "残品": 2
+        }
+        user = request.user
+        for row in resource:
+            order_fields = ["code", "warehouse", "verification","memo"]
+            order = Inbound()
+            _q_goods = Goods.objects.filter(goods_id=row['goods'])
+            if _q_goods.exists():
+                row['goods'] = _q_goods[0]
+            else:
+                report_dic['error'].append("%s 货品错误或UT中无此货品" % row["goods"])
+                report_dic["false"] += 1
+                continue
+            _q_repeat_order = Inbound.objects.filter(verification=row['verification'])
+            if _q_repeat_order.exists():
+                report_dic['error'].append("%s 验证号已存在不可重复导入" % row["verification"])
+                report_dic["false"] += 1
+                continue
+            _q_warehouse = Warehouse.objects.filter(name=row["warehouse"])
+            if _q_warehouse.exists():
+                row["warehouse"] = _q_warehouse[0]
+            else:
+                report_dic['error'].append("%s 仓库错误"% row["warehouse"])
+                report_dic["false"] += 1
+                continue
+            row["category"] = category_dict.get(row["category"], None)
+            if not row["category"]:
+                report_dic['error'].append("类型错误")
+                report_dic["false"] += 1
+                continue
+            for field in order_fields:
+                setattr(order, field, row[field])
+            if len(str(order.memo)) > 150:
+                order.memo = str(order.memo)[:150]
+            try:
+                order.category = 3
+                order.creator = user.username
+                order.save()
+                logging(order, user, LogInbound, "创建")
+                report_dic["successful"] += 1
+            except Exception as e:
+                report_dic['error'].append("%s 保存出错" % row["code"])
+                report_dic["false"] += 1
+                continue
+            detail_fields = ["goods", "warehouse", "category", "quantity", "quantity"]
+            inbound_detail = InboundDetail()
+            for field in detail_fields:
+                setattr(inbound_detail, field, row[field])
+            inbound_detail.order = order
+            inbound_detail.code = f"{order.code}"
+            inbound_detail.creator = user.username
+            try:
+                inbound_detail.save()
+                inbound_detail.code = f"{inbound_detail.code}-{inbound_detail.id}"
+                logging(inbound_detail, user, LogInboundDetail, "创建")
+            except Exception as e:
+                report_dic['error'].append("%s 明细保存出错" % row["code"])
+                report_dic["false"] += 1
+
+        return report_dic
 
 
 class InboundCheckViewset(viewsets.ModelViewSet):
@@ -977,6 +1113,7 @@ class InboundCheckViewset(viewsets.ModelViewSet):
 
     @action(methods=['patch'], detail=False)
     def reject(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         reject_list = self.get_handle_list(params)
         n = len(reject_list)
@@ -986,7 +1123,15 @@ class InboundCheckViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            for obj in reject_list:
+                obj.order_status = 1
+                obj.save()
+                logging(obj, user, LogInbound, "驳回到提交")
+                all_goods = obj.inbounddetail_set.all()
+                for goods in all_goods:
+                    goods.order_status = 1
+                    goods.save()
+                    logging(goods, user, LogInboundDetail, "驳回到提交")
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
@@ -1060,28 +1205,7 @@ class InboundValidViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            for obj in check_list:
-                all_goods_details = obj.inbounddetail_set.all()
-                for goods_detail in all_goods_details:
-                    goods_detail.valid_quantity = goods_detail.quantity
-                    goods_detail.handle_time = datetime.datetime.now()
-                    goods_detail.order_status = 3
-                    goods_detail.save()
-                    logging(goods_detail, user, LogInboundDetail, "入库成功")
-                    _q_inventory = Inventory.objects.filter(warehouse=obj.warehouse, goods_name=goods_detail.goods)
-                    if not _q_inventory.exists():
-                        inventory_order = Inventory()
-                        inventory_order.warehouse = obj.warehouse
-                        inventory_order.goods_name = goods_detail.goods
-                        inventory_order.goods_id = goods_detail.goods.goods_id
-                        inventory_order.creator = user.username
-                        inventory_order.save()
-
-                obj.order_status = 3
-                obj.mistake_tag = 0
-                obj.process_tag = 0
-                obj.save()
-                logging(obj, user, LogInbound, "审核入库")
+            pass
         else:
             raise serializers.ValidationError("没有可审核的单据！")
         data["successful"] = n
@@ -1106,7 +1230,8 @@ class InboundValidViewset(viewsets.ModelViewSet):
         return Response(data)
 
     @action(methods=['patch'], detail=False)
-    def set_retread(self, request, *args, **kwargs):
+    def create_renovation(self, request, *args, **kwargs):
+        user = request.user
         params = request.data
         check_list = self.get_handle_list(params)
         n = len(check_list)
@@ -1116,10 +1241,63 @@ class InboundValidViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            check_list.update(process_tag=9)
+            for obj in check_list:
+                if not obj.verification:
+                    data["error"].append("%s 无验证码" % obj.id)
+                    n -= 1
+                    continue
+                _q_renovation = Renovation.objects.filter(verification=obj.verification)
+                if _q_renovation.exists():
+                    data["error"].append("%s 已存在翻新单" % obj.id)
+                    n -= 1
+                    continue
+
+                all_inbound_goods = obj.inbounddetail_set.all()
+                if len(all_inbound_goods) == 1:
+                    inbound_goods = all_inbound_goods[0]
+                    if inbound_goods.category != 2 or inbound_goods.valid_quantity != 1:
+                        data["error"].append("%s 支持单一残品入库单" % obj.id)
+                        n -= 1
+                        continue
+                else:
+                    data["error"].append("%s 支持单一残品入库单" % obj.id)
+                    n -= 1
+                    continue
+
+                renovation_order_dict = {
+                    "order": inbound_goods,
+                    "code": inbound_goods.id,
+                    "verification": obj.verification,
+                    "goods": inbound_goods.goods,
+                    "warehouse": inbound_goods.warehouse,
+                    "creator": user.username,
+
+                }
+                try:
+                    renovation_order = Renovation.objects.create(**renovation_order_dict)
+                    renovation_order.code = f"{renovation_order.code}-{renovation_order.id}"
+                    logging(renovation_order, user, LogRenovation, "创建")
+                    logging(obj, user, LogInbound, f"创建翻新单{renovation_order.code}")
+                except Exception as e:
+                    data["error"].append(f"{obj.id} 创建翻新单错误 {e}")
+                    n -= 1
+                    continue
+
+                _q_parts_bom = Bom.objects.filter(goods=renovation_order.goods, is_delete=0)
+                if _q_parts_bom.exists():
+                    for part_obj in _q_parts_bom:
+                        renovation_detail_dict = {
+                            "order": renovation_order,
+                            "goods": part_obj.part,
+                            "creator": user.username,
+                        }
+                        renovation_detail = Renovationdetail.objects.create(**renovation_detail_dict)
+                        logging(renovation_detail, user, LogRenovationdetail, "创建")
+
         else:
-            raise serializers.ValidationError("没有可审核的单据！")
+            raise serializers.ValidationError("没有选择单据！")
         data["successful"] = n
+        data["false"] = len(check_list) - n
         return Response(data)
 
     @action(methods=['patch'], detail=False)
@@ -1167,7 +1345,7 @@ class InboundValidViewset(viewsets.ModelViewSet):
             "error": []
         }
         if n:
-            reject_list.update(order_status=0)
+            pass
         else:
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n

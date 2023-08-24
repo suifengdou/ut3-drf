@@ -11,7 +11,11 @@ from apps.crm.customers.models import Customer
 
 class CSAddress(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='用户', help_text='用户')
-    name = models.CharField(max_length=250, verbose_name='地址', help_text='地址')
+    city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='城市', help_text='城市')
+    district = models.ForeignKey(District, on_delete=models.CASCADE, null=True, blank=True, verbose_name='区县', help_text='区县')
+    name = models.CharField(max_length=150, verbose_name='收件人', help_text='收件人')
+    mobile = models.CharField(max_length=50, db_index=True, verbose_name='手机', help_text='手机')
+    address = models.CharField(max_length=250, verbose_name='地址', help_text='地址')
     is_default = models.BooleanField(default=False, verbose_name='是否默认', help_text='是否默认')
     memo = models.CharField(null=True, blank=True, max_length=200, verbose_name='备注')
 

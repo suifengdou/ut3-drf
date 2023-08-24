@@ -13,8 +13,8 @@ from apps.utils.logging.loggings import logging
 
 class ManualOrderSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
     goods_details = serializers.JSONField(required=False)
 
     class Meta:
@@ -118,7 +118,17 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             10: "输出单保存出错",
             11: "货品数量错误",
             12: "无收件人",
-            13: "此类型不可发整机"
+            13: "此类型不可发整机",
+            14: "仓库错误",
+            15: "无货品不可审核",
+            16: "关联出库单错误，联系管理员",
+            17: "关联出库单创建错误",
+            18: "仓库非体验仓无法提交",
+            19: "缺货无法出库",
+            20: "库存不存在",
+            21: "未完全锁定库存不可释放",
+            22: "未锁定库存",
+            23: "出库数量错误"
         }
         try:
             ret = {
@@ -265,6 +275,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
             goods_detail['manual_order'] = manual_order
             goods_name = Goods.objects.filter(id=goods_detail["goods_name"])[0]
             goods_detail["goods_name"] = goods_name
+            goods_detail["settle_category"] = manual_order.order_category
             goods_detail["goods_id"] = goods_name.goods_id
             goods_detail.pop("xh")
             self.create_goods_detail(goods_detail)
@@ -308,6 +319,7 @@ class ManualOrderSerializer(serializers.ModelSerializer):
                 _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
                 goods_detail["goods_name"] = _q_goods
                 goods_detail["goods_id"] = _q_goods.goods_id
+                goods_detail["settle_category"] = instance.order_category
                 goods_detail["id"] = 'n'
                 goods_detail.pop("xh")
                 self.create_goods_detail(goods_detail)
@@ -318,19 +330,14 @@ class ManualOrderSerializer(serializers.ModelSerializer):
 
 class MOGoodsSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = MOGoods
         fields = "__all__"
 
     def get_manual_order(self, instance):
-        category_status = {
-            1: "质量问题",
-            2: "开箱即损",
-            3: "礼品赠品",
-        }
         try:
             ret = {
                 "id": instance.manual_order.id,
@@ -342,7 +349,6 @@ class MOGoodsSerializer(serializers.ModelSerializer):
                 "mobile": instance.manual_order.mobile,
                 "order_id": instance.manual_order.order_id,
                 "department": instance.manual_order.department.name,
-                "order_category": category_status.get(instance.manual_order.order_category, None),
                 "m_sn": instance.manual_order.m_sn,
                 "broken_part": instance.manual_order.broken_part,
                 "description": instance.manual_order.description
@@ -357,7 +363,7 @@ class MOGoodsSerializer(serializers.ModelSerializer):
                 "id": instance.goods_name.id,
                 "name": instance.goods_name.name,
             }
-        except:
+        except Exception as e:
             ret = {"id": -1, "name": "显示错误"}
         return ret
 
@@ -367,7 +373,7 @@ class MOGoodsSerializer(serializers.ModelSerializer):
             1: "未处理",
             2: "已导入",
             3: "已发货",
-            4: "试用中",
+            4: "待结算",
             5: "已完结",
         }
         try:
@@ -378,12 +384,28 @@ class MOGoodsSerializer(serializers.ModelSerializer):
         except:
             ret = {"id": -1, "name": "显示错误"}
         return ret
+    def get_settle_category(self, instance):
+        category = {
+            1: "质量问题",
+            2: "开箱即损",
+            3: "礼品赠品",
+            4: "试用体验",
+        }
+        try:
+            ret = {
+                "id": instance.settle_category,
+                "name": category.get(instance.settle_category, None)
+            }
+        except:
+            ret = {"id": -1, "name": "显示错误"}
+        return ret
 
     def to_representation(self, instance):
         ret = super(MOGoodsSerializer, self).to_representation(instance)
         ret["goods_name"] = self.get_goods_name(instance)
         ret["order_status"] = self.get_order_status(instance)
         ret["manual_order"] = self.get_manual_order(instance)
+        ret["settle_category"] = self.get_settle_category(instance)
         return ret
 
     def create(self, validated_data):
@@ -398,8 +420,8 @@ class MOGoodsSerializer(serializers.ModelSerializer):
 
 class ManualOrderExportSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = ManualOrderExport

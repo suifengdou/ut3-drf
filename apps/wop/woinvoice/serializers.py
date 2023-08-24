@@ -236,8 +236,9 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         validated_data["updated_time"] = datetime.datetime.now()
         goods_details = validated_data.pop("goods_details", [])
-        amount = self.check_goods_details(goods_details)
-        create_time = validated_data.pop("create_time", "")
+        if goods_details:
+            amount = self.check_goods_details(goods_details)
+        created_time = validated_data.pop("created_time", "")
         if validated_data.get ("amount", None) is not None:
             validated_data["amount"] = amount
         if validated_data.get('sent_address', None) is not None:
@@ -254,16 +255,17 @@ class OriInvoiceSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"更新错误": "地址是集运仓"})
 
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
-        instance.oriinvoicegoods_set.all().delete()
-        for goods_detail in goods_details:
-            goods_detail['invoice'] = instance
-            _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
-            goods_detail["goods_name"] = _q_goods
-            goods_detail["goods_id"] = _q_goods.goods_id
-            goods_detail["id"] = "n"
-            goods_detail.pop("name", None)
-            goods_detail.pop("xh", None)
-            self.create_goods_detail(goods_detail)
+        if goods_details:
+            instance.oriinvoicegoods_set.all().delete()
+            for goods_detail in goods_details:
+                goods_detail['invoice'] = instance
+                _q_goods = Goods.objects.filter(id=goods_detail["goods_name"])[0]
+                goods_detail["goods_name"] = _q_goods
+                goods_detail["goods_id"] = _q_goods.goods_id
+                goods_detail["id"] = "n"
+                goods_detail.pop("name", None)
+                goods_detail.pop("xh", None)
+                self.create_goods_detail(goods_detail)
         return instance
 
     def check_goods_details(self, goods_details):

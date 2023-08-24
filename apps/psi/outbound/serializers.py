@@ -1,62 +1,23 @@
 import datetime
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from .models import Outbound
+from .models import Outbound, OutboundDetail
 
 
 class OutboundSerializer(serializers.ModelSerializer):
 
-    create_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
-    update_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
 
     class Meta:
         model = Outbound
         fields = "__all__"
-
-    def get_ori_order_id(self, instance):
-        try:
-            ret = {
-                "id": instance.ori_order_id.id,
-                "name": instance.ori_order_id.trade_no
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_goods_name(self, instance):
-        try:
-            ret = {
-                "id": instance.goods_name.id,
-                "name": instance.goods_name.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
 
     def get_warehouse(self, instance):
         try:
             ret = {
                 "id": instance.warehouse.id,
                 "name": instance.warehouse.name
-            }
-        except:
-            ret = {
-                "id": -1,
-                "name": "空"
-            }
-        return ret
-
-    def get_shop(self, instance):
-        try:
-            ret = {
-                "id": instance.shop.id,
-                "name": instance.shop.name
             }
         except:
             ret = {
@@ -86,12 +47,9 @@ class OutboundSerializer(serializers.ModelSerializer):
 
     def get_order_status(self, instance):
         order_status = {
-            0: "已被取消",
-            1: "经销未递",
-            2: "客服在理",
-            3: "经销复核",
-            4: "运营对账",
-            5: "工单完结",
+            0: "已取消",
+            1: "未处理",
+            2: "已完成",
         }
         try:
             ret = {
@@ -107,10 +65,7 @@ class OutboundSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super(OutboundSerializer, self).to_representation(instance)
-        ret["ori_order_id"] = self.get_ori_order_id(instance)
-        ret["goods_name"] = self.get_goods_name(instance)
         ret["warehouse"] = self.get_warehouse(instance)
-        ret["shop"] = self.get_shop(instance)
         ret["mistake_tag"] = self.get_mistake_tag(instance)
         ret["order_status"] = self.get_order_status(instance)
         return ret
@@ -124,4 +79,106 @@ class OutboundSerializer(serializers.ModelSerializer):
         self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
         return instance
 
+
+class OutboundDetailSerializer(serializers.ModelSerializer):
+
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="创建时间", help_text="创建时间")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True, label="更新时间", help_text="更新时间")
+
+    class Meta:
+        model = OutboundDetail
+        fields = "__all__"
+
+    def get_order(self, instance):
+        try:
+            ret = {
+                "id": instance.order.id,
+                "name": instance.order.code,
+                "verification": instance.order.verification,
+            }
+        except Exception as e:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_goods(self, instance):
+        try:
+            ret = {
+                "id": instance.goods.id,
+                "name": instance.goods.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_warehouse(self, instance):
+        try:
+            ret = {
+                "id": instance.warehouse.id,
+                "name": instance.warehouse.name
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_category(self, instance):
+        category_list = {
+            1: "正品",
+            2: "残品",
+        }
+        try:
+            ret = {
+                "id": instance.category,
+                "name": category_list.get(instance.category, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def get_order_status(self, instance):
+        order_status = {
+            0: "已取消",
+            1: "未提交",
+            2: "已完成",
+        }
+        try:
+            ret = {
+                "id": instance.order_status,
+                "name": order_status.get(instance.order_status, None)
+            }
+        except:
+            ret = {
+                "id": -1,
+                "name": "空"
+            }
+        return ret
+
+    def to_representation(self, instance):
+        ret = super(OutboundDetailSerializer, self).to_representation(instance)
+        ret["order"] = self.get_order(instance)
+        ret["goods"] = self.get_goods(instance)
+        ret["category"] = self.get_category(instance)
+        ret["warehouse"] = self.get_warehouse(instance)
+        ret["order_status"] = self.get_order_status(instance)
+        return ret
+
+    def create(self, validated_data):
+        validated_data["creator"] = self.context["request"].user.username
+        return self.Meta.model.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data["updated_time"] = datetime.datetime.now()
+        self.Meta.model.objects.filter(id=instance.id).update(**validated_data)
+        return instance
 

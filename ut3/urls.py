@@ -29,6 +29,7 @@ from apps.base.goods.router import goods_router
 from apps.base.shop.router import shop_router
 from apps.utils.geography.router import geography_router
 from apps.base.warehouse.router import warehouse_router
+from apps.base.expressinfo.router import expressinfo_router
 from apps.wop.woinvoice.router import woinvoice_router
 from apps.wop.dealers.router import wodealer_router
 from apps.wop.express.router import woexpress_router
@@ -39,6 +40,7 @@ from apps.wop.job.router import job_router
 from apps.sales.advancepayment.router import advance_router
 from apps.sales.tailgoods.router import tailgoods_router
 from apps.sales.productcatalog.router import product_catalog_router
+from apps.sales.trialgoods.router import trialgoods_router
 from apps.crm.order.router import order_router
 from apps.crm.customers.router import customer_router
 from apps.crm.dialog.router import dialgo_router
@@ -56,11 +58,13 @@ from apps.psi.inventory.router import inventory_router
 from apps.psi.outbound.router import outbound_router
 from apps.psi.inbound.router import inbound_router
 from apps.psi.renovation.router import renovation_router
+from apps.psi.logistics.router import logistics_router
 from apps.int.intdistributor.router import intdistributor_router
 from apps.int.intaccount.router import intaccount_router
 from apps.int.intreceipt.router import intreceipt_router
 from apps.int.intpurchase.router import intpurchase_router
 from apps.int.intstatement.router import intstatement_router
+from apps.fd.order.cnorder.router import cnorder_router
 
 
 route.registry.extend(group_router.registry)
@@ -71,6 +75,7 @@ route.registry.extend(goods_router.registry)
 route.registry.extend(shop_router.registry)
 route.registry.extend(geography_router.registry)
 route.registry.extend(warehouse_router.registry)
+route.registry.extend(expressinfo_router.registry)
 route.registry.extend(woinvoice_router.registry)
 route.registry.extend(wodealer_router.registry)
 route.registry.extend(woexpress_router.registry)
@@ -80,6 +85,7 @@ route.registry.extend(job_router.registry)
 route.registry.extend(dealerparts_router.registry)
 route.registry.extend(advance_router.registry)
 route.registry.extend(tailgoods_router.registry)
+route.registry.extend(trialgoods_router.registry)
 route.registry.extend(order_router.registry)
 route.registry.extend(dialgo_router.registry)
 route.registry.extend(callcenter_router.registry)
@@ -103,6 +109,8 @@ route.registry.extend(product_catalog_router.registry)
 route.registry.extend(customerlabel_router.registry)
 route.registry.extend(csaddress_router.registry)
 route.registry.extend(csgoods_router.registry)
+route.registry.extend(logistics_router.registry)
+route.registry.extend(cnorder_router.registry)
 
 
 urlpatterns = [

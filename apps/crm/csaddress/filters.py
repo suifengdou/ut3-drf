@@ -22,7 +22,9 @@ class CharInFilter(BaseInFilter, CharFilter):
 
 class CSAddressFilter(django_filters.FilterSet):
     customer__name = django_filters.CharFilter(method='customer_filter')
-    name = django_filters.CharFilter(field_name="name", lookup_expr='icontains')
+    city__name = django_filters.CharFilter()
+    name = django_filters.CharFilter()
+    mobile = django_filters.CharFilter()
 
     class Meta:
         model = CSAddress

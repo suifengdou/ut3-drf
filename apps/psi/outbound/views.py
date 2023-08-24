@@ -8,14 +8,15 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
-from .serializers import OutboundSerializer
-from .filters import OutboundFilter
-from .models import Outbound
+from .serializers import OutboundSerializer, OutboundDetailSerializer
+from .filters import OutboundFilter, OutboundDetailFilter
+from .models import Outbound, OutboundDetail, LogOutbound, LogOutboundDetail
 from apps.sales.advancepayment.models import Expense, Account, Statements, VerificationExpenses, ExpendList, Prestore
 from apps.auth.users.models import UserProfile
 from ut3.permissions import Permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from apps.utils.logging.loggings import logging, getlogs
 
 
 class OutboundSubmitViewset(viewsets.ModelViewSet):
@@ -45,7 +46,7 @@ class OutboundSubmitViewset(viewsets.ModelViewSet):
         if not self.request:
             return Outbound.objects.none()
         user = self.request.user
-        queryset = Outbound.objects.filter(order_status=1).order_by("id")
+        queryset = Outbound.objects.filter(order_status=1).order_by("-id")
         return queryset
 
     @action(methods=['get'], detail=False)
@@ -262,3 +263,112 @@ class OutboundSubmitViewset(viewsets.ModelViewSet):
             raise serializers.ValidationError("没有可驳回的单据！")
         data["successful"] = n
         return Response(data)
+
+
+class OutboundManageViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定公司
+    list:
+        返回公司列表
+    update:
+        更新公司信息
+    destroy:
+        删除公司信息
+    create:
+        创建公司信息
+    partial_update:
+        更新部分公司字段
+    """
+    serializer_class = OutboundSerializer
+    filter_class = OutboundFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_oriinvoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return Outbound.objects.none()
+        user = self.request.user
+        queryset = Outbound.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['get'], detail=False)
+    def export(self, request, *args, **kwargs):
+        # raise serializers.ValidationError("看下失败啥样！")
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        user = self.request.user
+        request.data["creator"] = user.username
+        params = request.query_params
+        f = OutboundFilter(params)
+        serializer = OutboundSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = Outbound.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogOutbound)
+        return Response(ret)
+
+
+class OutboundDetailManageViewset(viewsets.ModelViewSet):
+    """
+    retrieve:
+        返回指定公司
+    list:
+        返回公司列表
+    update:
+        更新公司信息
+    destroy:
+        删除公司信息
+    create:
+        创建公司信息
+    partial_update:
+        更新部分公司字段
+    """
+    serializer_class = OutboundDetailSerializer
+    filter_class = OutboundDetailFilter
+    filter_fields = "__all__"
+    permission_classes = (IsAuthenticated, Permissions)
+    extra_perm_map = {
+        "GET": ['woinvoice.view_oriinvoice']
+    }
+
+    def get_queryset(self):
+        if not self.request:
+            return OutboundDetail.objects.none()
+        user = self.request.user
+        queryset = OutboundDetail.objects.all().order_by("-id")
+        return queryset
+
+    @action(methods=['get'], detail=False)
+    def export(self, request, *args, **kwargs):
+        request.data.pop("page", None)
+        request.data.pop("allSelectTag", None)
+        user = self.request.user
+        request.data["creator"] = user.username
+        params = request.query_params
+        f = OutboundDetailFilter(params)
+        serializer = OutboundDetailSerializer(f.qs, many=True)
+        return Response(serializer.data)
+
+
+    @action(methods=['patch'], detail=False)
+    def get_log_details(self, request, *args, **kwargs):
+        id = request.data.get("id", None)
+        if not id:
+            raise serializers.ValidationError("未找到单据！")
+        instance = OutboundDetail.objects.filter(id=id)[0]
+        ret = getlogs(instance, LogOutboundDetail)
+        return Response(ret)
+
+
+
+
